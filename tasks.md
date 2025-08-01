@@ -44,13 +44,13 @@
 
 ## P1.1: Project Setup
 **File**: `docs/tasks/p1-1-project-setup.md`
-- [ ] Initialize Go module with proper structure
-- [ ] Set up cobra CLI framework
-- [ ] Configure viper for configuration management
-- [ ] Create basic project structure (cmd/, internal/, pkg/)
-- [ ] Set up CI/CD pipeline for cross-compilation
-- [ ] Configure pre-commit hooks for code quality
-- [ ] Set up commit message validation (commitlint)
+- [x] Initialize Go module with proper structure
+- [x] Set up cobra CLI framework
+- [x] Configure viper for configuration management
+- [x] Create basic project structure (cmd/, internal/, pkg/)
+- [x] Set up CI/CD pipeline for cross-compilation
+- [x] Configure pre-commit hooks for code quality
+- [x] Set up commit message validation (commitlint)
 
 ## P1.2: Core Data Structures
 **File**: `docs/tasks/p1-2-core-data-structures.md`
