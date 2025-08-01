@@ -47,26 +47,26 @@ Set up automated distribution pipeline including GitHub releases, binary signing
 ## Files to Create
 - `.goreleaser.yml`
 - `scripts/install.sh`
-- `packaging/homebrew/mrm.rb`
+- `packaging/homebrew/arm.rb`
 - `packaging/debian/control`
 - `.github/workflows/release.yml`
 
 ## Installation Methods
 ```bash
 # Curl installer
-curl -sSL https://install.mrm.dev | sh
+curl -sSL https://install.arm.dev | sh
 
 # Homebrew
-brew install mrm
+brew install arm
 
 # Debian/Ubuntu
-wget https://github.com/user/mrm/releases/latest/download/mrm_linux_amd64.deb
-sudo dpkg -i mrm_linux_amd64.deb
+wget https://github.com/user/arm/releases/latest/download/arm_linux_amd64.deb
+sudo dpkg -i arm_linux_amd64.deb
 
 # Manual download
-wget https://github.com/user/mrm/releases/latest/download/mrm-linux-amd64
-chmod +x mrm-linux-amd64
-sudo mv mrm-linux-amd64 /usr/local/bin/mrm
+wget https://github.com/user/arm/releases/latest/download/arm-linux-amd64
+chmod +x arm-linux-amd64
+sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```
 
 ## Release Process

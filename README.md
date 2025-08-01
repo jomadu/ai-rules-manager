@@ -1,10 +1,10 @@
-# Model Rules Manager (MRM)
+# AI Rules Manager (ARM)
 
 A package manager for AI coding assistant rulesets. Install, update, and manage coding rules across different AI tools like Cursor and Amazon Q Developer.
 
-## What is MRM?
+## What is ARM?
 
-MRM solves the problem of managing and sharing AI coding rulesets across teams and projects. Instead of manually copying `.cursorrules` files or `.amazonq/rules` directories, MRM provides a centralized way to distribute, version, and update coding rules from multiple registries.
+ARM solves the problem of managing and sharing AI coding rulesets across teams and projects. Instead of manually copying `.cursorrules` files or `.amazonq/rules` directories, ARM provides a centralized way to distribute, version, and update coding rules from multiple registries.
 
 ## Quick Start
 
@@ -12,31 +12,31 @@ MRM solves the problem of managing and sharing AI coding rulesets across teams a
 
 ```bash
 # Install via curl (coming soon)
-curl -sSL https://install.mrm.dev | sh
+curl -sSL https://install.arm.dev | sh
 
 # Or download binary from releases
-wget https://github.com/user/mrm/releases/latest/download/mrm-linux-amd64
-chmod +x mrm-linux-amd64
-sudo mv mrm-linux-amd64 /usr/local/bin/mrm
+wget https://github.com/user/arm/releases/latest/download/arm-linux-amd64
+chmod +x arm-linux-amd64
+sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```
 
 ### Basic Usage
 
 ```bash
 # Install a ruleset
-mrm install company@typescript-rules
+arm install company@typescript-rules
 
 # Install from manifest
-mrm install
+arm install
 
 # List installed rulesets
-mrm list
+arm list
 
 # Update all rulesets
-mrm update
+arm update
 
 # Check for outdated rulesets
-mrm outdated
+arm outdated
 ```
 
 ## Configuration
@@ -53,11 +53,11 @@ mrm outdated
 }
 ```
 
-### Registry Configuration (.mpmrc)
+### Registry Configuration (.armrc)
 
 ```ini
 [sources]
-default = https://registry.mpmjs.org/
+default = https://registry.armjs.org/
 company = https://internal.company-registry.local/
 
 [sources.company]
@@ -68,15 +68,15 @@ authToken = $COMPANY_REGISTRY_TOKEN
 
 | Command | Description |
 |---------|-------------|
-| `mrm install [ruleset]` | Install rulesets |
-| `mrm uninstall <ruleset>` | Remove a ruleset |
-| `mrm update [ruleset]` | Update rulesets |
-| `mrm list` | List installed rulesets |
-| `mrm outdated` | Show outdated rulesets |
-| `mrm config <action>` | Manage configuration |
-| `mrm clean` | Clean cache and unused files |
-| `mrm help` | Show help |
-| `mrm version` | Show version |
+| `arm install [ruleset]` | Install rulesets |
+| `arm uninstall <ruleset>` | Remove a ruleset |
+| `arm update [ruleset]` | Update rulesets |
+| `arm list` | List installed rulesets |
+| `arm outdated` | Show outdated rulesets |
+| `arm config <action>` | Manage configuration |
+| `arm clean` | Clean cache and unused files |
+| `arm help` | Show help |
+| `arm version` | Show version |
 
 ## Supported Targets
 
@@ -97,7 +97,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 After installation, your project will look like:
 
 ```
-.mpm/
+.arm/
   cache/
     company/
       typescript-rules/
@@ -105,7 +105,7 @@ After installation, your project will look like:
           rule-1.md
           rule-2.md
 .cursorrules/
-  lrm/
+  arm/
     company/
       typescript-rules/
         1.0.1/
@@ -113,7 +113,7 @@ After installation, your project will look like:
           rule-2.md
 .amazonq/
   rules/
-    lrm/
+    arm/
       company/
         typescript-rules/
           1.0.1/
@@ -121,12 +121,12 @@ After installation, your project will look like:
             rule-2.md
 rules.json
 rules.lock
-.mpmrc
+.armrc
 ```
 
 ## Development Status
 
-🚧 **In Development** - MRM is currently being built. See our [development phases](prd.md#timeline):
+🚧 **In Development** - ARM is currently being built. See our [development phases](prd.md#timeline):
 
 - **Phase 1**: Core commands (install, uninstall, list)
 - **Phase 2**: Configuration and registry support

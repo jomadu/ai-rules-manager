@@ -56,16 +56,16 @@ Create comprehensive documentation including CLI help text, usage examples, regi
 
 ## CLI Help Examples
 ```bash
-$ mrm install --help
+$ arm install --help
 Install rulesets from registries
 
 Usage:
-  mrm install [ruleset[@version]] [flags]
+  arm install [ruleset[@version]] [flags]
 
 Examples:
-  mrm install                    # Install from rules.json
-  mrm install typescript-rules   # Install latest version
-  mrm install company@rules@1.0  # Install specific version
+  arm install                    # Install from rules.json
+  arm install typescript-rules   # Install latest version
+  arm install company@rules@1.0  # Install specific version
 
 Flags:
   --dry-run    Show what would be installed

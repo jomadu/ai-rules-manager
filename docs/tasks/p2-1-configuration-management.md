@@ -1,11 +1,11 @@
 # P2.1: Configuration Management
 
 ## Overview
-Implement configuration file parsing and management for .mpmrc files at user and project levels with environment variable support.
+Implement configuration file parsing and management for .armrc files at user and project levels with environment variable support.
 
 ## Requirements
-- Parse .mpmrc files in INI format
-- Support user-level (~/.mpmrc) and project-level (.mpmrc) configs
+- Parse .armrc files in INI format
+- Support user-level (~/.armrc) and project-level (.armrc) configs
 - Environment variable substitution
 - Config command implementation (get, set, list)
 
@@ -13,15 +13,15 @@ Implement configuration file parsing and management for .mpmrc files at user and
 - [ ] **INI file parsing**:
   ```ini
   [sources]
-  default = https://registry.mpmjs.org/
+  default = https://registry.armjs.org/
   company = https://internal.company.local/
   
   [sources.company]
   authToken = $COMPANY_TOKEN
   ```
 - [ ] **Configuration hierarchy**:
-  - User config: `~/.mpmrc`
-  - Project config: `./.mpmrc`
+  - User config: `~/.armrc`
+  - Project config: `./.armrc`
   - Environment variables override
   - Command-line flags override
 - [ ] **Environment variable substitution**:
@@ -29,9 +29,9 @@ Implement configuration file parsing and management for .mpmrc files at user and
   - Support default values: `${VAR:-default}`
 - [ ] **Config command implementation**:
   ```bash
-  mrm config list
-  mrm config get sources.default
-  mrm config set sources.company https://new-url.com
+  arm config list
+  arm config get sources.default
+  arm config set sources.company https://new-url.com
   ```
 - [ ] **Validation**:
   - Validate URL formats
@@ -39,7 +39,7 @@ Implement configuration file parsing and management for .mpmrc files at user and
   - Warn about missing authentication
 
 ## Acceptance Criteria
-- [ ] .mpmrc files are parsed correctly
+- [ ] .armrc files are parsed correctly
 - [ ] Configuration hierarchy works (project overrides user)
 - [ ] Environment variables are substituted properly
 - [ ] Config commands work for get/set/list operations
@@ -53,12 +53,12 @@ Implement configuration file parsing and management for .mpmrc files at user and
 ## Files to Create
 - `internal/config/parser.go`
 - `internal/config/hierarchy.go`
-- `cmd/mrm/config.go`
+- `cmd/arm/config.go`
 
 ## Example Config
 ```ini
 [sources]
-default = https://registry.mpmjs.org/
+default = https://registry.armjs.org/
 company = https://internal.company.local/
 
 [sources.company]

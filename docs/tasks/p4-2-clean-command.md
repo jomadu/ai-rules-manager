@@ -1,7 +1,7 @@
 # P4.2: Clean Command
 
 ## Overview
-Implement the `mrm clean` command to remove unused cached rulesets, orphaned entries, and expired metadata.
+Implement the `arm clean` command to remove unused cached rulesets, orphaned entries, and expired metadata.
 
 ## Requirements
 - Remove unused cached rulesets
@@ -12,10 +12,10 @@ Implement the `mrm clean` command to remove unused cached rulesets, orphaned ent
 ## Tasks
 - [ ] **Create clean command structure**:
   ```bash
-  mrm clean                    # clean all unused
-  mrm clean --cache            # clean cache only
-  mrm clean --dry-run          # show what would be cleaned
-  mrm clean --all              # aggressive cleanup
+  arm clean                    # clean all unused
+  arm clean --cache            # clean cache only
+  arm clean --dry-run          # show what would be cleaned
+  arm clean --all              # aggressive cleanup
   ```
 - [ ] **Identify unused cache entries**:
   - Compare cache contents with rules.lock
@@ -39,7 +39,7 @@ Implement the `mrm clean` command to remove unused cached rulesets, orphaned ent
   - Provide undo capability where possible
 
 ## Acceptance Criteria
-- [ ] `mrm clean` removes only unused cache entries
+- [ ] `arm clean` removes only unused cache entries
 - [ ] Cache size is reported accurately
 - [ ] --dry-run shows cleanup plan without executing
 - [ ] Currently used rulesets are never removed
@@ -52,7 +52,7 @@ Implement the `mrm clean` command to remove unused cached rulesets, orphaned ent
 - path/filepath (standard library)
 
 ## Files to Create
-- `cmd/mrm/clean.go`
+- `cmd/arm/clean.go`
 - `internal/cleaner/cleaner.go`
 - `internal/cleaner/analyzer.go`
 

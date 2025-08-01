@@ -1,7 +1,7 @@
 # P3.2: Outdated Command
 
 ## Overview
-Implement the `mrm outdated` command to display installed rulesets that have newer versions available.
+Implement the `arm outdated` command to display installed rulesets that have newer versions available.
 
 ## Requirements
 - Compare installed vs available versions
@@ -12,9 +12,9 @@ Implement the `mrm outdated` command to display installed rulesets that have new
 ## Tasks
 - [ ] **Create outdated command structure**:
   ```bash
-  mrm outdated                 # show all outdated
-  mrm outdated --json          # JSON output
-  mrm outdated <ruleset>       # check specific ruleset
+  arm outdated                 # show all outdated
+  arm outdated --json          # JSON output
+  arm outdated <ruleset>       # check specific ruleset
   ```
 - [ ] **Version comparison logic**:
   - Read current versions from rules.lock
@@ -32,7 +32,7 @@ Implement the `mrm outdated` command to display installed rulesets that have new
   - Implement timeout handling
 
 ## Acceptance Criteria
-- [ ] `mrm outdated` shows all rulesets with updates
+- [ ] `arm outdated` shows all rulesets with updates
 - [ ] Table format is clear and readable
 - [ ] JSON output is properly formatted
 - [ ] Registry failures don't crash the command
@@ -44,7 +44,7 @@ Implement the `mrm outdated` command to display installed rulesets that have new
 - text/tabwriter (table formatting)
 
 ## Files to Create
-- `cmd/mrm/outdated.go`
+- `cmd/arm/outdated.go`
 - `internal/outdated/checker.go`
 - `internal/outdated/formatter.go`
 
@@ -56,7 +56,7 @@ security-rules      2.1.0      2.2.0      default
 react-rules         0.5.1      up to date github
 
 2 rulesets can be updated.
-Run 'mrm update' to update all.
+Run 'arm update' to update all.
 ```
 
 ## Notes

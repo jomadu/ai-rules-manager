@@ -1,7 +1,7 @@
 # P1.2: Core Data Structures
 
 ## Overview
-Define the fundamental data structures for rulesets, manifests, and configuration that form the backbone of MRM.
+Define the fundamental data structures for rulesets, manifests, and configuration that form the backbone of ARM.
 
 ## Requirements
 - Ruleset metadata structure
@@ -35,7 +35,7 @@ Define the fundamental data structures for rulesets, manifests, and configuratio
     Dependencies map[string]LockedDependency
   }
   ```
-- [ ] **Define RegistryConfig** for .mpmrc:
+- [ ] **Define RegistryConfig** for .armrc:
   ```go
   type RegistryConfig struct {
     Sources map[string]RegistrySource
@@ -52,7 +52,7 @@ Define the fundamental data structures for rulesets, manifests, and configuratio
 
 ## Dependencies
 - encoding/json (standard library)
-- gopkg.in/yaml.v3 (for .mpmrc INI format alternative)
+- gopkg.in/yaml.v3 (for .armrc INI format alternative)
 
 ## Files to Create
 - `pkg/types/ruleset.go`

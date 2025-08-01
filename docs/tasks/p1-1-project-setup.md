@@ -1,7 +1,7 @@
 # P1.1: Project Setup
 
 ## Overview
-Initialize the Go project structure and set up core development tools for the MRM CLI application.
+Initialize the Go project structure and set up core development tools for the ARM CLI application.
 
 ## Requirements
 - Go module with proper naming and structure
@@ -11,13 +11,13 @@ Initialize the Go project structure and set up core development tools for the MR
 - Cross-compilation CI/CD pipeline
 
 ## Tasks
-- [x] **Initialize Go module**: `go mod init github.com/jomadu/mrm`
+- [x] **Initialize Go module**: `go mod init github.com/jomadu/arm`
 - [x] **Install Cobra CLI**: Add cobra dependency and generate basic structure
 - [x] **Install Viper**: Add viper for configuration management
 - [x] **Create project structure**:
   ```
   cmd/
-    mrm/
+    arm/
       main.go
   internal/
     config/
@@ -30,7 +30,7 @@ Initialize the Go project structure and set up core development tools for the MR
 
 ## Acceptance Criteria
 - [x] `go build` produces working binary
-- [x] Basic `mrm --help` command works
+- [x] Basic `arm --help` command works
 - [x] CI builds binaries for all target platforms
 - [x] Project follows Go standard layout
 
@@ -40,7 +40,7 @@ Initialize the Go project structure and set up core development tools for the MR
 - github.com/spf13/viper
 
 ## Files to Create
-- `cmd/mrm/main.go`
+- `cmd/arm/main.go`
 - `internal/config/config.go`
 - `.github/workflows/build.yml`
 - `go.mod`, `go.sum`

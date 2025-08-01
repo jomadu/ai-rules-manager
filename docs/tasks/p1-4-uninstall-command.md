@@ -1,7 +1,7 @@
 # P1.4: Uninstall Command
 
 ## Overview
-Implement the `mrm uninstall` command to safely remove rulesets from target directories and update manifest files.
+Implement the `arm uninstall` command to safely remove rulesets from target directories and update manifest files.
 
 ## Requirements
 - Remove ruleset files from all target directories
@@ -13,7 +13,7 @@ Implement the `mrm uninstall` command to safely remove rulesets from target dire
 ## Tasks
 - [ ] **Create uninstall command structure**:
   ```bash
-  mrm uninstall <ruleset-name>
+  arm uninstall <ruleset-name>
   ```
 - [ ] **Identify installed files**:
   - Read from rules.lock to find exact files
@@ -36,7 +36,7 @@ Implement the `mrm uninstall` command to safely remove rulesets from target dire
   - Warn about breaking dependencies
 
 ## Acceptance Criteria
-- [ ] `mrm uninstall typescript-rules` removes all files
+- [ ] `arm uninstall typescript-rules` removes all files
 - [ ] rules.json and rules.lock are updated correctly
 - [ ] Other rulesets remain unaffected
 - [ ] Cache is cleaned up appropriately
@@ -49,7 +49,7 @@ Implement the `mrm uninstall` command to safely remove rulesets from target dire
 - path/filepath (standard library)
 
 ## Files to Create
-- `cmd/mrm/uninstall.go`
+- `cmd/arm/uninstall.go`
 - `internal/uninstaller/uninstaller.go`
 - `internal/validator/validator.go`
 

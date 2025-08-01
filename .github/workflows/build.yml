@@ -34,10 +34,10 @@ jobs:
         if [ "$GOOS" = "windows" ]; then
           EXT=".exe"
         fi
-        go build -o mrm-${{ matrix.goos }}-${{ matrix.goarch }}$EXT ./cmd/mrm
+        go build -o arm-${{ matrix.goos }}-${{ matrix.goarch }}$EXT ./cmd/arm
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: mrm-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: mrm-*
+        name: arm-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: arm-*
