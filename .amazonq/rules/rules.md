@@ -1,0 +1,1 @@
+- when committing, you MUST use conventional commit messages
