@@ -1,4 +1,4 @@
-module github.com/jomadu/mrm
+module github.com/jomadu/arm
 
 go 1.22
 

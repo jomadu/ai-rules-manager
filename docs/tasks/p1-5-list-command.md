@@ -1,7 +1,7 @@
 # P1.5: List Command
 
 ## Overview
-Implement the `mrm list` command to display all installed rulesets with their versions and sources in a formatted table.
+Implement the `arm list` command to display all installed rulesets with their versions and sources in a formatted table.
 
 ## Requirements
 - Read installed rulesets from rules.lock
@@ -12,8 +12,8 @@ Implement the `mrm list` command to display all installed rulesets with their ve
 ## Tasks
 - [ ] **Create list command structure**:
   ```bash
-  mrm list
-  mrm list --format=json  # optional JSON output
+  arm list
+  arm list --format=json  # optional JSON output
   ```
 - [ ] **Read installation data**:
   - Parse rules.lock file
@@ -33,7 +33,7 @@ Implement the `mrm list` command to display all installed rulesets with their ve
   - Sort options (name, version, source)
 
 ## Acceptance Criteria
-- [ ] `mrm list` shows installed rulesets in table format
+- [ ] `arm list` shows installed rulesets in table format
 - [ ] Empty state shows helpful message
 - [ ] Table is properly formatted and readable
 - [ ] JSON output option works correctly
@@ -45,7 +45,7 @@ Implement the `mrm list` command to display all installed rulesets with their ve
 - encoding/json (standard library)
 
 ## Files to Create
-- `cmd/mrm/list.go`
+- `cmd/arm/list.go`
 - `internal/formatter/table.go`
 - `internal/reader/lockfile.go`
 

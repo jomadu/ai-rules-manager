@@ -1,7 +1,7 @@
 # P1.1: Project Setup
 
 ## Overview
-Initialize the Go project structure and set up core development tools for the MRM CLI application.
+Initialize the Go project structure and set up core development tools for the ARM CLI application.
 
 ## Requirements
 - Go module with proper naming and structure
@@ -9,15 +9,16 @@ Initialize the Go project structure and set up core development tools for the MR
 - Viper for configuration management
 - Standard Go project layout
 - Cross-compilation CI/CD pipeline
+- Conventional commit workflow setup
 
 ## Tasks
-- [x] **Initialize Go module**: `go mod init github.com/jomadu/mrm`
+- [x] **Initialize Go module**: `go mod init github.com/jomadu/arm`
 - [x] **Install Cobra CLI**: Add cobra dependency and generate basic structure
 - [x] **Install Viper**: Add viper for configuration management
 - [x] **Create project structure**:
   ```
   cmd/
-    mrm/
+    arm/
       main.go
   internal/
     config/
@@ -27,10 +28,12 @@ Initialize the Go project structure and set up core development tools for the MR
     types/
   ```
 - [x] **Set up CI/CD**: GitHub Actions for cross-compilation (linux, darwin, windows)
+- [ ] **Configure pre-commit hooks**: Set up code quality enforcement
+- [ ] **Configure conventional commits**: Set up commit message linting and release automation
 
 ## Acceptance Criteria
 - [x] `go build` produces working binary
-- [x] Basic `mrm --help` command works
+- [x] Basic `arm --help` command works
 - [x] CI builds binaries for all target platforms
 - [x] Project follows Go standard layout
 
@@ -40,7 +43,7 @@ Initialize the Go project structure and set up core development tools for the MR
 - github.com/spf13/viper
 
 ## Files to Create
-- `cmd/mrm/main.go`
+- `cmd/arm/main.go`
 - `internal/config/config.go`
 - `.github/workflows/build.yml`
 - `go.mod`, `go.sum`
@@ -48,4 +51,7 @@ Initialize the Go project structure and set up core development tools for the MR
 ## Notes
 - Use semantic versioning from start
 - Set up proper module path for future distribution
-- Consider using goreleaser for release automation
+- Use conventional commits for automated releases
+- Configure commit message linting (commitlint)
+- Set up automated semantic versioning
+- Install pre-commit framework for development workflow

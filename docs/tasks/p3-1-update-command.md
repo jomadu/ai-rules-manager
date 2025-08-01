@@ -1,7 +1,7 @@
 # P3.1: Update Command
 
 ## Overview
-Implement the `mrm update` command to check for and install newer versions of installed rulesets while preserving version constraints.
+Implement the `arm update` command to check for and install newer versions of installed rulesets while preserving version constraints.
 
 ## Requirements
 - Check for newer versions across registries
@@ -12,9 +12,9 @@ Implement the `mrm update` command to check for and install newer versions of in
 ## Tasks
 - [ ] **Create update command structure**:
   ```bash
-  mrm update                    # update all
-  mrm update <ruleset-name>     # update specific
-  mrm update --dry-run          # show what would update
+  arm update                    # update all
+  arm update <ruleset-name>     # update specific
+  arm update --dry-run          # show what would update
   ```
 - [ ] **Version checking logic**:
   - Compare installed vs available versions
@@ -38,8 +38,8 @@ Implement the `mrm update` command to check for and install newer versions of in
   - Summary of completed updates
 
 ## Acceptance Criteria
-- [ ] `mrm update` updates all outdated rulesets
-- [ ] `mrm update typescript-rules` updates specific ruleset
+- [ ] `arm update` updates all outdated rulesets
+- [ ] `arm update typescript-rules` updates specific ruleset
 - [ ] Version constraints are respected
 - [ ] rules.lock is updated with new exact versions
 - [ ] rules.json constraints remain unchanged
@@ -50,7 +50,7 @@ Implement the `mrm update` command to check for and install newer versions of in
 - github.com/hashicorp/go-version (version comparison)
 
 ## Files to Create
-- `cmd/mrm/update.go`
+- `cmd/arm/update.go`
 - `internal/updater/updater.go`
 - `internal/updater/checker.go`
 

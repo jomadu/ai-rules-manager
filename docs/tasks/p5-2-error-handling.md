@@ -50,7 +50,7 @@ Implement comprehensive error handling with clear messages, graceful failures, r
 
 ## Error Types
 ```go
-type MRMError struct {
+type ARMError struct {
     Type    ErrorType
     Message string
     Cause   error

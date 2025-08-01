@@ -1,7 +1,7 @@
 # P1.3: Install Command
 
 ## Overview
-Implement the core `mrm install` command that downloads, extracts, and installs rulesets to target directories.
+Implement the core `arm install` command that downloads, extracts, and installs rulesets to target directories.
 
 ## Requirements
 - Parse ruleset names with optional version specs
@@ -13,8 +13,8 @@ Implement the core `mrm install` command that downloads, extracts, and installs 
 ## Tasks
 - [ ] **Create install command structure**:
   ```bash
-  mrm install <ruleset>[@version]
-  mrm install  # from rules.json
+  arm install <ruleset>[@version]
+  arm install  # from rules.json
   ```
 - [ ] **Parse ruleset specifications**:
   - Handle `company@ruleset-name@1.0.0` format
@@ -40,9 +40,9 @@ Implement the core `mrm install` command that downloads, extracts, and installs 
   - Restore previous state
 
 ## Acceptance Criteria
-- [ ] `mrm install typescript-rules` works end-to-end
-- [ ] `mrm install company@security-rules@^1.0.0` handles scoped packages
-- [ ] `mrm install` installs all dependencies from rules.json
+- [ ] `arm install typescript-rules` works end-to-end
+- [ ] `arm install company@security-rules@^1.0.0` handles scoped packages
+- [ ] `arm install` installs all dependencies from rules.json
 - [ ] Files appear in correct target directories
 - [ ] rules.json and rules.lock are updated correctly
 - [ ] Failed installs don't leave partial state
@@ -55,7 +55,7 @@ Implement the core `mrm install` command that downloads, extracts, and installs 
 - github.com/hashicorp/go-version (semantic versioning)
 
 ## Files to Create
-- `cmd/mrm/install.go`
+- `cmd/arm/install.go`
 - `internal/installer/installer.go`
 - `internal/downloader/downloader.go`
 - `internal/extractor/extractor.go`
