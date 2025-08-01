@@ -15,15 +15,15 @@ func Load() (*Config, error) {
 	viper.SetConfigName("rules")
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
-	
+
 	var config Config
 	if err := viper.ReadInConfig(); err != nil {
 		return &config, err
 	}
-	
+
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err
 	}
-	
+
 	return &config, nil
 }
