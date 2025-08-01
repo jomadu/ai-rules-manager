@@ -4,7 +4,7 @@
 
 ### Phase 1: Core Commands
 - **P1.1** - [Project Setup](#p11-project-setup)
-- **P1.2** - [Core Data Structures](#p12-core-data-structures) 
+- **P1.2** - [Core Data Structures](#p12-core-data-structures)
 - **P1.3** - [Install Command](#p13-install-command)
 - **P1.4** - [Uninstall Command](#p14-uninstall-command)
 - **P1.5** - [List Command](#p15-list-command)

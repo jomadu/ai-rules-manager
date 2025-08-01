@@ -155,14 +155,16 @@ company = https://internal.company.com/
 [sources.company]
 authToken = test-token
 `
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 
 	// Change to temp directory to test project-level config loading
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
 
 	config, err := LoadRegistryConfig()
 	if err != nil {
