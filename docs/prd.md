@@ -244,6 +244,13 @@ ARM will be implemented as a compiled binary using Go, chosen over alternatives 
 - Semantic version parsing (go-version)
 - Cross-platform file operations (standard library)
 
+### Release Automation
+- GitHub Actions for CI/CD
+- Conventional commit parser
+- Semantic version calculator
+- Cross-platform build matrix
+- Automated changelog generation
+
 ## Risks & Mitigation
 
 | Risk | Impact | Mitigation |
@@ -253,10 +260,41 @@ ARM will be implemented as a compiled binary using Go, chosen over alternatives 
 | File system permissions | Medium | Permission checks, user guidance |
 | Network connectivity | Medium | Offline mode, cached operations |
 
+## Release Management
+
+### Automated Releases
+ARM uses automated semantic versioning and releases based on conventional commit messages, similar to npm's semantic-release.
+
+#### Conventional Commits
+- **Format**: `<type>[optional scope]: <description>`
+- **Types**:
+  - `feat`: New features (minor version bump)
+  - `fix`: Bug fixes (patch version bump)
+  - `BREAKING CHANGE`: Breaking changes (major version bump)
+  - `docs`: Documentation changes
+  - `ci`: CI/CD changes
+  - `refactor`: Code refactoring
+  - `test`: Test additions/modifications
+
+#### Release Process
+- **Trigger**: Push to main branch with conventional commits
+- **Automation**: GitHub Actions workflow analyzes commit history
+- **Version Calculation**: Semantic versioning based on commit types
+- **Artifacts**: Cross-platform binaries, checksums, release notes
+- **Distribution**: GitHub Releases, package registries
+
+#### Release Workflow
+1. Analyze commits since last release
+2. Calculate next version (major.minor.patch)
+3. Generate changelog from commit messages
+4. Build cross-platform binaries
+5. Create GitHub release with artifacts
+6. Update package registries
+
 ## Timeline
 
 - **Phase 1**: Core commands (install, uninstall, list)
 - **Phase 2**: Configuration and registry support
 - **Phase 3**: Update/outdated functionality
 - **Phase 4**: Cache management and cleanup
-- **Phase 5**: Testing and documentation
+- **Phase 5**: Testing, documentation, and automated releases (P5.5)

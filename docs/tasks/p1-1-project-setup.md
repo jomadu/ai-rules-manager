@@ -9,6 +9,7 @@ Initialize the Go project structure and set up core development tools for the AR
 - Viper for configuration management
 - Standard Go project layout
 - Cross-compilation CI/CD pipeline
+- Conventional commit workflow setup
 
 ## Tasks
 - [x] **Initialize Go module**: `go mod init github.com/jomadu/arm`
@@ -27,6 +28,7 @@ Initialize the Go project structure and set up core development tools for the AR
     types/
   ```
 - [x] **Set up CI/CD**: GitHub Actions for cross-compilation (linux, darwin, windows)
+- [ ] **Configure conventional commits**: Set up commit message linting and release automation
 
 ## Acceptance Criteria
 - [x] `go build` produces working binary
@@ -48,4 +50,6 @@ Initialize the Go project structure and set up core development tools for the AR
 ## Notes
 - Use semantic versioning from start
 - Set up proper module path for future distribution
-- Consider using goreleaser for release automation
+- Use conventional commits for automated releases
+- Configure commit message linting (commitlint)
+- Set up automated semantic versioning

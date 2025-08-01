@@ -4,17 +4,24 @@
 Set up automated distribution pipeline including GitHub releases, binary signing, installation scripts, and package manager submissions.
 
 ## Requirements
-- GitHub releases automation
+- Conventional commit-based automated releases
+- Semantic versioning automation
+- GitHub releases with cross-platform binaries
 - Binary signing and verification
 - Installation script creation
 - Package manager submissions (brew, apt, etc.)
 
 ## Tasks
+- [ ] **Conventional commit automation**:
+  - Commit message parsing (feat, fix, BREAKING CHANGE)
+  - Semantic version calculation
+  - Automated changelog generation
+  - Release triggering on main branch pushes
 - [ ] **GitHub releases automation**:
-  - Automated releases on version tags
   - Cross-platform binary builds
-  - Release notes generation
+  - Release notes from conventional commits
   - Asset upload and organization
+  - Version tagging
 - [ ] **Binary signing and verification**:
   - Code signing for macOS binaries
   - GPG signing for Linux binaries
@@ -33,7 +40,7 @@ Set up automated distribution pipeline including GitHub releases, binary signing
   - Snap package (Linux)
 
 ## Acceptance Criteria
-- [ ] Releases are created automatically on tags
+- [ ] Releases are created automatically from conventional commits
 - [ ] Binaries are signed and verifiable
 - [ ] Installation script works on all platforms
 - [ ] Package managers have up-to-date packages
@@ -43,6 +50,8 @@ Set up automated distribution pipeline including GitHub releases, binary signing
 ## Dependencies
 - goreleaser (release automation)
 - GitHub Actions (CI/CD)
+- semantic-release or custom conventional commit parser
+- conventional-changelog for release notes
 
 ## Files to Create
 - `.goreleaser.yml`
@@ -70,12 +79,14 @@ sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```
 
 ## Release Process
-1. Create version tag
-2. GitHub Actions triggers build
-3. Goreleaser builds cross-platform binaries
-4. Binaries are signed
-5. Release is created with assets
-6. Package managers are updated
+1. Push conventional commits to main branch
+2. GitHub Actions analyzes commit history
+3. Calculate semantic version (major.minor.patch)
+4. Generate changelog from commit messages
+5. Build cross-platform binaries with goreleaser
+6. Sign binaries and create checksums
+7. Create GitHub release and version tag automatically
+8. Update package managers automatically
 
 ## Notes
 - Consider Windows installer (MSI)
