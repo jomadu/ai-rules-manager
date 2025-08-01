@@ -70,7 +70,7 @@ func (v *Version) Compare(other *Version) int {
 		}
 		return 1
 	}
-	
+
 	// Handle prerelease comparison
 	if v.Prerelease == "" && other.Prerelease != "" {
 		return 1
@@ -81,7 +81,7 @@ func (v *Version) Compare(other *Version) int {
 	if v.Prerelease != other.Prerelease {
 		return strings.Compare(v.Prerelease, other.Prerelease)
 	}
-	
+
 	return 0
 }
 
@@ -94,7 +94,7 @@ type VersionRange struct {
 // ParseVersionRange parses a version range (^1.0.0, ~1.0.0, >=1.0.0, etc.)
 func ParseVersionRange(constraint string) (*VersionRange, error) {
 	constraint = strings.TrimSpace(constraint)
-	
+
 	if strings.HasPrefix(constraint, "^") {
 		version, err := ParseVersion(constraint[1:])
 		if err != nil {
@@ -102,7 +102,7 @@ func ParseVersionRange(constraint string) (*VersionRange, error) {
 		}
 		return &VersionRange{Operator: "^", Version: version}, nil
 	}
-	
+
 	if strings.HasPrefix(constraint, "~") {
 		version, err := ParseVersion(constraint[1:])
 		if err != nil {
@@ -110,7 +110,7 @@ func ParseVersionRange(constraint string) (*VersionRange, error) {
 		}
 		return &VersionRange{Operator: "~", Version: version}, nil
 	}
-	
+
 	if strings.HasPrefix(constraint, ">=") {
 		version, err := ParseVersion(constraint[2:])
 		if err != nil {
@@ -118,7 +118,7 @@ func ParseVersionRange(constraint string) (*VersionRange, error) {
 		}
 		return &VersionRange{Operator: ">=", Version: version}, nil
 	}
-	
+
 	if strings.HasPrefix(constraint, "<=") {
 		version, err := ParseVersion(constraint[2:])
 		if err != nil {
@@ -126,7 +126,7 @@ func ParseVersionRange(constraint string) (*VersionRange, error) {
 		}
 		return &VersionRange{Operator: "<=", Version: version}, nil
 	}
-	
+
 	if strings.HasPrefix(constraint, ">") {
 		version, err := ParseVersion(constraint[1:])
 		if err != nil {
@@ -134,7 +134,7 @@ func ParseVersionRange(constraint string) (*VersionRange, error) {
 		}
 		return &VersionRange{Operator: ">", Version: version}, nil
 	}
-	
+
 	if strings.HasPrefix(constraint, "<") {
 		version, err := ParseVersion(constraint[1:])
 		if err != nil {
@@ -142,7 +142,7 @@ func ParseVersionRange(constraint string) (*VersionRange, error) {
 		}
 		return &VersionRange{Operator: "<", Version: version}, nil
 	}
-	
+
 	// Exact version
 	version, err := ParseVersion(constraint)
 	if err != nil {

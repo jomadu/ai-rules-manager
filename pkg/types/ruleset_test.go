@@ -6,10 +6,10 @@ import (
 
 func TestParseRulesetName(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		wantOrg  string
-		wantPkg  string
+		name    string
+		input   string
+		wantOrg string
+		wantPkg string
 	}{
 		{"unscoped package", "typescript-rules", "", "typescript-rules"},
 		{"scoped package", "company@security-rules", "company", "security-rules"},
@@ -20,7 +20,7 @@ func TestParseRulesetName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gotOrg, gotPkg := ParseRulesetName(tt.input)
 			if gotOrg != tt.wantOrg || gotPkg != tt.wantPkg {
-				t.Errorf("ParseRulesetName(%q) = (%q, %q), want (%q, %q)", 
+				t.Errorf("ParseRulesetName(%q) = (%q, %q), want (%q, %q)",
 					tt.input, gotOrg, gotPkg, tt.wantOrg, tt.wantPkg)
 			}
 		})
@@ -29,10 +29,10 @@ func TestParseRulesetName(t *testing.T) {
 
 func TestFormatRulesetName(t *testing.T) {
 	tests := []struct {
-		name    string
-		org     string
-		pkg     string
-		want    string
+		name string
+		org  string
+		pkg  string
+		want string
 	}{
 		{"unscoped package", "", "typescript-rules", "typescript-rules"},
 		{"scoped package", "company", "security-rules", "company@security-rules"},
@@ -43,7 +43,7 @@ func TestFormatRulesetName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FormatRulesetName(tt.org, tt.pkg)
 			if got != tt.want {
-				t.Errorf("FormatRulesetName(%q, %q) = %q, want %q", 
+				t.Errorf("FormatRulesetName(%q, %q) = %q, want %q",
 					tt.org, tt.pkg, got, tt.want)
 			}
 		})
@@ -115,11 +115,11 @@ func TestCalculateChecksum(t *testing.T) {
 	r := &Ruleset{}
 	content := []byte("test content")
 	checksum := r.CalculateChecksum(content)
-	
+
 	if len(checksum) != 64 {
 		t.Errorf("CalculateChecksum() returned checksum of length %d, want 64", len(checksum))
 	}
-	
+
 	// Same content should produce same checksum
 	checksum2 := r.CalculateChecksum(content)
 	if checksum != checksum2 {

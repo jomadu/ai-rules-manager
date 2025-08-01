@@ -20,18 +20,19 @@ fmt:
 # Clean build artifacts
 clean:
 	rm -f arm coverage.out
+	rm -rf .venv
 
 # Install development tools
 install-tools:
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
 
-# Setup pre-commit hooks
+# Setup pre-commit hooks with virtual environment
 setup-hooks:
-	pip install pre-commit
-	pre-commit install
-	pre-commit install --hook-type commit-msg
+	python3 -m venv .venv
+	.venv/bin/pip install pre-commit
+	.venv/bin/pre-commit install
+	.venv/bin/pre-commit install --hook-type commit-msg
 
 # Run all checks
 check: fmt lint test

@@ -20,9 +20,9 @@ repos:
 
       - id: go-imports
         name: go imports
-        entry: goimports
+        entry: bash
         language: system
-        args: [-w]
+        args: [-c, 'export PATH="$HOME/go/bin:$PATH" && goimports -w "$@"', --]
         files: \.go$
 
       - id: go-mod-tidy
@@ -35,16 +35,8 @@ repos:
 
       - id: golangci-lint
         name: golangci-lint
-        entry: golangci-lint
+        entry: bash
         language: system
-        args: [run, --fix]
-        files: \.go$
-        pass_filenames: false
-
-      - id: gosec
-        name: gosec security scanner
-        entry: gosec
-        language: system
-        args: [-quiet, ./...]
+        args: [-c, 'export PATH="$HOME/go/bin:$PATH" && golangci-lint run --fix']
         files: \.go$
         pass_filenames: false

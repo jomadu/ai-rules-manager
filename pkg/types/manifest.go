@@ -14,7 +14,7 @@ type RulesManifest struct {
 
 // RulesLock represents the rules.lock file structure
 type RulesLock struct {
-	Version      string                     `json:"version" validate:"required"`
+	Version      string                      `json:"version" validate:"required"`
 	Dependencies map[string]LockedDependency `json:"dependencies" validate:"required"`
 }
 
@@ -55,7 +55,7 @@ func (m *RulesManifest) SaveManifest(path string) error {
 		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0o644)
 }
 
 // Validate performs validation on the manifest
@@ -99,7 +99,7 @@ func (l *RulesLock) SaveLockFile(path string) error {
 		return fmt.Errorf("failed to marshal lock file: %w", err)
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0o644)
 }
 
 // Validate performs validation on the lock file

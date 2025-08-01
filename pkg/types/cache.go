@@ -17,7 +17,7 @@ func NewCacheManager() (*CacheManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &CacheManager{
 		CacheDir: cacheDir,
 	}, nil
@@ -29,12 +29,12 @@ func GetCacheDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
-	
+
 	cacheDir := filepath.Join(homeDir, ".arm", "cache")
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create cache directory: %w", err)
 	}
-	
+
 	return cacheDir, nil
 }
 
@@ -56,7 +56,7 @@ func (cm *CacheManager) GetPackagePath(rulesetName, version string) string {
 // EnsureCacheDir creates the cache directory for a ruleset if it doesn't exist
 func (cm *CacheManager) EnsureCacheDir(rulesetName, version string) error {
 	cachePath := cm.GetRulesetCachePath(rulesetName, version)
-	return os.MkdirAll(cachePath, 0755)
+	return os.MkdirAll(cachePath, 0o755)
 }
 
 // IsCached checks if a ruleset version is cached
