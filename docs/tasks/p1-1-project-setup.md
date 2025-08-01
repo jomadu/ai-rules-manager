@@ -11,10 +11,10 @@ Initialize the Go project structure and set up core development tools for the MR
 - Cross-compilation CI/CD pipeline
 
 ## Tasks
-- [ ] **Initialize Go module**: `go mod init github.com/user/mrm`
-- [ ] **Install Cobra CLI**: Add cobra dependency and generate basic structure
-- [ ] **Install Viper**: Add viper for configuration management
-- [ ] **Create project structure**:
+- [x] **Initialize Go module**: `go mod init github.com/jomadu/mrm`
+- [x] **Install Cobra CLI**: Add cobra dependency and generate basic structure
+- [x] **Install Viper**: Add viper for configuration management
+- [x] **Create project structure**:
   ```
   cmd/
     mrm/
@@ -26,13 +26,13 @@ Initialize the Go project structure and set up core development tools for the MR
   pkg/
     types/
   ```
-- [ ] **Set up CI/CD**: GitHub Actions for cross-compilation (linux, darwin, windows)
+- [x] **Set up CI/CD**: GitHub Actions for cross-compilation (linux, darwin, windows)
 
 ## Acceptance Criteria
-- [ ] `go build` produces working binary
-- [ ] Basic `mrm --help` command works
-- [ ] CI builds binaries for all target platforms
-- [ ] Project follows Go standard layout
+- [x] `go build` produces working binary
+- [x] Basic `mrm --help` command works
+- [x] CI builds binaries for all target platforms
+- [x] Project follows Go standard layout
 
 ## Dependencies
 - Go 1.21+

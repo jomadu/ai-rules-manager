@@ -1,1 +1,2 @@
 - when committing, you MUST use conventional commit messages
+- when working on a task, you MUST update all relevant documentation as you go
