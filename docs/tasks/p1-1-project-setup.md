@@ -28,14 +28,17 @@ Initialize the Go project structure and set up core development tools for the AR
     types/
   ```
 - [x] **Set up CI/CD**: GitHub Actions for cross-compilation (linux, darwin, windows)
-- [ ] **Configure pre-commit hooks**: Set up code quality enforcement
-- [ ] **Configure conventional commits**: Set up commit message linting and release automation
+- [x] **Configure pre-commit hooks**: Set up code quality enforcement
+- [x] **Configure conventional commits**: Set up commit message linting and release automation
 
 ## Acceptance Criteria
 - [x] `go build` produces working binary
 - [x] Basic `arm --help` command works
 - [x] CI builds binaries for all target platforms
 - [x] Project follows Go standard layout
+- [x] Pre-commit hooks configured for code quality
+- [x] Commitlint configured for conventional commits
+- [x] Development workflow documented
 
 ## Dependencies
 - Go 1.21+
