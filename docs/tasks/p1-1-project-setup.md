@@ -28,6 +28,7 @@ Initialize the Go project structure and set up core development tools for the AR
     types/
   ```
 - [x] **Set up CI/CD**: GitHub Actions for cross-compilation (linux, darwin, windows)
+- [ ] **Configure pre-commit hooks**: Set up code quality enforcement
 - [ ] **Configure conventional commits**: Set up commit message linting and release automation
 
 ## Acceptance Criteria
@@ -53,3 +54,4 @@ Initialize the Go project structure and set up core development tools for the AR
 - Use conventional commits for automated releases
 - Configure commit message linting (commitlint)
 - Set up automated semantic versioning
+- Install pre-commit framework for development workflow

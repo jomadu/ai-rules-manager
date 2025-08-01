@@ -1,13 +1,14 @@
 # CC.1: Security
 
 ## Overview
-Implement security measures for credential storage, download integrity verification, and safe file extraction.
+Implement security measures for credential storage, download integrity verification, and safe file extraction. Coordinates with CC.4 for automated security scanning.
 
 ## Requirements
 - Secure credential storage
 - Integrity verification for downloads
 - Safe tar.gz extraction
 - Path sanitization to prevent directory traversal
+- Integration with automated security scanning (gosec)
 
 ## Tasks
 - [ ] **Secure credential storage**:
@@ -55,6 +56,8 @@ Implement security measures for credential storage, download integrity verificat
 - Use secure random for temporary files
 - Implement proper cleanup of sensitive data
 - Consider sandboxing for extraction operations
+- Ensure code passes gosec security scanning (from CC.4)
+- Follow secure coding practices to avoid pre-commit hook failures
 
 ## Test Cases
 - [ ] Directory traversal attempts blocked
@@ -62,3 +65,8 @@ Implement security measures for credential storage, download integrity verificat
 - [ ] Malicious tar files handled safely
 - [ ] Credential storage/retrieval works
 - [ ] Path validation prevents system access
+
+## Integration Notes
+- Security implementation must pass gosec scanning from CC.4
+- Security tests should be included in pre-commit hooks
+- Coordinate with CC.4 for security vulnerability detection

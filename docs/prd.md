@@ -244,6 +244,13 @@ ARM will be implemented as a compiled binary using Go, chosen over alternatives 
 - Semantic version parsing (go-version)
 - Cross-platform file operations (standard library)
 
+### Development Tools
+- Pre-commit hooks (pre-commit framework)
+- Code formatting (gofmt, goimports)
+- Linting (golangci-lint)
+- Security scanning (gosec)
+- Commit message validation (commitlint)
+
 ### Release Automation
 - GitHub Actions for CI/CD
 - Conventional commit parser
@@ -259,6 +266,29 @@ ARM will be implemented as a compiled binary using Go, chosen over alternatives 
 | Authentication failures | Medium | Clear error messages, token validation |
 | File system permissions | Medium | Permission checks, user guidance |
 | Network connectivity | Medium | Offline mode, cached operations |
+
+## Development Workflow
+
+### Code Quality Enforcement
+ARM enforces code quality and consistency through automated pre-commit hooks and commit message validation.
+
+#### Pre-commit Hooks
+- **Code Formatting**: `gofmt` and `goimports` for consistent Go formatting
+- **Linting**: `golangci-lint` for code quality and style checks
+- **Testing**: Run unit tests before allowing commits
+- **Security**: `gosec` for security vulnerability scanning
+- **Dependencies**: Check for outdated or vulnerable dependencies
+
+#### Commit Message Validation
+- **Tool**: `commitlint` with conventional commit rules
+- **Enforcement**: `commit-msg` hook validates message format
+- **Required Format**: `<type>[optional scope]: <description>`
+- **Rejection**: Invalid commit messages are rejected with helpful error messages
+
+#### Git Hooks Setup
+- **Installation**: Automated setup via `make install-hooks` or similar
+- **Configuration**: `.pre-commit-config.yaml` and `.commitlintrc.json`
+- **Bypass**: Emergency bypass available with `--no-verify` flag
 
 ## Release Management
 

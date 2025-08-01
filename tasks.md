@@ -31,6 +31,7 @@
 - **P5.2** - [Error Handling](#p52-error-handling)
 - **P5.3** - [Documentation](#p53-documentation)
 - **P5.4** - [Distribution](#p54-distribution)
+- **P5.5** - [Automated Releases](#p55-automated-releases)
 
 ### Cross-Cutting Concerns
 - **CC.1** - [Security](#cc1-security)
@@ -48,6 +49,8 @@
 - [ ] Configure viper for configuration management
 - [ ] Create basic project structure (cmd/, internal/, pkg/)
 - [ ] Set up CI/CD pipeline for cross-compilation
+- [ ] Configure pre-commit hooks for code quality
+- [ ] Set up commit message validation (commitlint)
 
 ## P1.2: Core Data Structures
 **File**: `docs/tasks/p1-2-core-data-structures.md`
@@ -191,6 +194,14 @@
 - [ ] Installation script creation
 - [ ] Package manager submissions (brew, apt, etc.)
 
+## P5.5: Automated Releases
+**File**: `docs/tasks/p5-5-automated-releases.md`
+- [ ] Configure conventional commit parsing
+- [ ] Set up semantic version calculation
+- [ ] Implement automated changelog generation
+- [ ] Create release workflow automation
+- [ ] Configure cross-platform binary builds
+
 ## CC.1: Security
 **File**: `docs/tasks/cc-1-security.md`
 - [ ] Implement secure credential storage
@@ -214,8 +225,10 @@
 
 ## CC.4: Code Quality
 **File**: `docs/tasks/cc-4-code-quality.md`
-- [ ] Set up linting and formatting (golangci-lint)
+- [ ] Set up pre-commit hooks (gofmt, goimports, golangci-lint)
+- [ ] Configure security scanning (gosec)
 - [ ] Implement code coverage reporting
+- [ ] Set up commit message validation
 - [ ] Create contribution guidelines
 - [ ] Set up automated dependency updates
 
