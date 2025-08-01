@@ -54,11 +54,11 @@
 
 ## P1.2: Core Data Structures
 **File**: `docs/tasks/p1-2-core-data-structures.md`
-- [ ] Define ruleset metadata structures
-- [ ] Implement rules.json schema parsing
-- [ ] Implement rules.lock file format
-- [ ] Create registry source configuration types
-- [ ] Design cache directory structure
+- [x] Define ruleset metadata structures
+- [x] Implement rules.json schema parsing
+- [x] Implement rules.lock file format
+- [x] Create registry source configuration types
+- [x] Design cache directory structure
 
 ## P1.3: Install Command
 **File**: `docs/tasks/p1-3-install-command.md`
