@@ -62,12 +62,12 @@
 
 ## P1.3: Install Command
 **File**: `docs/tasks/p1-3-install-command.md`
-- [ ] Parse ruleset name and version specifications
-- [ ] Implement dependency resolution logic
-- [ ] Create tar.gz download functionality
-- [ ] Implement tar extraction to target directories
-- [ ] Update rules.json with new dependencies
-- [ ] Generate/update rules.lock file
+- [x] Parse ruleset name and version specifications
+- [x] Implement dependency resolution logic
+- [x] Create tar.gz download functionality
+- [x] Implement tar extraction to target directories
+- [x] Update rules.json with new dependencies
+- [x] Generate/update rules.lock file
 - [ ] Handle installation conflicts and rollback
 
 ## P1.4: Uninstall Command

@@ -172,3 +172,17 @@ func (vr *VersionRange) Satisfies(version *Version) bool {
 		return false
 	}
 }
+
+// NormalizeVersion removes version range operators and returns clean version
+func NormalizeVersion(versionSpec string) string {
+	versionSpec = strings.TrimSpace(versionSpec)
+
+	// Remove common operators
+	for _, prefix := range []string{"^", "~", ">=", "<=", ">", "<"} {
+		if strings.HasPrefix(versionSpec, prefix) {
+			return strings.TrimSpace(versionSpec[len(prefix):])
+		}
+	}
+
+	return versionSpec
+}
