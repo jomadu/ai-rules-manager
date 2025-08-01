@@ -37,7 +37,7 @@ jobs:
         go build -o mrm-${{ matrix.goos }}-${{ matrix.goarch }}$EXT ./cmd/mrm
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mrm-${{ matrix.goos }}-${{ matrix.goarch }}
         path: mrm-*
