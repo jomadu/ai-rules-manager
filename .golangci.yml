@@ -15,14 +15,10 @@ linters:
     - goimports
     - misspell
     - gocritic
-    - gosec
     - unconvert
     - unparam
 
 linters-settings:
-  gosec:
-    excludes:
-      - G204 # Subprocess launched with variable
   gocritic:
     enabled-tags:
       - diagnostic

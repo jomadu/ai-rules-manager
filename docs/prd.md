@@ -28,7 +28,7 @@ ARM provides a package manager-like experience for AI coding rulesets, similar t
 
 #### Install Command
 - **Purpose**: Install rulesets by name, version, or from manifest
-- **Usage**: 
+- **Usage**:
   - `arm install <ruleset-name>[@version]`
   - `arm install` (from rules.json)
 - **Behavior**: Downloads .tar.gz rulesets, extracts to configured target locations, updates rules.json and rules.lock
@@ -40,7 +40,7 @@ ARM provides a package manager-like experience for AI coding rulesets, similar t
 
 #### Update Command
 - **Purpose**: Update installed rulesets to latest versions
-- **Usage**: 
+- **Usage**:
   - `arm update` (all rulesets)
   - `arm update <ruleset-name>`
 - **Behavior**: Checks for newer versions, updates rulesets, and updates rules.lock
@@ -59,7 +59,7 @@ ARM provides a package manager-like experience for AI coding rulesets, similar t
 
 #### Config Command
 - **Purpose**: View and modify ARM configuration
-- **Usage**: 
+- **Usage**:
   - `arm config list`
   - `arm config set <key> <value>`
   - `arm config get <key>`
@@ -121,7 +121,7 @@ authToken = $AUTH_TOKEN
 
 #### Help Command
 - **Purpose**: Display usage information
-- **Usage**: 
+- **Usage**:
   - `arm help`
   - `arm help <command>`
 

@@ -56,8 +56,8 @@ func TestParseVersion(t *testing.T) {
 				t.Errorf("ParseVersion() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && (got.Major != tt.want.Major || got.Minor != tt.want.Minor || 
-				got.Patch != tt.want.Patch || got.Prerelease != tt.want.Prerelease || 
+			if !tt.wantErr && (got.Major != tt.want.Major || got.Minor != tt.want.Minor ||
+				got.Patch != tt.want.Patch || got.Prerelease != tt.want.Prerelease ||
 				got.Build != tt.want.Build) {
 				t.Errorf("ParseVersion() = %v, want %v", got, tt.want)
 			}
@@ -93,7 +93,7 @@ func TestVersionCompare(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse v2: %v", err)
 			}
-			
+
 			got := v1.Compare(v2)
 			if got != tt.want {
 				t.Errorf("Version.Compare() = %v, want %v", got, tt.want)
@@ -163,12 +163,12 @@ func TestVersionRangeSatisfies(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse constraint: %v", err)
 			}
-			
+
 			version, err := ParseVersion(tt.version)
 			if err != nil {
 				t.Fatalf("Failed to parse version: %v", err)
 			}
-			
+
 			got := vr.Satisfies(version)
 			if got != tt.want {
 				t.Errorf("VersionRange.Satisfies() = %v, want %v", got, tt.want)

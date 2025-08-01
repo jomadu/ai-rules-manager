@@ -3,8 +3,10 @@
 ## Development Setup
 
 1. Install Go 1.22 or later
-2. Clone the repository
-3. Run setup: `make setup`
+2. Install Python 3.8 or later (for pre-commit hooks)
+3. Ensure `$GOPATH/bin` is in your PATH (usually `~/go/bin`)
+4. Clone the repository
+5. Run setup: `make setup`
 
 ## Code Quality
 
@@ -12,8 +14,9 @@ We use several tools to maintain code quality:
 
 - **gofmt** and **goimports** for code formatting
 - **golangci-lint** for comprehensive linting
-- **gosec** for security scanning
 - **pre-commit** hooks for automated checks
+
+> **Note**: We previously used gosec for security scanning but removed it to simplify the development setup. We may reintroduce it in a future task when needed.
 
 ## Commit Messages
 

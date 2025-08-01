@@ -15,7 +15,7 @@ Implement configuration file parsing and management for .armrc files at user and
   [sources]
   default = https://registry.armjs.org/
   company = https://internal.company.local/
-  
+
   [sources.company]
   authToken = $COMPANY_TOKEN
   ```

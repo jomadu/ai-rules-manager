@@ -59,12 +59,12 @@ func loadConfigFile(config *RegistryConfig, path string) error {
 	for _, key := range sourcesSection.Keys() {
 		name := key.Name()
 		url := key.Value()
-		
+
 		// Handle environment variable substitution
 		url = os.ExpandEnv(url)
-		
+
 		source := RegistrySource{URL: url}
-		
+
 		// Check for auth token in separate section
 		authSection := cfg.Section(fmt.Sprintf("sources.%s", name))
 		if authSection != nil {
@@ -72,7 +72,7 @@ func loadConfigFile(config *RegistryConfig, path string) error {
 				source.AuthToken = os.ExpandEnv(authKey.Value())
 			}
 		}
-		
+
 		config.Sources[name] = source
 	}
 
