@@ -88,10 +88,10 @@
 
 ## P1.6: File System Operations
 **File**: `docs/tasks/p1-6-filesystem-operations.md`
-- [ ] Create target directory structure (.cursorrules, .amazonq/rules)
+- [x] Create target directory structure (now configuration-driven)
 - [ ] Implement atomic file operations
 - [ ] Handle file permissions and cross-platform paths
-- [ ] Create cache management system (.mpm/cache/)
+- [ ] Create cache management system (.arm/cache/)
 
 ## P2.1: Configuration Management
 **File**: `docs/tasks/p2-1-configuration-management.md`
