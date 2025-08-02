@@ -68,8 +68,8 @@
 - [x] Implement tar extraction to target directories
 - [x] Update rules.json with new dependencies
 - [x] Generate/update rules.lock file
-- [ ] Handle installation conflicts and rollback
 - [x] Create test registry for end-to-end testing
+- [ ] Handle installation conflicts and rollback (moved to P1.6)
 
 ## P1.4: Uninstall Command
 **File**: `docs/tasks/p1-4-uninstall-command.md`
@@ -92,17 +92,20 @@
 
 ## P1.6: File System Operations
 **File**: `docs/tasks/p1-6-filesystem-operations.md`
-- [x] Create target directory structure (now configuration-driven)
+- [x] Create target directory structure (configuration-driven)
+- [x] Basic cache management system (.arm/cache/)
 - [ ] Implement atomic file operations
 - [ ] Handle file permissions and cross-platform paths
-- [ ] Create cache management system (.arm/cache/)
+- [ ] Advanced cache management with expiration
 
 ## P2.1: Configuration Management
 **File**: `docs/tasks/p2-1-configuration-management.md`
-- [ ] Implement .mpmrc file parsing (INI format)
+**Status**: Next Priority - Ready to Start
+- [ ] Implement .armrc file parsing (INI format)
 - [ ] Support user-level and project-level config files
-- [ ] Environment variable substitution
+- [ ] Environment variable substitution for auth tokens
 - [ ] Config command implementation (get, set, list)
+- [ ] Remove hardcoded localhost:8080 registry URL
 
 ## P2.2: Registry Abstraction
 **File**: `docs/tasks/p2-2-registry-abstraction.md`
