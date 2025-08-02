@@ -10,44 +10,45 @@ Implement the `arm list` command to display all installed rulesets with their ve
 - Handle empty/missing manifest files gracefully
 
 ## Tasks
-- [ ] **Create list command structure**:
+- [x] **Create list command structure**:
   ```bash
   arm list
   arm list --format=json  # optional JSON output
   ```
-- [ ] **Read installation data**:
+- [x] **Read installation data**:
   - Parse rules.lock file
   - Handle missing or corrupted files
   - Gather ruleset metadata
-- [ ] **Format table output**:
+- [x] **Format table output**:
   - Column headers: Name, Version, Source
   - Proper alignment and spacing
-  - Color coding for different sources
-- [ ] **Handle edge cases**:
+  - ~~Color coding for different sources~~ (not implemented)
+- [x] **Handle edge cases**:
   - No rulesets installed
   - Missing rules.lock file
   - Corrupted manifest files
-- [ ] **Optional features**:
+- [x] **Optional features**:
   - JSON output format
-  - Filter by source
-  - Sort options (name, version, source)
+  - ~~Filter by source~~ (not implemented)
+  - Sort by name (implemented)
 
 ## Acceptance Criteria
-- [ ] `arm list` shows installed rulesets in table format
-- [ ] Empty state shows helpful message
-- [ ] Table is properly formatted and readable
-- [ ] JSON output option works correctly
-- [ ] Handles missing files gracefully
-- [ ] Shows accurate version and source information
+- [x] `arm list` shows installed rulesets in table format
+- [x] Empty state shows helpful message
+- [x] Table is properly formatted and readable
+- [x] JSON output option works correctly
+- [x] Handles missing files gracefully
+- [x] Shows accurate version and source information
 
 ## Dependencies
 - text/tabwriter (standard library)
 - encoding/json (standard library)
 
-## Files to Create
-- `cmd/arm/list.go`
-- `internal/formatter/table.go`
-- `internal/reader/lockfile.go`
+## Files Created
+- `cmd/arm/list.go` ✅
+- `cmd/arm/list_test.go` ✅
+- ~~`internal/formatter/table.go`~~ (implemented inline)
+- ~~`internal/reader/lockfile.go`~~ (uses existing types.LoadLockFile)
 
 ## Example Output
 ```
