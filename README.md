@@ -127,7 +127,7 @@ rules.lock
 
 ## Development Status
 
-✅ **Phase 1 Complete** - Core functionality implemented and tested. See our [development roadmap](docs/roadmap.md):
+✅ **Phase 1 Complete** - Core functionality implemented and tested. See our [development roadmap](docs/project/roadmap.md):
 
 - **Phase 1**: Core commands (install, uninstall, list) - ✅ **COMPLETED**
 - **Phase 2**: Configuration and registry support - 🚧 **IN PROGRESS**
@@ -135,13 +135,13 @@ rules.lock
 - **Phase 4**: Cache management and cleanup - 📋 **PLANNED**
 - **Phase 5**: Testing and documentation - 📋 **PLANNED**
 
-📋 **Current Focus**: Multi-registry configuration support. See [docs/roadmap.md](docs/roadmap.md) for development priorities.
+📋 **Current Focus**: Multi-registry configuration support. See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
 
-📈 **Technical Tasks**: See [docs/tasks.md](docs/tasks.md) for detailed implementation tracking.
+📈 **Technical Tasks**: See [docs/technical/tasks.md](docs/technical/tasks.md) for detailed implementation tracking.
 
 ## Contributing
 
-This project is implemented in Go for fast, dependency-free distribution. See [docs/requirements.md](docs/requirements.md) for detailed requirements and architecture decisions.
+This project is implemented in Go for fast, dependency-free distribution. See [docs/product/requirements.md](docs/product/requirements.md) for detailed requirements and architecture decisions.
 
 ## License
 
