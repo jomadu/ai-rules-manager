@@ -19,7 +19,8 @@ func (u *Uninstaller) Uninstall(name string) error {
 	// Load lock file to get installed version
 	lock, err := types.LoadLockFile("rules.lock")
 	if err != nil {
-		return fmt.Errorf("failed to load lock file: %w", err)
+		fmt.Printf("No lock file found. Ruleset %s is not installed\n", name)
+		return nil
 	}
 
 	lockedDep, exists := lock.Dependencies[name]
