@@ -129,11 +129,13 @@ rules.lock
 
 🚧 **In Development** - ARM is currently being built. See our [development phases](prd.md#timeline):
 
-- **Phase 1**: Core commands (install, uninstall, list)
+- **Phase 1**: Core commands (install, uninstall, list) - *In Progress*
 - **Phase 2**: Configuration and registry support
 - **Phase 3**: Update/outdated functionality
 - **Phase 4**: Cache management and cleanup
 - **Phase 5**: Testing and documentation
+
+📋 **Next Steps**: See [docs/next-steps.md](docs/next-steps.md) for current development priorities.
 
 ## Contributing
 
