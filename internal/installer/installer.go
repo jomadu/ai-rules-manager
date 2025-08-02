@@ -94,9 +94,13 @@ func (i *Installer) buildDownloadURL(org, pkg, version string) string {
 }
 
 func (i *Installer) extractRuleset(org, pkg, version string, tarData []byte) error {
-	targets := []string{".cursorrules", ".amazonq/rules"}
+	// Load manifest to get target directories
+	manifest, err := types.LoadManifest("rules.json")
+	if err != nil {
+		return fmt.Errorf("failed to load manifest: %w", err)
+	}
 
-	for _, target := range targets {
+	for _, target := range manifest.Targets {
 		targetDir := filepath.Join(target, "arm")
 		if org != "" {
 			targetDir = filepath.Join(targetDir, org)
@@ -173,9 +177,9 @@ func (i *Installer) updateManifest(name, versionSpec string) error {
 	manifest, err := types.LoadManifest(manifestPath)
 	if err != nil {
 		// Create new manifest if it doesn't exist
-		// TODO: there is some hardcoded stuff here, should be configurable
+		// Create new manifest with default targets
 		manifest = &types.RulesManifest{
-			Targets:      []string{".cursorrules", ".amazonq/rules"},
+			Targets:      types.GetDefaultTargets(),
 			Dependencies: make(map[string]string),
 		}
 	}

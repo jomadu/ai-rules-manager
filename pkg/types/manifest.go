@@ -12,6 +12,11 @@ type RulesManifest struct {
 	Dependencies map[string]string `json:"dependencies" validate:"required"`
 }
 
+// GetDefaultTargets returns the default target directories
+func GetDefaultTargets() []string {
+	return []string{".cursorrules", ".amazonq/rules"}
+}
+
 // RulesLock represents the rules.lock file structure
 type RulesLock struct {
 	Version      string                      `json:"version" validate:"required"`
