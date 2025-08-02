@@ -47,8 +47,8 @@ ARM provides a package manager-like experience for AI coding rulesets, similar t
 
 #### List Command
 - **Purpose**: Display all installed rulesets with versions
-- **Usage**: `arm list`
-- **Output**: Table showing ruleset name, current version, and source
+- **Usage**: `arm list [--format=table|json]`
+- **Output**: Table or JSON showing ruleset name, current version, and source
 
 #### Outdated Command
 - **Purpose**: Show rulesets with available updates
