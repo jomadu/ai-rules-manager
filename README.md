@@ -31,6 +31,7 @@ arm install
 
 # List installed rulesets
 arm list
+arm list --format=json  # JSON output
 
 # Update all rulesets
 arm update
@@ -71,7 +72,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 | `arm install [ruleset]` | Install rulesets |
 | `arm uninstall <ruleset>` | Remove a ruleset |
 | `arm update [ruleset]` | Update rulesets |
-| `arm list` | List installed rulesets |
+| `arm list [--format=table|json]` | List installed rulesets |
 | `arm outdated` | Show outdated rulesets |
 | `arm config <action>` | Manage configuration |
 | `arm clean` | Clean cache and unused files |
