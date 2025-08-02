@@ -75,7 +75,7 @@ func runList(cmd *cobra.Command, args []string) error {
 }
 
 func outputTable(entries []ListEntry) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
 	if _, err := fmt.Fprintln(w, "NAME\tVERSION\tSOURCE"); err != nil {
 		return err
 	}
