@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -21,8 +22,20 @@ func main() {
 func handlePackageRequest(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Request: %s %s", r.Method, r.URL.Path)
 
-	// Expected format: /package/version.tar.gz
-	packagePath := filepath.Join("packages", r.URL.Path)
+	// Sanitize path to prevent directory traversal
+	cleanPath := filepath.Clean(r.URL.Path)
+	if cleanPath == "." || cleanPath == "/" {
+		http.NotFound(w, r)
+		return
+	}
 
+	// Remove leading slash and validate path
+	cleanPath = strings.TrimPrefix(cleanPath, "/")
+	if strings.Contains(cleanPath, "..") {
+		http.NotFound(w, r)
+		return
+	}
+
+	packagePath := filepath.Join("packages", cleanPath)
 	http.ServeFile(w, r, packagePath)
 }
