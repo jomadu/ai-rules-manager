@@ -28,11 +28,16 @@ func (u *Uninstaller) Uninstall(name string) error {
 		return nil
 	}
 
+	// Load manifest to get target directories
+	manifest, err := types.LoadManifest("rules.json")
+	if err != nil {
+		return fmt.Errorf("failed to load manifest: %w", err)
+	}
+
 	// Remove from target directories
-	targets := []string{".cursorrules", ".amazonq/rules"}
 	var failures []string
 
-	for _, target := range targets {
+	for _, target := range manifest.Targets {
 		targetPath := types.GetTargetPath(target, name, lockedDep.Version)
 		if err := u.removeRuleset(targetPath); err != nil {
 			failures = append(failures, fmt.Sprintf("%s: %v", target, err))
