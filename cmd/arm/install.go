@@ -35,7 +35,7 @@ func installFromManifest() error {
 	}
 
 	// TODO: Make registry URL configurable
-	registryURL := "https://registry.example.com"
+	registryURL := "http://localhost:8080"
 	installer := installer.New(registryURL)
 
 	for name, versionSpec := range manifest.Dependencies {
@@ -54,7 +54,7 @@ func installRuleset(rulesetSpec string) error {
 	fmt.Printf("Installing %s@%s...\n", name, version)
 
 	// TODO: Make registry URL configurable
-	registryURL := "https://registry.example.com"
+	registryURL := "http://localhost:8080"
 	installer := installer.New(registryURL)
 
 	return installer.Install(name, version)

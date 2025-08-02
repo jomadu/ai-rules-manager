@@ -69,6 +69,7 @@
 - [x] Update rules.json with new dependencies
 - [x] Generate/update rules.lock file
 - [ ] Handle installation conflicts and rollback
+- [x] Create test registry for end-to-end testing
 
 ## P1.4: Uninstall Command
 **File**: `docs/tasks/p1-4-uninstall-command.md`
@@ -81,10 +82,11 @@
 
 ## P1.5: List Command
 **File**: `docs/tasks/p1-5-list-command.md`
-- [ ] Read installed rulesets from rules.lock
-- [ ] Display formatted table output
-- [ ] Show ruleset name, version, and source
-- [ ] Handle empty/missing manifest files
+- [x] Read installed rulesets from rules.lock
+- [x] Display formatted table output
+- [x] Show ruleset name, version, and source
+- [x] Handle empty/missing manifest files
+- [x] Test with actual installed rulesets
 
 ## P1.6: File System Operations
 **File**: `docs/tasks/p1-6-filesystem-operations.md`
