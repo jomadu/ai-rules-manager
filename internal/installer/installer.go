@@ -94,10 +94,14 @@ func (i *Installer) buildDownloadURL(org, pkg, version string) string {
 }
 
 func (i *Installer) extractRuleset(org, pkg, version string, tarData []byte) error {
-	// Load manifest to get target directories
+	// Load manifest to get target directories, create default if missing
 	manifest, err := types.LoadManifest("rules.json")
 	if err != nil {
-		return fmt.Errorf("failed to load manifest: %w", err)
+		// Create default manifest if it doesn't exist
+		manifest = &types.RulesManifest{
+			Targets:      types.GetDefaultTargets(),
+			Dependencies: make(map[string]string),
+		}
 	}
 
 	for _, target := range manifest.Targets {
