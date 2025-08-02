@@ -4,16 +4,16 @@
 Implement core file system operations for managing target directories, cache, and atomic file operations across platforms.
 
 ## Requirements
-- Create target directory structure (.cursorrules, .amazonq/rules)
+- ✅ Create target directory structure (now configuration-driven via rules.json)
 - Implement atomic file operations
 - Handle file permissions and cross-platform paths
-- Create cache management system (.mpm/cache/)
+- Create cache management system (.arm/cache/)
 
 ## Tasks
-- [ ] **Target directory management**:
-  - Create `.cursorrules/lrm/` structure
-  - Create `.amazonq/rules/lrm/` structure
-  - Handle nested source/ruleset/version directories
+- [x] **Target directory management**:
+  - ✅ Configuration-driven target directories (via rules.json)
+  - ✅ Handle nested source/ruleset/version directories
+  - ✅ Support for custom target paths
 - [ ] **Atomic operations**:
   - Atomic file writes (write to temp, then rename)
   - Atomic directory operations
@@ -39,7 +39,7 @@ Implement core file system operations for managing target directories, cache, an
   - Permission handling
 
 ## Acceptance Criteria
-- [ ] Target directories are created correctly on all platforms
+- [x] Target directories are created correctly on all platforms (configuration-driven)
 - [ ] File operations are atomic and safe
 - [ ] Cache structure is consistent and organized
 - [ ] Proper error handling for permission issues
@@ -58,7 +58,14 @@ Implement core file system operations for managing target directories, cache, an
 - `internal/filesystem/paths.go`
 
 ## Notes
+- ✅ Target directories now use configuration from rules.json instead of hardcoded paths
 - Consider using file locks for concurrent access
 - Implement proper cleanup of temporary files
 - Plan for future backup/restore functionality
 - Handle symbolic links appropriately
+
+## Completed Work
+- ✅ Replaced hardcoded .cursorrules and .amazonq/rules paths with manifest-driven targets
+- ✅ Added GetDefaultTargets() function for configurable defaults
+- ✅ Updated installer and uninstaller to read from rules.json
+- ✅ Added tests and documentation for configuration-driven approach
