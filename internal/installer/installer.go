@@ -173,6 +173,7 @@ func (i *Installer) updateManifest(name, versionSpec string) error {
 	manifest, err := types.LoadManifest(manifestPath)
 	if err != nil {
 		// Create new manifest if it doesn't exist
+		// TODO: there is some hardcoded stuff here, should be configurable
 		manifest = &types.RulesManifest{
 			Targets:      []string{".cursorrules", ".amazonq/rules"},
 			Dependencies: make(map[string]string),
