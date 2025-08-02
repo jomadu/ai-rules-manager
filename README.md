@@ -139,9 +139,18 @@ rules.lock
 
 📈 **Technical Tasks**: See [docs/technical/tasks.md](docs/technical/tasks.md) for detailed implementation tracking.
 
+## Documentation
+
+📚 **[Complete Documentation](docs/)** - Organized by audience:
+- **[Product Requirements](docs/product/)** - Specifications and business requirements
+- **[Project Planning](docs/project/)** - Roadmaps, status, and milestones
+- **[Technical Implementation](docs/technical/)** - Development tasks and guides
+
 ## Contributing
 
 This project is implemented in Go for fast, dependency-free distribution. See [docs/product/requirements.md](docs/product/requirements.md) for detailed requirements and architecture decisions.
+
+For development work, start with [docs/technical/tasks.md](docs/technical/tasks.md) for current implementation status.
 
 ## License
 
