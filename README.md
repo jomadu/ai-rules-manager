@@ -127,7 +127,7 @@ rules.lock
 
 ## Development Status
 
-✅ **Phase 1 Complete** - Core functionality implemented and tested. See our [development phases](docs/prd.md#timeline):
+✅ **Phase 1 Complete** - Core functionality implemented and tested. See our [development roadmap](docs/roadmap.md):
 
 - **Phase 1**: Core commands (install, uninstall, list) - ✅ **COMPLETED**
 - **Phase 2**: Configuration and registry support - 🚧 **IN PROGRESS**
@@ -135,13 +135,13 @@ rules.lock
 - **Phase 4**: Cache management and cleanup - 📋 **PLANNED**
 - **Phase 5**: Testing and documentation - 📋 **PLANNED**
 
-📋 **Current Focus**: Multi-registry configuration support. See [docs/next-steps.md](docs/next-steps.md) for development priorities.
+📋 **Current Focus**: Multi-registry configuration support. See [docs/roadmap.md](docs/roadmap.md) for development priorities.
 
-📈 **Status Report**: See [docs/project-status.md](docs/project-status.md) for detailed project metrics and roadmap.
+📈 **Technical Tasks**: See [docs/tasks.md](docs/tasks.md) for detailed implementation tracking.
 
 ## Contributing
 
-This project is implemented in Go for fast, dependency-free distribution. See [prd.md](prd.md) for detailed requirements and architecture decisions.
+This project is implemented in Go for fast, dependency-free distribution. See [docs/requirements.md](docs/requirements.md) for detailed requirements and architecture decisions.
 
 ## License
 
