@@ -79,6 +79,8 @@
 - [x] Clean up empty parent directories
 - [x] Graceful handling of missing rulesets
 - [x] Partial failure reporting
+- [x] Handle missing lock file gracefully
+- [x] Comprehensive testing with test registry
 
 ## P1.5: List Command
 **File**: `docs/tasks/p1-5-list-command.md`
