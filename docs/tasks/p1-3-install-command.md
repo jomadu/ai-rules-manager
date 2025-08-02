@@ -6,7 +6,7 @@ Implement the core `arm install` command that downloads, extracts, and installs 
 ## Requirements
 - Parse ruleset names with optional version specs
 - Download .tar.gz files from registries
-- Extract to target directories (.cursorrules, .amazonq/rules)
+- ✅ Extract to target directories (now configuration-driven via rules.json)
 - Update rules.json and rules.lock files
 - Handle conflicts and rollback on failure
 
@@ -43,7 +43,7 @@ Implement the core `arm install` command that downloads, extracts, and installs 
 - [x] `arm install typescript-rules` works end-to-end
 - [x] `arm install company@security-rules@^1.0.0` handles scoped packages
 - [x] `arm install` installs all dependencies from rules.json
-- [x] Files appear in correct target directories
+- [x] Files appear in correct target directories (configuration-driven)
 - [x] rules.json and rules.lock are updated correctly
 - [ ] Failed installs don't leave partial state (future enhancement)
 - [ ] Progress indicators work for slow downloads (future enhancement)
