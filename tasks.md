@@ -72,11 +72,12 @@
 
 ## P1.4: Uninstall Command
 **File**: `docs/tasks/p1-4-uninstall-command.md`
-- [ ] Remove rulesets from target directories
-- [ ] Update rules.json to remove dependencies
-- [ ] Update rules.lock file
-- [ ] Clean up orphaned cache entries
-- [ ] Validate removal operations
+- [x] Remove rulesets from target directories
+- [x] Update rules.json to remove dependencies
+- [x] Update rules.lock file
+- [x] Clean up empty parent directories
+- [x] Graceful handling of missing rulesets
+- [x] Partial failure reporting
 
 ## P1.5: List Command
 **File**: `docs/tasks/p1-5-list-command.md`
