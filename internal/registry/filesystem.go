@@ -24,10 +24,10 @@ func NewFilesystem(basePath string) *FilesystemRegistry {
 // GetRuleset retrieves a specific ruleset version
 func (r *FilesystemRegistry) GetRuleset(name, version string) (*types.Ruleset, error) {
 	return &types.Ruleset{
-		Name:    name,
-		Version: version,
-		Source:  r.basePath,
-		Files:   []string{},
+		Name:     name,
+		Version:  version,
+		Source:   r.basePath,
+		Files:    []string{},
 		Checksum: "",
 	}, nil
 }
@@ -36,19 +36,19 @@ func (r *FilesystemRegistry) GetRuleset(name, version string) (*types.Ruleset, e
 func (r *FilesystemRegistry) ListVersions(name string) ([]string, error) {
 	_, pkg := types.ParseRulesetName(name)
 	pkgPath := filepath.Join(r.basePath, pkg)
-	
+
 	entries, err := os.ReadDir(pkgPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read package directory: %w", err)
 	}
-	
+
 	var versions []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			versions = append(versions, entry.Name())
 		}
 	}
-	
+
 	return versions, nil
 }
 
@@ -56,12 +56,12 @@ func (r *FilesystemRegistry) ListVersions(name string) ([]string, error) {
 func (r *FilesystemRegistry) Download(name, version string) (io.ReadCloser, error) {
 	_, pkg := types.ParseRulesetName(name)
 	archivePath := filepath.Join(r.basePath, pkg, version, fmt.Sprintf("%s-%s.tar.gz", pkg, version))
-	
+
 	file, err := os.Open(archivePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open archive: %w", err)
 	}
-	
+
 	return file, nil
 }
 
@@ -71,12 +71,12 @@ func (r *FilesystemRegistry) GetMetadata(name string) (*Metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	versionList := make([]Version, len(versions))
 	for i, v := range versions {
 		versionList[i] = Version{Version: v}
 	}
-	
+
 	return &Metadata{
 		Name:        name,
 		Description: fmt.Sprintf("Local filesystem registry: %s", r.basePath),
@@ -93,24 +93,17 @@ func (r *FilesystemRegistry) HealthCheck() error {
 		}
 		return fmt.Errorf("cannot access registry path: %w", err)
 	}
-	
+
 	// Check if path is readable
 	entries, err := os.ReadDir(r.basePath)
 	if err != nil {
 		return fmt.Errorf("cannot read registry directory: %w", err)
 	}
-	
+
 	// Basic structure validation
 	if len(entries) == 0 {
 		return fmt.Errorf("registry directory is empty")
 	}
-	
+
 	return nil
 }
-
-// buildArchivePath constructs the path to a ruleset archive
-func (r *FilesystemRegistry) buildArchivePath(name, version string) string {
-	_, pkg := types.ParseRulesetName(name)
-	return filepath.Join(r.basePath, pkg, version, fmt.Sprintf("%s-%s.tar.gz", pkg, version))
-}
-

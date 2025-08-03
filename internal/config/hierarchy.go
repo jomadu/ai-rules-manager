@@ -50,8 +50,8 @@ func (m *Manager) GetSource(name string) (Source, bool) {
 }
 
 // SetSource sets a source configuration
-func (m *Manager) SetSource(name string, source Source) {
-	m.config.Sources[name] = source
+func (m *Manager) SetSource(name string, source *Source) {
+	m.config.Sources[name] = *source
 }
 
 // loadUserConfig loads configuration from ~/.armrc

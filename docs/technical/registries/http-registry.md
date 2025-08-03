@@ -133,12 +133,12 @@ server {
     listen 80;
     server_name registry.example.com;
     root /var/www/registry;
-    
+
     location / {
         try_files $uri $uri/ =404;
         add_header Access-Control-Allow-Origin *;
     }
-    
+
     # Optional: Basic authentication
     location /private/ {
         auth_basic "Registry Access";
@@ -152,13 +152,13 @@ server {
 <VirtualHost *:80>
     ServerName registry.example.com
     DocumentRoot /var/www/registry
-    
+
     <Directory /var/www/registry>
         Options Indexes FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
-    
+
     # Optional: Basic authentication
     <Directory /var/www/registry/private>
         AuthType Basic

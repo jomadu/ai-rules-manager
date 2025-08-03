@@ -227,7 +227,7 @@ arm install offline@typescript-rules
   run: |
     mkdir -p test-registry/test-rules/1.0.0
     cp test-package.tar.gz test-registry/test-rules/1.0.0/
-    
+
 - name: Test Installation
   run: |
     arm config set sources.test ./test-registry

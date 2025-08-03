@@ -11,7 +11,7 @@ import (
 )
 
 // ValidateSource validates registry source configuration
-func ValidateSource(name string, source config.Source) error {
+func ValidateSource(name string, source *config.Source) error {
 	if source.Type == "" {
 		source.Type = "generic" // Default type
 	}
@@ -31,7 +31,7 @@ func ValidateSource(name string, source config.Source) error {
 	}
 }
 
-func validateGenericSource(source config.Source) error {
+func validateGenericSource(source *config.Source) error {
 	if source.URL == "" {
 		return fmt.Errorf("URL is required for generic registry")
 	}
@@ -43,7 +43,7 @@ func validateGenericSource(source config.Source) error {
 	return nil
 }
 
-func validateGitLabSource(source config.Source) error {
+func validateGitLabSource(source *config.Source) error {
 	if source.URL == "" {
 		return fmt.Errorf("URL is required for GitLab registry")
 	}
@@ -72,7 +72,7 @@ func validateGitLabSource(source config.Source) error {
 	return nil
 }
 
-func validateS3Source(source config.Source) error {
+func validateS3Source(source *config.Source) error {
 	if source.Bucket == "" {
 		return fmt.Errorf("bucket is required for S3 registry")
 	}
@@ -94,7 +94,7 @@ func validateS3Source(source config.Source) error {
 	return nil
 }
 
-func validateFilesystemSource(source config.Source) error {
+func validateFilesystemSource(source *config.Source) error {
 	if source.Path == "" {
 		return fmt.Errorf("path is required for filesystem registry")
 	}

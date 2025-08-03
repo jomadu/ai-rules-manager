@@ -72,7 +72,7 @@ func (r *GenericHTTPRegistry) Download(name, version string) (io.ReadCloser, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("download failed with status %d from %s", resp.StatusCode, url)
 	}
 
@@ -98,28 +98,26 @@ func (r *GenericHTTPRegistry) buildDownloadURL(name, version string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.tar.gz", r.baseURL, org, pkg, version)
 }
 
-
-
 // HealthCheck verifies registry connectivity
 func (r *GenericHTTPRegistry) HealthCheck() error {
-	req, err := http.NewRequestWithContext(context.Background(), "HEAD", r.baseURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "HEAD", r.baseURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
-	
+
 	if r.auth != nil {
 		r.auth.SetAuth(req)
 	}
-	
+
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("registry unreachable: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	
+
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("registry returned status %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }

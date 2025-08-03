@@ -7,7 +7,7 @@ Different registry types have varying capabilities based on their underlying inf
 ## Capability Matrix
 
 | Feature | GitLab | Generic HTTP | S3 | Filesystem |
-|---------|--------|--------------|----|-----------| 
+|---------|--------|--------------|----|-----------|
 | **Version Discovery** | ✅ | ❌ | ✅ | ✅ |
 | **Rich Metadata** | ✅ | ❌ | ❌ | ❌ |
 | **Health Checks** | ✅ | ✅ | ✅ | ✅ |

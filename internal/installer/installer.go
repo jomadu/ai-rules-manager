@@ -80,7 +80,7 @@ func (i *Installer) downloadRuleset(org, pkg, version string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	return io.ReadAll(reader)
 }
