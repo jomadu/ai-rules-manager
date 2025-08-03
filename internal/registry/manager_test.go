@@ -9,11 +9,9 @@ import (
 func TestManager_parseRegistryName(t *testing.T) {
 	// Create mock config manager
 	configManager := config.NewManager()
-	if err := configManager.Load(); err != nil {
-		// Ignore load errors for testing
-	}
-	configManager.SetSource("company", config.Source{URL: "https://company.local"})
-	configManager.SetSource("default", config.Source{URL: "https://registry.armjs.org"})
+	_ = configManager.Load() // Ignore load errors for testing
+	configManager.SetSource("company", &config.Source{URL: "https://company.local"})
+	configManager.SetSource("default", &config.Source{URL: "https://registry.armjs.org"})
 
 	manager := NewManager(configManager)
 
@@ -41,10 +39,8 @@ func TestManager_parseRegistryName(t *testing.T) {
 func TestManager_StripRegistryPrefix(t *testing.T) {
 	// Create mock config manager
 	configManager := config.NewManager()
-	if err := configManager.Load(); err != nil {
-		// Ignore load errors for testing
-	}
-	configManager.SetSource("company", config.Source{URL: "https://company.local"})
+	_ = configManager.Load() // Ignore load errors for testing
+	configManager.SetSource("company", &config.Source{URL: "https://company.local"})
 
 	manager := NewManager(configManager)
 

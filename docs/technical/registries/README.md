@@ -9,7 +9,7 @@ Registry-specific implementation guides for ARM's supported registry types.
 - Project and group-level package registries
 - Version discovery and rich package information
 
-**[s3-registry.md](s3-registry.md)** - AWS S3 Registry  
+**[s3-registry.md](s3-registry.md)** - AWS S3 Registry
 - S3 prefix-based version discovery
 - Global distribution and scalability
 - Custom prefix organization
@@ -42,7 +42,7 @@ type = {gitlab|s3|generic|filesystem}
 
 ### Version Discovery Support
 - ✅ **GitLab**: Native API
-- ✅ **S3**: Prefix listing  
+- ✅ **S3**: Prefix listing
 - ✅ **Filesystem**: Directory scanning
 - ❌ **HTTP**: Exact versions required
 

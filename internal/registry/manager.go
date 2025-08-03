@@ -35,7 +35,7 @@ func (m *Manager) GetRegistry(name string) (Registry, error) {
 	}
 
 	// Create registry based on type
-	registry, err := m.createRegistry(source)
+	registry, err := m.createRegistry(&source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create registry '%s': %w", name, err)
 	}
@@ -84,7 +84,7 @@ func (m *Manager) StripRegistryPrefix(rulesetName string) string {
 }
 
 // createRegistry creates a registry instance based on source configuration
-func (m *Manager) createRegistry(source config.Source) (Registry, error) {
+func (m *Manager) createRegistry(source *config.Source) (Registry, error) {
 	regType := RegistryType(source.Type)
 	if regType == "" {
 		regType = RegistryTypeGeneric
@@ -102,7 +102,7 @@ func (m *Manager) createRegistry(source config.Source) (Registry, error) {
 			return nil, fmt.Errorf("bucket and region are required for S3 registry")
 		}
 		return NewS3(source.AuthToken, source.Bucket, source.Region, source.Prefix), nil
-		
+
 	case RegistryTypeFilesystem:
 		if source.Path == "" {
 			return nil, fmt.Errorf("path is required for filesystem registry")

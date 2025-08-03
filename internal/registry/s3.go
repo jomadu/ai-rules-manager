@@ -47,21 +47,6 @@ func NewS3(authToken, bucket, region, prefix string) *S3Registry {
 	}
 }
 
-func (r *S3Registry) buildDownloadURL(name, version string) string {
-	org, pkg := types.ParseRulesetName(name)
-	basePath := "packages"
-	if r.prefix != "" {
-		basePath = r.prefix + "/packages"
-	}
-	
-	if org == "" {
-		return fmt.Sprintf("%s/%s/%s/%s/%s-%s.tar.gz",
-			r.baseURL, basePath, pkg, version, pkg, version)
-	}
-	return fmt.Sprintf("%s/%s/%s/%s/%s/%s-%s.tar.gz",
-		r.baseURL, basePath, org, pkg, version, pkg, version)
-}
-
 // GetMetadata retrieves metadata for a ruleset
 // S3 registries provide minimal metadata with discovered versions
 func (r *S3Registry) GetMetadata(name string) (*Metadata, error) {
@@ -80,12 +65,12 @@ func (r *S3Registry) GetMetadata(name string) (*Metadata, error) {
 			},
 		}, nil
 	}
-	
+
 	versionList := make([]Version, len(versions))
 	for i, v := range versions {
 		versionList[i] = Version{Version: v}
 	}
-	
+
 	return &Metadata{
 		Name:        name,
 		Description: fmt.Sprintf("S3 registry: %s with version discovery", r.bucket),
@@ -107,66 +92,66 @@ func (r *S3Registry) ListVersions(name string) ([]string, error) {
 	if r.prefix != "" {
 		basePath = r.prefix + "/packages"
 	}
-	
+
 	var listPrefix string
 	if org == "" {
 		listPrefix = fmt.Sprintf("%s/%s/", basePath, pkg)
 	} else {
 		listPrefix = fmt.Sprintf("%s/%s/%s/", basePath, org, pkg)
 	}
-	
+
 	// Use S3 list-objects-v2 API to get prefixes
 	listURL := fmt.Sprintf("%s?list-type=2&prefix=%s&delimiter=/", r.baseURL, listPrefix)
-	
-	req, err := http.NewRequestWithContext(context.Background(), "GET", listURL, nil)
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", listURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list request: %w", err)
 	}
-	
+
 	if r.auth != nil {
 		r.auth.SetAuth(req)
 	}
-	
+
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list S3 prefixes: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("S3 list request failed with status %d", resp.StatusCode)
 	}
-	
+
 	// Parse S3 XML response for CommonPrefixes
 	versions, err := r.parseS3ListResponse(resp.Body, listPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse S3 response: %w", err)
 	}
-	
+
 	if len(versions) == 0 {
 		return nil, fmt.Errorf("no versions found in S3 bucket")
 	}
-	
+
 	return versions, nil
 }
 
 // HealthCheck verifies S3 registry connectivity
 func (r *S3Registry) HealthCheck() error {
-	req, err := http.NewRequestWithContext(context.Background(), "HEAD", r.baseURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "HEAD", r.baseURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
-	
+
 	if r.auth != nil {
 		r.auth.SetAuth(req)
 	}
-	
+
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("S3 registry unreachable: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	
+
 	switch resp.StatusCode {
 	case 200, 403: // 403 is OK for bucket existence check
 		return nil
@@ -192,7 +177,7 @@ func (r *S3Registry) parseS3ListResponse(body io.Reader, listPrefix string) ([]s
 	if err := xml.NewDecoder(body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode S3 XML: %w", err)
 	}
-	
+
 	var versions []string
 	for _, prefix := range result.CommonPrefixes {
 		// Extract version from prefix (remove base path and trailing slash)
@@ -202,6 +187,6 @@ func (r *S3Registry) parseS3ListResponse(body io.Reader, listPrefix string) ([]s
 			versions = append(versions, version)
 		}
 	}
-	
+
 	return versions, nil
 }
