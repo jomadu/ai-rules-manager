@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,10 +14,11 @@ type S3Registry struct {
 	*GenericHTTPRegistry
 	bucket string
 	region string
+	prefix string
 }
 
 // NewS3 creates a new S3 registry client
-func NewS3(authToken, bucket, region string) *S3Registry {
+func NewS3(authToken, bucket, region, prefix string) *S3Registry {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
@@ -38,23 +40,70 @@ func NewS3(authToken, bucket, region string) *S3Registry {
 		GenericHTTPRegistry: generic,
 		bucket:              bucket,
 		region:              region,
+		prefix:              prefix,
 	}
 }
 
 func (r *S3Registry) buildDownloadURL(name, version string) string {
 	org, pkg := types.ParseRulesetName(name)
-	if org == "" {
-		return fmt.Sprintf("%s/packages/%s/%s/%s-%s.tar.gz",
-			r.baseURL, pkg, version, pkg, version)
+	basePath := "packages"
+	if r.prefix != "" {
+		basePath = r.prefix + "/packages"
 	}
-	return fmt.Sprintf("%s/packages/%s/%s/%s/%s-%s.tar.gz",
-		r.baseURL, org, pkg, version, pkg, version)
+	
+	if org == "" {
+		return fmt.Sprintf("%s/%s/%s/%s/%s-%s.tar.gz",
+			r.baseURL, basePath, pkg, version, pkg, version)
+	}
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%s-%s.tar.gz",
+		r.baseURL, basePath, org, pkg, version, pkg, version)
 }
 
-func (r *S3Registry) buildMetadataURL(name string) string {
-	org, pkg := types.ParseRulesetName(name)
-	if org == "" {
-		return fmt.Sprintf("%s/packages/%s/metadata.json", r.baseURL, pkg)
+// GetMetadata retrieves metadata for a ruleset
+// S3 registries provide minimal metadata
+func (r *S3Registry) GetMetadata(name string) (*Metadata, error) {
+	return &Metadata{
+		Name:        name,
+		Description: fmt.Sprintf("S3 registry: %s", r.bucket),
+		Versions:    []Version{},
+		Repository:  r.baseURL,
+		Extra: map[string]string{
+			"bucket": r.bucket,
+			"region": r.region,
+			"prefix": r.prefix,
+		},
+	}, nil
+}
+
+// ListVersions returns all available versions for a ruleset
+// S3 registries don't support version discovery without additional tooling
+func (r *S3Registry) ListVersions(name string) ([]string, error) {
+	return nil, fmt.Errorf("version listing not supported by S3 registry - specify exact version")
+}
+
+// HealthCheck verifies S3 registry connectivity
+func (r *S3Registry) HealthCheck() error {
+	req, err := http.NewRequestWithContext(context.Background(), "HEAD", r.baseURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create health check request: %w", err)
 	}
-	return fmt.Sprintf("%s/packages/%s/%s/metadata.json", r.baseURL, org, pkg)
+	
+	if r.auth != nil {
+		r.auth.SetAuth(req)
+	}
+	
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("S3 registry unreachable: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	
+	switch resp.StatusCode {
+	case 200, 403: // 403 is OK for bucket existence check
+		return nil
+	case 404:
+		return fmt.Errorf("S3 bucket %s not found in region %s", r.bucket, r.region)
+	default:
+		return fmt.Errorf("S3 registry returned status %d", resp.StatusCode)
+	}
 }

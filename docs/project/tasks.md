@@ -33,7 +33,7 @@
 |------|--------|---------|
 | P2.1 Configuration Management | ✅ | [P2.1](tasks/p2-1-configuration-management.md) |
 | P2.2 Registry Abstraction | ✅ | [P2.2](tasks/p2-2-registry-abstraction.md) |
-| P2.3 Registry Implementations | 📋 | [P2.3](tasks/p2-3-registry-implementations.md) |
+| P2.3 Registry Implementations | ✅ | [P2.3](tasks/p2-3-registry-implementations.md) |
 | P2.4 Version Management | 📋 | [P2.4](tasks/p2-4-version-management.md) |
 
 ## Phase 3: Update/Outdated Functionality 📋

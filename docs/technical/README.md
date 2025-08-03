@@ -28,6 +28,16 @@ Implementation guides and technical details for ARM developers and AI coding ass
 - Edge case handling verification
 - Directory cleanup validation
 
+**[metadata-generation.md](metadata-generation.md)** - Registry metadata approaches
+- How ARM handles metadata across different registry types
+- Registry-specific metadata generation strategies
+- Publisher requirements and implementation benefits
+
+**[registry-capabilities.md](registry-capabilities.md)** - Registry feature comparison
+- Capability matrix for all supported registry types
+- Usage patterns and selection guide
+- Best practices for different use cases
+
 ## For AI Assistants
 
 When working on ARM development:

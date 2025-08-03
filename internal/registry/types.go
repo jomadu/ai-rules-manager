@@ -4,7 +4,8 @@ package registry
 type RegistryType string
 
 const (
-	RegistryTypeGeneric RegistryType = "generic"
-	RegistryTypeGitLab  RegistryType = "gitlab"
-	RegistryTypeS3      RegistryType = "s3"
+	RegistryTypeGeneric    RegistryType = "generic"
+	RegistryTypeGitLab     RegistryType = "gitlab"
+	RegistryTypeS3         RegistryType = "s3"
+	RegistryTypeFilesystem RegistryType = "filesystem"
 )
