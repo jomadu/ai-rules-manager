@@ -6,10 +6,10 @@ Documentation for AI Rules Manager (ARM) organized by audience.
 📋 **[Product Documentation](product/)** - Requirements, specifications, and product decisions
 
 ## For Project Managers
-📊 **[Project Documentation](project/)** - Roadmaps, status reports, and planning
+📊 **[Project Documentation](project/)** - Roadmaps, task tracking, and planning
 
 ## For Developers & AI Assistants
-🔧 **[Technical Documentation](technical/)** - Implementation tasks, testing, and technical details
+🔧 **[Technical Documentation](technical/)** - Implementation guides, testing, and architecture
 
 ---
 
@@ -19,11 +19,11 @@ Documentation for AI Rules Manager (ARM) organized by audience.
 |----------|------------------|---------|
 | **Product** | [requirements.md](product/requirements.md) | Product requirements and specifications |
 | **Project** | [roadmap.md](project/roadmap.md) | Development phases and priorities |
-| **Technical** | [tasks.md](technical/tasks.md) | Implementation task tracking |
+| **Technical** | [configuration-driven-targets.md](technical/configuration-driven-targets.md) | Implementation architecture |
 
 ## For AI Assistants
 
 When working on ARM development:
-- Use **[technical/tasks.md](technical/tasks.md)** for current implementation status
-- Reference **[technical/tasks/](technical/tasks/)** for detailed task context
-- Check **[project/roadmap.md](project/roadmap.md)** for current priorities
+- Use **[project/tasks.md](project/tasks.md)** for current implementation status
+- Reference **[project/tasks/](project/tasks/)** for detailed task context
+- Check **[technical/](technical/)** for implementation guides and architecture
