@@ -38,6 +38,11 @@ arm update
 
 # Check for outdated rulesets
 arm outdated
+
+# Manage configuration
+arm config list
+arm config get sources.default
+arm config set sources.company https://internal.company.local/
 ```
 
 ## Configuration
@@ -74,7 +79,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 | `arm update [ruleset]` | Update rulesets |
 | `arm list [--format=table|json]` | List installed rulesets |
 | `arm outdated` | Show outdated rulesets |
-| `arm config <action>` | Manage configuration |
+| `arm config [list\|get\|set] [key] [value]` | Manage configuration |
 | `arm clean` | Clean cache and unused files |
 | `arm help` | Show help |
 | `arm version` | Show version |
