@@ -9,6 +9,11 @@ Implementation guides and technical details for ARM developers and AI coding ass
 - Configuration-driven installation behavior
 - Directory structure and organization
 
+**[armrc-configuration.md](armrc-configuration.md)** - .armrc configuration system
+- Registry source configuration and hierarchy
+- Environment variable substitution
+- Configuration commands and security features
+
 **[testing.md](testing.md)** - Test registry and testing procedures
 - Local test registry setup and usage
 - End-to-end testing workflows
