@@ -4,8 +4,8 @@
 
 ## Current Status: Phase 1 Complete ✅
 
-**Last Updated**: December 2024
-**Next Milestone**: P2.1 Configuration Management (January 2025)
+**Last Updated**: January 2025
+**Next Milestone**: P2.2 Registry Abstraction (January 2025)
 
 ## Development Phases
 
@@ -25,17 +25,18 @@
 **Timeline**: Q1 2025
 **Scope**: Multi-registry support and configuration management
 
-**Priorities**:
-1. **P2.1 Configuration Management** (January 2025)
+**Completed**:
+1. **P2.1 Configuration Management** ✅ (January 2025)
    - `.armrc` file parsing
    - Multi-registry configuration
    - `arm config` command
 
-2. **P2.2 Registry Abstraction** (February 2025)
+**Priorities**:
+1. **P2.2 Registry Abstraction** (January 2025)
    - Generic registry interface
    - Authentication handling
 
-3. **P2.3 Registry Implementations** (March 2025)
+2. **P2.3 Registry Implementations** (February 2025)
    - GitLab/GitHub package registries
    - AWS S3 support
 
