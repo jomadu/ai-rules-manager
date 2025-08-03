@@ -112,7 +112,8 @@ func substituteEnvVars(config *ARMConfig) {
 	envVarPattern := regexp.MustCompile(`\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)`)
 
 	// Substitute in sources
-	for name, source := range config.Sources {
+	for name := range config.Sources {
+		source := config.Sources[name]
 		source.URL = substituteString(source.URL, envVarPattern)
 		source.Type = substituteString(source.Type, envVarPattern)
 		source.AuthToken = substituteString(source.AuthToken, envVarPattern)

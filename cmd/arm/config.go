@@ -48,13 +48,18 @@ func configList() error {
 	// List sources
 	if len(cfg.Sources) > 0 {
 		fmt.Println("[sources]")
-		for name, source := range cfg.Sources {
-			fmt.Printf("%s = %s\n", name, source.URL)
+		names := make([]string, 0, len(cfg.Sources))
+		for name := range cfg.Sources {
+			names = append(names, name)
+		}
+		for _, name := range names {
+			fmt.Printf("%s = %s\n", name, cfg.Sources[name].URL)
 		}
 		fmt.Println()
 
 		// List source-specific configs
-		for name, source := range cfg.Sources {
+		for _, name := range names {
+			source := cfg.Sources[name]
 			if source.AuthToken != "" || source.Timeout != "" {
 				fmt.Printf("[sources.%s]\n", name)
 				if source.AuthToken != "" {

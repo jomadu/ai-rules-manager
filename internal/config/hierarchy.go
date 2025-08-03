@@ -82,8 +82,8 @@ func loadProjectConfig() (*ARMConfig, error) {
 // mergeConfigs merges source config into target config (source takes precedence)
 func mergeConfigs(target, source *ARMConfig) {
 	// Merge sources
-	for name, sourceConfig := range source.Sources {
-		target.Sources[name] = sourceConfig
+	for name := range source.Sources {
+		target.Sources[name] = source.Sources[name]
 	}
 
 	// Merge cache config (only if source has values)
