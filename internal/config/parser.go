@@ -24,6 +24,8 @@ type Source struct {
 	GroupID   string `ini:"groupID"`   // For GitLab group registry
 	Bucket    string `ini:"bucket"`    // For S3
 	Region    string `ini:"region"`    // For S3
+	Prefix    string `ini:"prefix"`    // For S3 prefix
+	Path      string `ini:"path"`      // For filesystem registry
 }
 
 // CacheConfig represents cache configuration
@@ -78,6 +80,12 @@ func ParseFile(path string) (*ARMConfig, error) {
 			if region := section.Key("region"); region != nil {
 				source.Region = region.Value()
 			}
+			if prefix := section.Key("prefix"); prefix != nil {
+				source.Prefix = prefix.Value()
+			}
+			if path := section.Key("path"); path != nil {
+				source.Path = path.Value()
+			}
 			config.Sources[sourceName] = source
 		}
 	}
@@ -114,6 +122,8 @@ func substituteEnvVars(config *ARMConfig) {
 
 		source.Bucket = substituteString(source.Bucket, envVarPattern)
 		source.Region = substituteString(source.Region, envVarPattern)
+		source.Prefix = substituteString(source.Prefix, envVarPattern)
+		source.Path = substituteString(source.Path, envVarPattern)
 		config.Sources[name] = source
 	}
 

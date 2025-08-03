@@ -28,6 +28,10 @@ func (m *MockRegistry) GetMetadata(name string) (*registry.Metadata, error) {
 	return &registry.Metadata{Name: name}, nil
 }
 
+func (m *MockRegistry) HealthCheck() error {
+	return nil
+}
+
 func TestInstaller(t *testing.T) {
 	mockRegistry := &MockRegistry{}
 	installer := New(mockRegistry)

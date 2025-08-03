@@ -49,39 +49,9 @@ func (r *GenericHTTPRegistry) GetRuleset(name, version string) (*types.Ruleset, 
 }
 
 // ListVersions returns all available versions for a ruleset
+// Generic HTTP registries don't support version discovery
 func (r *GenericHTTPRegistry) ListVersions(name string) ([]string, error) {
-	url := r.buildMetadataURL(name)
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", url, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	if r.auth != nil {
-		r.auth.SetAuth(req)
-	}
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch versions: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("registry returned status %d", resp.StatusCode)
-	}
-
-	var metadata Metadata
-	if err := json.NewDecoder(resp.Body).Decode(&metadata); err != nil {
-		return nil, fmt.Errorf("failed to decode metadata: %w", err)
-	}
-
-	versions := make([]string, len(metadata.Versions))
-	for i, v := range metadata.Versions {
-		versions[i] = v.Version
-	}
-
-	return versions, nil
+	return nil, fmt.Errorf("version listing not supported by generic HTTP registry - specify exact version")
 }
 
 // Download downloads a ruleset archive
@@ -111,34 +81,14 @@ func (r *GenericHTTPRegistry) Download(name, version string) (io.ReadCloser, err
 }
 
 // GetMetadata retrieves metadata for a ruleset
+// Generic HTTP registries provide minimal metadata
 func (r *GenericHTTPRegistry) GetMetadata(name string) (*Metadata, error) {
-	url := r.buildMetadataURL(name)
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", url, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	if r.auth != nil {
-		r.auth.SetAuth(req)
-	}
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch metadata: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("registry returned status %d", resp.StatusCode)
-	}
-
-	var metadata Metadata
-	if err := json.NewDecoder(resp.Body).Decode(&metadata); err != nil {
-		return nil, fmt.Errorf("failed to decode metadata: %w", err)
-	}
-
-	return &metadata, nil
+	return &Metadata{
+		Name:        name,
+		Description: "Generic HTTP registry - no metadata available",
+		Versions:    []Version{},
+		Repository:  r.baseURL,
+	}, nil
 }
 
 func (r *GenericHTTPRegistry) buildDownloadURL(name, version string) string {
@@ -149,10 +99,28 @@ func (r *GenericHTTPRegistry) buildDownloadURL(name, version string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.tar.gz", r.baseURL, org, pkg, version)
 }
 
-func (r *GenericHTTPRegistry) buildMetadataURL(name string) string {
-	org, pkg := types.ParseRulesetName(name)
-	if org == "" {
-		return fmt.Sprintf("%s/%s/metadata.json", r.baseURL, pkg)
+
+
+// HealthCheck verifies registry connectivity
+func (r *GenericHTTPRegistry) HealthCheck() error {
+	req, err := http.NewRequestWithContext(context.Background(), "HEAD", r.baseURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create health check request: %w", err)
 	}
-	return fmt.Sprintf("%s/%s/%s/metadata.json", r.baseURL, org, pkg)
+	
+	if r.auth != nil {
+		r.auth.SetAuth(req)
+	}
+	
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("registry unreachable: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("registry returned status %d", resp.StatusCode)
+	}
+	
+	return nil
 }

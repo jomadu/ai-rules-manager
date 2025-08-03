@@ -101,7 +101,13 @@ func (m *Manager) createRegistry(source config.Source) (Registry, error) {
 		if source.Bucket == "" || source.Region == "" {
 			return nil, fmt.Errorf("bucket and region are required for S3 registry")
 		}
-		return NewS3(source.AuthToken, source.Bucket, source.Region), nil
+		return NewS3(source.AuthToken, source.Bucket, source.Region, source.Prefix), nil
+		
+	case RegistryTypeFilesystem:
+		if source.Path == "" {
+			return nil, fmt.Errorf("path is required for filesystem registry")
+		}
+		return NewFilesystem(source.Path), nil
 
 	case RegistryTypeGeneric:
 		return NewGenericHTTP(source.URL, source.AuthToken), nil

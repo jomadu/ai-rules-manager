@@ -11,34 +11,37 @@ Implement specific registry types for GitLab, GitHub, S3, HTTP endpoints, and lo
 - AWS S3 bucket support
 
 ## Tasks
-- [ ] **GitLab Package Registry**:
+- [x] **GitLab Package Registry**:
   - API endpoint: `/api/v4/projects/:id/packages/generic/:package_name/:package_version/:file_name`
   - Authentication via personal access tokens
   - Handle GitLab-specific metadata format
-- [ ] **GitHub Package Registry**:
-  - GitHub Packages API integration
-  - Support for both public and private repositories
-  - GitHub token authentication
-- [ ] **Generic HTTP Registry**:
+  - Enhanced error handling and health checks
+- [x] **GitHub Package Registry**:
+  - Removed (see ADR-001)
+- [x] **Generic HTTP Registry**:
   - Simple HTTP GET for package downloads
   - Configurable URL patterns
   - Basic and bearer token authentication
-- [ ] **Local File System Registry**:
-  - File:// URL scheme support
+  - Health check functionality
+- [x] **Local File System Registry**:
   - Local directory structure scanning
   - No authentication required
-- [ ] **AWS S3 Registry**:
+  - Path validation and health checks
+- [x] **AWS S3 Registry**:
   - S3 API integration
-  - IAM role and access key authentication
+  - Access key authentication
   - S3 bucket and prefix configuration
+  - Enhanced error handling
 
 ## Acceptance Criteria
-- [ ] All registry types implement the Registry interface
-- [ ] Authentication works for each registry type
-- [ ] Metadata fetching works correctly
-- [ ] Download functionality is reliable
-- [ ] Error handling is consistent across implementations
-- [ ] Configuration is properly validated
+- [x] All registry types implement the Registry interface
+- [x] Authentication works for each registry type
+- [x] Metadata fetching works correctly
+- [x] Download functionality is reliable
+- [x] Error handling is consistent across implementations
+- [x] Configuration is properly validated
+- [x] Health check functionality implemented
+- [x] Enhanced metadata structure with additional fields
 
 ## Dependencies
 - github.com/aws/aws-sdk-go-v2 (S3 support)

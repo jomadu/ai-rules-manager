@@ -72,23 +72,34 @@ groupID = 67890
 authToken = ${GITLAB_TOKEN}
 ```
 
-**AWS S3 Registry:
+**AWS S3 Registry:**
 ```ini
 [sources.s3]
 type = s3
 bucket = my-arm-registry
 region = us-east-1
+prefix = rulesets
 authToken = ${AWS_ACCESS_TOKEN}
 ```
 
+**Local Filesystem Registry:**
+```ini
+[sources.local]
+type = filesystem
+path = /path/to/local/rulesets
+# Structure: {path}/{package}/{version}/{package}-{version}.tar.gz
+```
+
 **Supported fields**:
-- `type` - Registry type: `generic`, `gitlab`, `s3`
+- `type` - Registry type: `generic`, `gitlab`, `s3`, `filesystem`
 - `authToken` - Authentication token for the registry
 - `timeout` - Request timeout (e.g., "30s", "1m")
 - `projectID` - GitLab project ID (numeric)
 - `groupID` - GitLab group ID (numeric)
 - `bucket` - S3 bucket name
 - `region` - AWS region for S3
+- `prefix` - S3 key prefix for organizing rulesets
+- `path` - Local filesystem path for filesystem registry
 
 ### Cache Section
 
@@ -237,7 +248,10 @@ Set environment variables in CI/CD:
 
 ```bash
 export COMPANY_REGISTRY_TOKEN="your_token_here"
+# GitLab registry - supports version discovery
 arm install company@security-rules
+# Generic HTTP/S3 - requires exact version
+arm install company@security-rules@1.2.0
 ```
 
 ## Troubleshooting
