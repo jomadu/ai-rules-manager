@@ -46,20 +46,49 @@ local = file:///path/to/local/registry
 
 ### Source-Specific Configuration
 
-Each source can have additional configuration:
+Each source can have additional configuration based on registry type:
 
+**Generic HTTP Registry:**
 ```ini
 [sources.company]
+type = generic
 authToken = secret_token_here
 timeout = 30s
+```
 
-[sources.local]
-timeout = 5s
+**GitLab Package Registry (Project-level):**
+```ini
+[sources.gitlab-project]
+type = gitlab
+projectID = 12345
+authToken = ${GITLAB_TOKEN}
+```
+
+**GitLab Package Registry (Group-level):**
+```ini
+[sources.gitlab-group]
+type = gitlab
+groupID = 67890
+authToken = ${GITLAB_TOKEN}
+```
+
+**AWS S3 Registry:
+```ini
+[sources.s3]
+type = s3
+bucket = my-arm-registry
+region = us-east-1
+authToken = ${AWS_ACCESS_TOKEN}
 ```
 
 **Supported fields**:
+- `type` - Registry type: `generic`, `gitlab`, `s3`
 - `authToken` - Authentication token for the registry
 - `timeout` - Request timeout (e.g., "30s", "1m")
+- `projectID` - GitLab project ID (numeric)
+- `groupID` - GitLab group ID (numeric)
+- `bucket` - S3 bucket name
+- `region` - AWS region for S3
 
 ### Cache Section
 

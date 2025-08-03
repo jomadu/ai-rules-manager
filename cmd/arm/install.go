@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jomadu/arm/internal/config"
 	"github.com/jomadu/arm/internal/installer"
+	"github.com/jomadu/arm/internal/registry"
 	"github.com/jomadu/arm/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -34,13 +36,28 @@ func installFromManifest() error {
 		return fmt.Errorf("failed to load manifest: %w", err)
 	}
 
-	// TODO: Make registry URL configurable
-	registryURL := "http://localhost:8080"
-	installer := installer.New(registryURL)
+	// Load configuration and create registry manager
+	configManager := config.NewManager()
+	if err := configManager.Load(); err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	registryManager := registry.NewManager(configManager)
 
 	for name, versionSpec := range manifest.Dependencies {
 		fmt.Printf("Installing %s@%s...\n", name, versionSpec)
-		if err := installer.Install(name, versionSpec); err != nil {
+
+		// Get registry for this ruleset
+		reg, err := registryManager.GetRegistryForRuleset(name)
+		if err != nil {
+			return fmt.Errorf("failed to get registry for %s: %w", name, err)
+		}
+
+		// Strip registry prefix from name
+		cleanName := registryManager.StripRegistryPrefix(name)
+
+		installer := installer.New(reg)
+		if err := installer.Install(cleanName, versionSpec); err != nil {
 			return fmt.Errorf("failed to install %s: %w", name, err)
 		}
 	}
@@ -53,11 +70,25 @@ func installRuleset(rulesetSpec string) error {
 	name, version := parseRulesetSpec(rulesetSpec)
 	fmt.Printf("Installing %s@%s...\n", name, version)
 
-	// TODO: Make registry URL configurable
-	registryURL := "http://localhost:8080"
-	installer := installer.New(registryURL)
+	// Load configuration and create registry manager
+	configManager := config.NewManager()
+	if err := configManager.Load(); err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
 
-	return installer.Install(name, version)
+	registryManager := registry.NewManager(configManager)
+
+	// Get registry for this ruleset
+	reg, err := registryManager.GetRegistryForRuleset(name)
+	if err != nil {
+		return fmt.Errorf("failed to get registry for %s: %w", name, err)
+	}
+
+	// Strip registry prefix from name
+	cleanName := registryManager.StripRegistryPrefix(name)
+
+	installer := installer.New(reg)
+	return installer.Install(cleanName, version)
 }
 
 // parseRulesetSpec parses "name@version" or just "name" (defaults to latest)

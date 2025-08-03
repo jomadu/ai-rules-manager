@@ -17,8 +17,13 @@ type ARMConfig struct {
 // Source represents a registry source configuration
 type Source struct {
 	URL       string `ini:"-"`
+	Type      string `ini:"type"`
 	AuthToken string `ini:"authToken"`
 	Timeout   string `ini:"timeout"`
+	ProjectID string `ini:"projectID"` // For GitLab project registry
+	GroupID   string `ini:"groupID"`   // For GitLab group registry
+	Bucket    string `ini:"bucket"`    // For S3
+	Region    string `ini:"region"`    // For S3
 }
 
 // CacheConfig represents cache configuration
@@ -51,11 +56,27 @@ func ParseFile(path string) (*ARMConfig, error) {
 		sectionName := "sources." + sourceName
 		if section := cfg.Section(sectionName); section != nil {
 			source := config.Sources[sourceName]
+			if regType := section.Key("type"); regType != nil {
+				source.Type = regType.Value()
+			}
 			if authToken := section.Key("authToken"); authToken != nil {
 				source.AuthToken = authToken.Value()
 			}
 			if timeout := section.Key("timeout"); timeout != nil {
 				source.Timeout = timeout.Value()
+			}
+			if projectID := section.Key("projectID"); projectID != nil {
+				source.ProjectID = projectID.Value()
+			}
+			if groupID := section.Key("groupID"); groupID != nil {
+				source.GroupID = groupID.Value()
+			}
+
+			if bucket := section.Key("bucket"); bucket != nil {
+				source.Bucket = bucket.Value()
+			}
+			if region := section.Key("region"); region != nil {
+				source.Region = region.Value()
 			}
 			config.Sources[sourceName] = source
 		}
@@ -85,8 +106,14 @@ func substituteEnvVars(config *ARMConfig) {
 	// Substitute in sources
 	for name, source := range config.Sources {
 		source.URL = substituteString(source.URL, envVarPattern)
+		source.Type = substituteString(source.Type, envVarPattern)
 		source.AuthToken = substituteString(source.AuthToken, envVarPattern)
 		source.Timeout = substituteString(source.Timeout, envVarPattern)
+		source.ProjectID = substituteString(source.ProjectID, envVarPattern)
+		source.GroupID = substituteString(source.GroupID, envVarPattern)
+
+		source.Bucket = substituteString(source.Bucket, envVarPattern)
+		source.Region = substituteString(source.Region, envVarPattern)
 		config.Sources[name] = source
 	}
 
