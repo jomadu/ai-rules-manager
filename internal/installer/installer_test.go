@@ -1,44 +1,39 @@
 package installer
 
 import (
+	"io"
+	"strings"
 	"testing"
 
+	"github.com/jomadu/arm/internal/registry"
 	"github.com/jomadu/arm/pkg/types"
 )
 
-func TestBuildDownloadURL(t *testing.T) {
-	installer := New("https://registry.example.com")
+// MockRegistry for testing
+type MockRegistry struct{}
 
-	tests := []struct {
-		name     string
-		org      string
-		pkg      string
-		version  string
-		expected string
-	}{
-		{
-			name:     "package without org",
-			org:      "",
-			pkg:      "typescript-rules",
-			version:  "1.0.0",
-			expected: "https://registry.example.com/typescript-rules/1.0.0.tar.gz",
-		},
-		{
-			name:     "package with org",
-			org:      "company",
-			pkg:      "typescript-rules",
-			version:  "1.0.0",
-			expected: "https://registry.example.com/company/typescript-rules/1.0.0.tar.gz",
-		},
-	}
+func (m *MockRegistry) GetRuleset(name, version string) (*types.Ruleset, error) {
+	return &types.Ruleset{Name: name, Version: version}, nil
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := installer.buildDownloadURL(tt.org, tt.pkg, tt.version)
-			if result != tt.expected {
-				t.Errorf("buildDownloadURL() = %v, want %v", result, tt.expected)
-			}
-		})
+func (m *MockRegistry) ListVersions(name string) ([]string, error) {
+	return []string{"1.0.0"}, nil
+}
+
+func (m *MockRegistry) Download(name, version string) (io.ReadCloser, error) {
+	return io.NopCloser(strings.NewReader("test data")), nil
+}
+
+func (m *MockRegistry) GetMetadata(name string) (*registry.Metadata, error) {
+	return &registry.Metadata{Name: name}, nil
+}
+
+func TestInstaller(t *testing.T) {
+	mockRegistry := &MockRegistry{}
+	installer := New(mockRegistry)
+
+	if installer.registry == nil {
+		t.Error("Expected registry to be set")
 	}
 }
 

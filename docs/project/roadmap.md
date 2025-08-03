@@ -37,8 +37,9 @@
    - Authentication handling
 
 2. **P2.3 Registry Implementations** (February 2025)
-   - GitLab/GitHub package registries
-   - AWS S3 support
+   - GitLab package registries ✅
+   - AWS S3 support ✅
+   - GitHub registry removed (see ADR-001)
 
 ### Phase 3: Update/Outdated Functionality 📋 PLANNED
 **Timeline**: Q1 2025

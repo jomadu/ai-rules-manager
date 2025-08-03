@@ -6,22 +6,22 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/jomadu/arm/internal/parser"
+	"github.com/jomadu/arm/internal/registry"
 	"github.com/jomadu/arm/pkg/types"
 )
 
 type Installer struct {
-	registryURL string
+	registry registry.Registry
 }
 
-func New(registryURL string) *Installer {
+func New(reg registry.Registry) *Installer {
 	return &Installer{
-		registryURL: registryURL,
+		registry: reg,
 	}
 }
 
@@ -71,26 +71,18 @@ func (i *Installer) resolveVersion(_, _, versionSpec string) string {
 }
 
 func (i *Installer) downloadRuleset(org, pkg, version string) ([]byte, error) {
-	url := i.buildDownloadURL(org, pkg, version)
+	name := pkg
+	if org != "" {
+		name = org + "@" + pkg
+	}
 
-	resp, err := http.Get(url)
+	reader, err := i.registry.Download(name, version)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download from %s: %w", url, err)
+		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer reader.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download failed with status %d from %s", resp.StatusCode, url)
-	}
-
-	return io.ReadAll(resp.Body)
-}
-
-func (i *Installer) buildDownloadURL(org, pkg, version string) string {
-	if org == "" {
-		return fmt.Sprintf("%s/%s/%s.tar.gz", i.registryURL, pkg, version)
-	}
-	return fmt.Sprintf("%s/%s/%s/%s.tar.gz", i.registryURL, org, pkg, version)
+	return io.ReadAll(reader)
 }
 
 func (i *Installer) extractRuleset(org, pkg, version string, tarData []byte) error {
@@ -211,7 +203,7 @@ func (i *Installer) updateLockFile(name, version, checksum string) error {
 	// Add locked dependency
 	lock.Dependencies[name] = types.LockedDependency{
 		Version:  version,
-		Source:   i.registryURL,
+		Source:   "registry", // TODO: Get actual registry name
 		Checksum: checksum,
 	}
 

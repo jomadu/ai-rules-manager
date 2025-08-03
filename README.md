@@ -64,9 +64,11 @@ arm config set sources.company https://internal.company.local/
 ```ini
 [sources]
 default = https://registry.armjs.org/
-company = https://internal.company-registry.local/
+company = https://gitlab.company.com
 
 [sources.company]
+type = gitlab
+projectID = 12345
 authToken = $COMPANY_REGISTRY_TOKEN
 ```
 
@@ -92,11 +94,10 @@ authToken = $COMPANY_REGISTRY_TOKEN
 
 ## Supported Registries
 
-- GitLab package registries
-- GitHub package registries
-- AWS S3 buckets
-- Generic HTTP endpoints
-- Local file system
+- **GitLab Package Registry** - Project and group-level registries
+- **AWS S3** - S3 bucket-based registries
+- **Generic HTTP** - Simple file server registries
+- **Local File System** - Local directory registries (future)
 
 ## File Structure
 

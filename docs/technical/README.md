@@ -4,6 +4,10 @@ Implementation guides and technical details for ARM developers and AI coding ass
 
 ## Implementation Guides
 
+**[adr/](adr/)** - Architecture Decision Records
+- Technical decisions and rationale
+- Historical context for implementation choices
+
 **[configuration-driven-targets.md](configuration-driven-targets.md)** - Target directory architecture
 - How ARM handles multiple AI tool targets
 - Configuration-driven installation behavior
