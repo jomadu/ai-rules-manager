@@ -248,9 +248,9 @@ Set environment variables in CI/CD:
 
 ```bash
 export COMPANY_REGISTRY_TOKEN="your_token_here"
-# GitLab registry - supports version discovery
+# GitLab/S3/Filesystem registries - support version discovery
 arm install company@security-rules
-# Generic HTTP/S3 - requires exact version
+# Generic HTTP registry - requires exact version
 arm install company@security-rules@1.2.0
 ```
 

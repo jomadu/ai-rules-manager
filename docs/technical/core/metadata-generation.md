@@ -28,12 +28,12 @@ func (r *GitLabRegistry) convertGitLabToMetadata(pkg GitLabPackage, name string)
 - **Limitation**: No version discovery or rich metadata
 
 ### AWS S3 Registry ✅
-**Similar to Generic HTTP**
+**S3 prefix-based version discovery**
 
-- **Approach**: Minimal metadata with S3-specific information
-- **Requirement**: Exact version specification required
-- **Benefits**: Leverages S3's reliability and global distribution
-- **Limitation**: No automatic version discovery
+- **Approach**: Uses S3 list-objects-v2 API for version discovery
+- **Discovery**: Lists S3 prefixes to find available versions
+- **Benefits**: Leverages S3's hierarchical structure and reliability
+- **Metadata**: Includes S3-specific information (bucket, region, prefix)
 
 ### Local Filesystem Registry ✅
 **Scans directory structure only**
@@ -76,10 +76,15 @@ func (r *GitLabRegistry) convertGitLabToMetadata(pkg GitLabPackage, name string)
 - Upload packages via GitLab's package API
 - Metadata generated automatically from GitLab
 
-### Generic HTTP/S3 Registries
+### Generic HTTP Registry
 - Package archive: `{package}-{version}.tar.gz`
 - Proper URL structure for direct downloads
 - Users must specify exact versions
+
+### S3 Registry
+- Package archive: `{package}-{version}.tar.gz`
+- Organized in S3 prefix structure for version discovery
+- Supports both exact versions and version discovery
 
 ### Filesystem Registry
 - Directory structure: `{path}/{package}/{version}/`

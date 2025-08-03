@@ -2,41 +2,32 @@
 
 Implementation guides and technical details for ARM developers and AI coding assistants.
 
-## Implementation Guides
+## Documentation Sections
 
-**[adr/](adr/)** - Architecture Decision Records
-- Technical decisions and rationale
-- Historical context for implementation choices
+**[core/](core/)** - Core ARM architecture and implementation
+- Configuration system and target handling
+- Metadata generation and registry capabilities
+- Testing procedures and architecture decisions
 
-**[configuration-driven-targets.md](configuration-driven-targets.md)** - Target directory architecture
-- How ARM handles multiple AI tool targets
-- Configuration-driven installation behavior
-- Directory structure and organization
+**[registries/](registries/)** - Registry-specific implementation guides
+- GitLab, S3, HTTP, and Filesystem registry setup
+- Publishing workflows and troubleshooting
+- Registry selection and best practices
 
-**[armrc-configuration.md](armrc-configuration.md)** - .armrc configuration system
-- Registry source configuration and hierarchy
-- Environment variable substitution
-- Configuration commands and security features
+**[s3-registry.md](s3-registry.md)** - S3 registry guide
+- S3 prefix structure and version discovery
+- Configuration, publishing workflows, and best practices
+- AWS integration and troubleshooting
 
-**[testing.md](testing.md)** - Test registry and testing procedures
-- Local test registry setup and usage
-- End-to-end testing workflows
-- Available test rulesets
+**[http-registry.md](http-registry.md)** - HTTP registry guide
+- Generic HTTP file server setup and configuration
+- URL patterns, authentication, and server examples
+- Publishing workflows and limitations
 
-**[testing-uninstall.md](testing-uninstall.md)** - Uninstall command test results
-- Comprehensive test scenarios and results
-- Edge case handling verification
-- Directory cleanup validation
-
-**[metadata-generation.md](metadata-generation.md)** - Registry metadata approaches
-- How ARM handles metadata across different registry types
-- Registry-specific metadata generation strategies
-- Publisher requirements and implementation benefits
-
-**[registry-capabilities.md](registry-capabilities.md)** - Registry feature comparison
-- Capability matrix for all supported registry types
-- Usage patterns and selection guide
-- Best practices for different use cases
+**[filesystem-registry.md](filesystem-registry.md)** - Filesystem registry guide
+- Local directory structure and version discovery
+- Development workflows and use cases
+- Performance considerations and troubleshooting
 
 ## For AI Assistants
 

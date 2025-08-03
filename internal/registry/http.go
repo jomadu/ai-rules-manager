@@ -49,7 +49,7 @@ func (r *GenericHTTPRegistry) GetRuleset(name, version string) (*types.Ruleset, 
 }
 
 // ListVersions returns all available versions for a ruleset
-// Generic HTTP registries don't support version discovery
+// Generic HTTP registries don't support version discovery without directory listing
 func (r *GenericHTTPRegistry) ListVersions(name string) ([]string, error) {
 	return nil, fmt.Errorf("version listing not supported by generic HTTP registry - specify exact version")
 }
@@ -81,11 +81,11 @@ func (r *GenericHTTPRegistry) Download(name, version string) (io.ReadCloser, err
 }
 
 // GetMetadata retrieves metadata for a ruleset
-// Generic HTTP registries provide minimal metadata
+// Generic HTTP registries provide minimal metadata only
 func (r *GenericHTTPRegistry) GetMetadata(name string) (*Metadata, error) {
 	return &Metadata{
 		Name:        name,
-		Description: "Generic HTTP registry - no metadata available",
+		Description: "Generic HTTP registry - no version discovery",
 		Versions:    []Version{},
 		Repository:  r.baseURL,
 	}, nil
