@@ -23,10 +23,10 @@ sudo mv arm-linux-amd64 /usr/local/bin/arm
 ### Basic Usage
 
 ```bash
-# Install from GitLab registry (version discovery supported)
+# Install from GitLab/S3/Filesystem registries (version discovery supported)
 arm install company@typescript-rules
 
-# Install from HTTP/S3 registry (exact version required)
+# Install from HTTP registry (exact version required)
 arm install company@typescript-rules@1.0.0
 
 # Install from manifest
@@ -97,10 +97,10 @@ authToken = $COMPANY_REGISTRY_TOKEN
 
 ## Supported Registries
 
-- **GitLab Package Registry** - Project and group-level registries with full metadata
-- **AWS S3** - S3 bucket-based registries with prefix support (exact versions required)
+- **GitLab Package Registry** - Project and group-level registries with full metadata and version discovery
+- **AWS S3** - S3 bucket-based registries with prefix support and S3 prefix-based version discovery
 - **Generic HTTP** - Simple file server registries (exact versions required)
-- **Local File System** - Local directory registries with version discovery
+- **Local File System** - Local directory registries with filesystem-based version discovery
 
 ## File Structure
 

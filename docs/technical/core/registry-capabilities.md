@@ -8,11 +8,13 @@ Different registry types have varying capabilities based on their underlying inf
 
 | Feature | GitLab | Generic HTTP | S3 | Filesystem |
 |---------|--------|--------------|----|-----------| 
-| **Version Discovery** | ✅ | ❌ | ❌ | ✅ |
+| **Version Discovery** | ✅ | ❌ | ✅ | ✅ |
 | **Rich Metadata** | ✅ | ❌ | ❌ | ❌ |
 | **Health Checks** | ✅ | ✅ | ✅ | ✅ |
 | **Authentication** | ✅ | ✅ | ✅ | ❌ |
 | **Direct Downloads** | ✅ | ✅ | ✅ | ✅ |
+
+**Legend**: ✅ Full Support | ❌ Not Supported
 
 ## Usage Patterns
 
@@ -27,16 +29,17 @@ arm outdated                                  # Version comparison
 
 ### Generic HTTP Registry
 ```bash
-# Exact version required
+# Exact version required - no discovery
 arm install company@typescript-rules@1.0.0   # Must specify version
 arm list                                      # Shows minimal metadata
 ```
 
 ### S3 Registry
 ```bash
-# Exact version required
-arm install company@typescript-rules@1.0.0   # Must specify version
-arm list                                      # Shows S3-specific info
+# Version discovery via S3 prefix listing
+arm install company@typescript-rules          # Lists S3 prefixes
+arm install company@typescript-rules@1.0.0   # Specific version
+arm list                                      # Shows S3 info + versions
 ```
 
 ### Filesystem Registry
@@ -65,7 +68,7 @@ arm list                                      # Shows available versions
 - You need global distribution and reliability
 - You're already using AWS infrastructure
 - You want to organize packages with prefixes
-- You don't need version discovery
+- You need version discovery with S3's hierarchical structure
 
 ### Choose Filesystem When:
 - You're developing or testing locally
@@ -78,7 +81,8 @@ arm list                                      # Shows available versions
 ### Version Discovery
 - **GitLab**: Uses package API to list available versions
 - **Filesystem**: Scans directory structure for version folders
-- **HTTP/S3**: Not supported - users must specify exact versions
+- **S3**: Uses S3 list-objects-v2 API to discover version prefixes
+- **HTTP**: Not supported - requires exact version specification
 
 ### Metadata Generation
 - **GitLab**: Rich metadata from package API (sizes, dates, downloads)
@@ -95,10 +99,10 @@ arm list                                      # Shows available versions
 
 ### For Teams
 - **Primary**: GitLab for rich package management
-- **Fallback**: S3 for reliable distribution
+- **Scalable**: S3 for reliable distribution with version discovery
 - **Development**: Filesystem for local testing
 
 ### For Individual Users
-- **Simple**: Generic HTTP for basic needs
-- **Advanced**: GitLab for full feature set
+- **Simple**: Generic HTTP for basic needs (exact versions)
+- **Advanced**: GitLab or S3 for version discovery
 - **Offline**: Filesystem for local development
