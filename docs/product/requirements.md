@@ -22,11 +22,11 @@ AI Rules Manager (ARM) is a command-line package manager for AI coding assistant
 - **`arm outdated`** - Show rulesets with available updates
 - **`arm clean`** - Remove unused cache and files
 
-### Configuration Management
-- **`.armrc`** - Registry sources and authentication
+### Configuration Management ✅
+- **`.armrc`** - Registry sources and authentication (completed)
 - **`rules.json`** - Project ruleset dependencies and targets
 - **`rules.lock`** - Locked versions for reproducible installs
-- **`arm config`** - Manage configuration settings
+- **`arm config`** - Manage configuration settings (completed)
 
 ### Supported Targets
 - **Cursor IDE** - `.cursorrules` files

@@ -19,7 +19,7 @@ Documentation for AI Rules Manager (ARM) organized by audience.
 |----------|------------------|---------|
 | **Product** | [requirements.md](product/requirements.md) | Product requirements and specifications |
 | **Project** | [roadmap.md](project/roadmap.md) | Development phases and priorities |
-| **Technical** | [configuration-driven-targets.md](technical/configuration-driven-targets.md) | Implementation architecture |
+| **Technical** | [armrc-configuration.md](technical/armrc-configuration.md) | Configuration system guide |
 
 ## For AI Assistants
 
