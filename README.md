@@ -137,7 +137,7 @@ rules.lock
 
 📋 **Current Focus**: Multi-registry configuration support. See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
 
-📈 **Technical Tasks**: See [docs/technical/tasks.md](docs/technical/tasks.md) for detailed implementation tracking.
+📈 **Technical Tasks**: See [docs/project/tasks.md](docs/project/tasks.md) for detailed implementation tracking.
 
 ## Documentation
 
