@@ -1,0 +1,9 @@
+[sources
+missing_bracket = https://example.com
+
+[sources.invalid]
+type = unknown_type
+invalid_field = value
+
+[performance]
+defaultConcurrency = not_a_number

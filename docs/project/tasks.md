@@ -56,7 +56,7 @@
 
 | Task | Status | Details |
 |------|--------|---------|
-| P5.1 Testing | 📋 | [P5.1](tasks/p5-1-testing.md) |
+| P5.1 Testing | 🔄 | [P5.1](tasks/p5-1-testing.md) |
 | P5.2 Error Handling | 📋 | [P5.2](tasks/p5-2-error-handling.md) |
 | P5.3 Documentation | 📋 | [P5.3](tasks/p5-3-documentation.md) |
 | P5.4 Distribution | 📋 | [P5.4](tasks/p5-4-distribution.md) |
