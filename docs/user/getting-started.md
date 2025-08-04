@@ -6,7 +6,8 @@ ARM manages AI coding assistant rulesets across projects.
 
 ```bash
 # Download and install
-wget https://github.com/user/arm/releases/latest/download/arm-linux-amd64
+wget https://github.com/jomadu/ai-rules-manager/releases/latest/download/arm-linux-amd64.tar.gz
+tar -xzf arm-linux-amd64.tar.gz
 chmod +x arm-linux-amd64
 sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```
