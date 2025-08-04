@@ -10,12 +10,12 @@ test:
 
 # Run linter
 lint:
-	golangci-lint run
+	$(shell go env GOPATH)/bin/golangci-lint run
 
 # Format code
 fmt:
 	gofmt -w .
-	goimports -w .
+	$(shell go env GOPATH)/bin/goimports -w .
 
 # Clean build artifacts
 clean:
