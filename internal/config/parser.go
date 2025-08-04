@@ -1,10 +1,12 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
 
+	"github.com/jomadu/arm/internal/errors"
 	"gopkg.in/ini.v1"
 )
 
@@ -51,7 +53,10 @@ type TypeConfig struct {
 func ParseFile(path string) (*ARMConfig, error) {
 	cfg, err := ini.Load(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, errors.ErrConfigInvalid, "Failed to parse configuration file").
+			WithContext("file", path).
+			WithSuggestion("Check file syntax and format").
+			WithSuggestion("Ensure file exists and is readable")
 	}
 
 	config := &ARMConfig{
@@ -103,9 +108,14 @@ func ParseFile(path string) (*ARMConfig, error) {
 			if path := section.Key("path"); path != nil {
 				source.Path = path.Value()
 			}
-			if concurrency := section.Key("concurrency"); concurrency != nil {
+			if concurrency := section.Key("concurrency"); concurrency != nil && concurrency.Value() != "" {
 				if val, err := concurrency.Int(); err == nil {
+					if val <= 0 {
+						return nil, errors.ConfigInvalid(path, fmt.Sprintf("Concurrency for source '%s' must be positive, got %d", sourceName, val))
+					}
 					source.Concurrency = val
+				} else {
+					return nil, errors.ConfigInvalid(path, fmt.Sprintf("Invalid concurrency value for source '%s': %s", sourceName, concurrency.Value()))
 				}
 			}
 			config.Sources[sourceName] = source
@@ -124,9 +134,14 @@ func ParseFile(path string) (*ARMConfig, error) {
 
 	// Parse performance section
 	if perfSection := cfg.Section("performance"); perfSection != nil {
-		if defaultConcurrency := perfSection.Key("defaultConcurrency"); defaultConcurrency != nil {
+		if defaultConcurrency := perfSection.Key("defaultConcurrency"); defaultConcurrency != nil && defaultConcurrency.Value() != "" {
 			if val, err := defaultConcurrency.Int(); err == nil {
+				if val <= 0 {
+					return nil, errors.ConfigInvalid(path, fmt.Sprintf("Default concurrency must be positive, got %d", val))
+				}
 				config.Performance.DefaultConcurrency = val
+			} else {
+				return nil, errors.ConfigInvalid(path, fmt.Sprintf("Invalid default concurrency value: %s", defaultConcurrency.Value()))
 			}
 		}
 	}
@@ -136,9 +151,14 @@ func ParseFile(path string) (*ARMConfig, error) {
 		if strings.HasPrefix(section.Name(), "performance.") {
 			registryType := strings.TrimPrefix(section.Name(), "performance.")
 			typeConfig := TypeConfig{}
-			if concurrency := section.Key("concurrency"); concurrency != nil {
+			if concurrency := section.Key("concurrency"); concurrency != nil && concurrency.Value() != "" {
 				if val, err := concurrency.Int(); err == nil {
+					if val <= 0 {
+						return nil, errors.ConfigInvalid(path, fmt.Sprintf("Performance concurrency for type '%s' must be positive, got %d", registryType, val))
+					}
 					typeConfig.Concurrency = val
+				} else {
+					return nil, errors.ConfigInvalid(path, fmt.Sprintf("Invalid performance concurrency for type '%s': %s", registryType, concurrency.Value()))
 				}
 			}
 			config.Performance.RegistryTypes[registryType] = typeConfig
