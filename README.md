@@ -85,7 +85,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 | `arm list [--format=table\|json]` | List installed rulesets | ✅ |
 | `arm outdated` | Show outdated rulesets | ✅ |
 | `arm config [list\|get\|set] [key] [value]` | Manage configuration | ✅ |
-| `arm clean` | Clean cache and unused files | 📋 |
+| `arm clean` | Clean cache and unused files | 🚧 |
 | `arm help` | Show help | ✅ |
 | `arm version` | Show version | ✅ |
 
@@ -143,15 +143,16 @@ rules.lock
 
 ## Development Status
 
-✅ **Phase 2 Complete** - Multi-registry support implemented and tested. See our [development roadmap](docs/project/roadmap.md):
+🚧 **Phase 4 In Progress** - Cache system implemented, clean command in development. See our [development roadmap](docs/project/roadmap.md):
 
 - **Phase 1**: Core commands (install, uninstall, list) - ✅ **COMPLETED**
 - **Phase 2**: Configuration and registry support - ✅ **COMPLETED**
 - **Phase 3**: Update/outdated functionality - ✅ **COMPLETED**
-- **Phase 4**: Cache management and cleanup - 📋 **PLANNED**
+- **Phase 4**: Cache management and cleanup - 🚧 **IN PROGRESS**
 - **Phase 5**: Testing and documentation - 📋 **PLANNED**
 
-✅ **Phase 3 Complete**: Update/Outdated functionality implemented. Both P3.1 (Update Command) and P3.2 (Outdated Command) completed. See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
+✅ **Phase 3 Complete**: Update/Outdated functionality implemented with version constraints and progress reporting.
+🚧 **Phase 4 Progress**: Global cache system implemented with 60%+ performance improvements. Clean command in development.
 
 📈 **Technical Tasks**: See [docs/project/tasks.md](docs/project/tasks.md) for detailed implementation tracking.
 
