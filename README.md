@@ -85,7 +85,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 | `arm list [--format=table\|json]` | List installed rulesets | ✅ |
 | `arm outdated` | Show outdated rulesets | ✅ |
 | `arm config [list\|get\|set] [key] [value]` | Manage configuration | ✅ |
-| `arm clean` | Clean cache and unused files | 🚧 |
+| `arm clean` | Clean cache and unused files | ✅ |
 | `arm help` | Show help | ✅ |
 | `arm version` | Show version | ✅ |
 
