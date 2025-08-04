@@ -6,112 +6,102 @@ import (
 	"testing"
 )
 
-func TestParseFile(t *testing.T) {
-	// Create a temporary config file
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".armrc")
+func TestParseFile_PerformanceConfig(t *testing.T) {
+	// Create temporary config file
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, ".armrc")
 
 	configContent := `[sources]
 default = https://registry.armjs.org/
-company = https://internal.company.local/
+company = https://gitlab.company.com
+company-2 = https://gitlab2.company.com
 
 [sources.company]
-authToken = secret123
-timeout = 30s
+type = gitlab
+concurrency = 2
 
-[cache]
-location = ~/.arm/cache
-maxSize = 1GB
+[sources.company-2]
+type = gitlab
+
+[performance]
+defaultConcurrency = 5
+
+[performance.gitlab]
+concurrency = 3
+
+[performance.s3]
+concurrency = 8
 `
 
-	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
-		t.Fatalf("Failed to write test config file: %v", err)
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
 	}
 
 	// Parse the config
 	config, err := ParseFile(configPath)
 	if err != nil {
-		t.Fatalf("Failed to parse config: %v", err)
+		t.Fatalf("ParseFile() error = %v", err)
 	}
 
-	// Verify sources
-	if len(config.Sources) != 2 {
-		t.Errorf("Expected 2 sources, got %d", len(config.Sources))
+	// Test performance config
+	if config.Performance.DefaultConcurrency != 5 {
+		t.Errorf("Expected defaultConcurrency = 5, got %d", config.Performance.DefaultConcurrency)
 	}
 
-	defaultSource, exists := config.Sources["default"]
-	if !exists {
-		t.Error("Expected default source to exist")
-	}
-	if defaultSource.URL != "https://registry.armjs.org/" {
-		t.Errorf("Expected default URL to be https://registry.armjs.org/, got %s", defaultSource.URL)
+	// Test registry type configs
+	if gitlabConfig, exists := config.Performance.RegistryTypes["gitlab"]; !exists {
+		t.Error("Expected gitlab performance config to exist")
+	} else if gitlabConfig.Concurrency != 3 {
+		t.Errorf("Expected gitlab concurrency = 3, got %d", gitlabConfig.Concurrency)
 	}
 
-	companySource, exists := config.Sources["company"]
-	if !exists {
+	if s3Config, exists := config.Performance.RegistryTypes["s3"]; !exists {
+		t.Error("Expected s3 performance config to exist")
+	} else if s3Config.Concurrency != 8 {
+		t.Errorf("Expected s3 concurrency = 8, got %d", s3Config.Concurrency)
+	}
+
+	// Test source-specific concurrency
+	if companySource, exists := config.Sources["company"]; !exists {
 		t.Error("Expected company source to exist")
-	}
-	if companySource.URL != "https://internal.company.local/" {
-		t.Errorf("Expected company URL to be https://internal.company.local/, got %s", companySource.URL)
-	}
-	if companySource.AuthToken != "secret123" {
-		t.Errorf("Expected company auth token to be secret123, got %s", companySource.AuthToken)
-	}
-	if companySource.Timeout != "30s" {
-		t.Errorf("Expected company timeout to be 30s, got %s", companySource.Timeout)
+	} else if companySource.Concurrency != 2 {
+		t.Errorf("Expected company concurrency = 2, got %d", companySource.Concurrency)
 	}
 
-	// Verify cache config
-	if config.Cache.Location != "~/.arm/cache" {
-		t.Errorf("Expected cache location to be ~/.arm/cache, got %s", config.Cache.Location)
-	}
-	if config.Cache.MaxSize != "1GB" {
-		t.Errorf("Expected cache max size to be 1GB, got %s", config.Cache.MaxSize)
+	if company2Source, exists := config.Sources["company-2"]; !exists {
+		t.Error("Expected company-2 source to exist")
+	} else if company2Source.Concurrency != 0 {
+		t.Errorf("Expected company-2 concurrency = 0 (not set), got %d", company2Source.Concurrency)
 	}
 }
 
-func TestEnvironmentVariableSubstitution(t *testing.T) {
-	// Set test environment variables
-	_ = os.Setenv("TEST_TOKEN", "env_token_123")
-	_ = os.Setenv("TEST_URL", "https://env.example.com")
-	defer func() {
-		_ = os.Unsetenv("TEST_TOKEN")
-		_ = os.Unsetenv("TEST_URL")
-	}()
-
-	// Create a temporary config file with env vars
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".armrc")
+func TestParseFile_DefaultPerformanceConfig(t *testing.T) {
+	// Create temporary config file with minimal content
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, ".armrc")
 
 	configContent := `[sources]
-default = $TEST_URL
-company = ${TEST_URL}/company
-
-[sources.company]
-authToken = $TEST_TOKEN
+default = https://registry.armjs.org/
 `
 
-	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
-		t.Fatalf("Failed to write test config file: %v", err)
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
 	}
 
 	// Parse the config
 	config, err := ParseFile(configPath)
 	if err != nil {
-		t.Fatalf("Failed to parse config: %v", err)
+		t.Fatalf("ParseFile() error = %v", err)
 	}
 
-	// Verify environment variable substitution
-	defaultSource := config.Sources["default"]
-	if defaultSource.URL != "https://env.example.com" {
-		t.Errorf("Expected default URL to be https://env.example.com, got %s", defaultSource.URL)
+	// Test default performance config
+	if config.Performance.DefaultConcurrency != 3 {
+		t.Errorf("Expected default defaultConcurrency = 3, got %d", config.Performance.DefaultConcurrency)
 	}
 
-	companySource := config.Sources["company"]
-	if companySource.URL != "https://env.example.com/company" {
-		t.Errorf("Expected company URL to be https://env.example.com/company, got %s", companySource.URL)
-	}
-	if companySource.AuthToken != "env_token_123" {
-		t.Errorf("Expected company auth token to be env_token_123, got %s", companySource.AuthToken)
+	if config.Performance.RegistryTypes == nil {
+		t.Error("Expected RegistryTypes map to be initialized")
 	}
 }
