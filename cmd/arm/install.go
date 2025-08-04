@@ -47,16 +47,12 @@ func installFromManifest() error {
 	for name, versionSpec := range manifest.Dependencies {
 		fmt.Printf("Installing %s@%s...\n", name, versionSpec)
 
-		// Get registry for this ruleset
-		reg, err := registryManager.GetRegistryForRuleset(name)
-		if err != nil {
-			return fmt.Errorf("failed to get registry for %s: %w", name, err)
-		}
-
-		// Strip registry prefix from name
+		// Get registry name and clean name
+		registryName := registryManager.ParseRegistryName(name)
 		cleanName := registryManager.StripRegistryPrefix(name)
 
-		installer := installer.New(reg)
+		// Create installer with caching support
+		installer := installer.NewWithManager(registryManager, registryName, cleanName)
 		if err := installer.Install(cleanName, versionSpec); err != nil {
 			return fmt.Errorf("failed to install %s: %w", name, err)
 		}
@@ -78,16 +74,12 @@ func installRuleset(rulesetSpec string) error {
 
 	registryManager := registry.NewManager(configManager)
 
-	// Get registry for this ruleset
-	reg, err := registryManager.GetRegistryForRuleset(name)
-	if err != nil {
-		return fmt.Errorf("failed to get registry for %s: %w", name, err)
-	}
-
-	// Strip registry prefix from name
+	// Get registry name and clean name
+	registryName := registryManager.ParseRegistryName(name)
 	cleanName := registryManager.StripRegistryPrefix(name)
 
-	installer := installer.New(reg)
+	// Create installer with caching support
+	installer := installer.NewWithManager(registryManager, registryName, cleanName)
 	return installer.Install(cleanName, version)
 }
 
