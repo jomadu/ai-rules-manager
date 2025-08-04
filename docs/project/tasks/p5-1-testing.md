@@ -31,12 +31,12 @@ Implement comprehensive testing strategy including unit tests, integration tests
   - Output format validation
   - Exit code verification
   - Interactive prompt testing
-- [ ] **Cross-platform tests**:
+- [ ] **Cross-platform tests** (DEPRIORITIZED):
   - Path handling on Windows/Unix
   - File permission differences
   - Line ending handling
   - Character encoding issues
-- [ ] **Performance benchmarks**:
+- [ ] **Performance benchmarks** (DEPRIORITIZED):
   - Download speed tests
   - Large ruleset handling
   - Concurrent operation performance

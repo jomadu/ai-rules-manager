@@ -1,29 +1,69 @@
 # ARM Documentation
 
-Documentation for AI Rules Manager (ARM) organized by audience.
+*Comprehensive documentation for AI Rules Manager organized by audience*
 
-## For Users & Stakeholders
-📋 **[Product Documentation](product/)** - Requirements, specifications, and product decisions
+## Documentation by Audience
 
-## For Project Managers
-📊 **[Project Documentation](project/)** - Roadmaps, task tracking, and planning
+### 👥 [User Documentation](user/)
+**For end users of ARM**
+- Installation and getting started
+- Configuration and registry setup
+- Command reference and troubleshooting
+- Registry-specific guides (GitLab, S3, HTTP, Filesystem)
 
-## For Developers & AI Assistants
-🔧 **[Technical Documentation](technical/)** - Implementation guides, testing, and architecture
+### 📋 [Product Documentation](product/)
+**For product managers and stakeholders**
+- Product requirements and specifications
+- Architecture decisions and use cases
+- Business context and success metrics
 
----
+### 🚀 [Project Documentation](project/)
+**For project managers and team leads**
+- Development roadmap and milestones
+- Task tracking and project status
+- Team coordination and planning
 
-## Quick Navigation
+### 🔧 [Development Documentation](development/)
+**For developers and contributors**
+- Development environment setup
+- Architecture and API reference
+- Testing guidelines and contribution process
+- Technical implementation details
 
-| Audience | Primary Document | Purpose |
-|----------|------------------|---------|
-| **Product** | [requirements.md](product/requirements.md) | Product requirements and specifications |
-| **Project** | [roadmap.md](project/roadmap.md) | Development phases and priorities |
-| **Technical** | [armrc-configuration.md](technical/armrc-configuration.md) | Configuration system guide |
+## Quick Start by Role
 
-## For AI Assistants
+| Role | Start Here | Key Documents |
+|------|------------|---------------|
+| **End User** | [User Guide](user/getting-started.md) | Configuration, Troubleshooting |
+| **Product Manager** | [Product Overview](product/README.md) | Requirements, Use Cases |
+| **Project Manager** | [Project Status](project/README.md) | Roadmap, Tasks |
+| **Developer** | [Dev Setup](development/getting-started.md) | Architecture, Contributing |
 
-When working on ARM development:
-- Use **[project/tasks.md](project/tasks.md)** for current implementation status
-- Reference **[project/tasks/](project/tasks/)** for detailed task context
-- Check **[technical/](technical/)** for implementation guides and architecture
+## Documentation Standards
+
+### Audience-First Organization
+- **User-focused**: Practical guides and references
+- **Product-focused**: Business requirements and specifications
+- **Project-focused**: Planning and coordination
+- **Development-focused**: Technical implementation
+
+### Quality Guidelines
+- Clear, concise language appropriate for audience
+- Working code examples and commands
+- Up-to-date with current implementation
+- Cross-referenced and well-linked
+
+## Contributing
+
+### Adding Documentation
+1. Identify target audience
+2. Choose appropriate directory
+3. Follow existing conventions
+4. Update index files
+5. Test all examples
+
+### Maintenance
+- Monthly reviews for accuracy
+- Updates with each release
+- Link validation
+- Example testing

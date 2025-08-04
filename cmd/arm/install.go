@@ -13,11 +13,20 @@ import (
 )
 
 var installCmd = &cobra.Command{
-	Use:   "install [ruleset]",
-	Short: "Install a ruleset or install from manifest",
-	Long:  "Install a specific ruleset or install all dependencies from rules.json manifest",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runInstall,
+	Use:   "install [ruleset[@version]]",
+	Short: "Install rulesets from registries",
+	Long: `Install rulesets from configured registries or from rules.json manifest.
+
+When no arguments are provided, installs all dependencies from rules.json.
+When a ruleset is specified, installs that specific ruleset.
+
+Examples:
+  arm install                     # Install from rules.json manifest
+  arm install typescript-rules    # Install latest version
+  arm install company@rules@1.0   # Install specific version from registry
+  arm install @company/rules       # Install from company registry`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runInstall,
 }
 
 func init() {

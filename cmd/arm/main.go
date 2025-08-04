@@ -16,7 +16,16 @@ var rootCmd = &cobra.Command{
 var configCmd = &cobra.Command{
 	Use:   "config [list|get|set] [key] [value]",
 	Short: "Manage ARM configuration",
-	Long:  "Manage ARM configuration files (.armrc) with list, get, and set operations.",
+	Long: `Manage ARM configuration stored in .armrc files.
+
+Configuration includes registry sources, authentication tokens,
+and performance settings like concurrency limits.
+
+Examples:
+  arm config list                           # Show all configuration
+  arm config get sources.default            # Get specific value
+  arm config set sources.company https://internal.company.local/
+  arm config set sources.company.authToken $TOKEN`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return configCommand(args)
 	},
