@@ -7,10 +7,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
 	Use:   "arm",
 	Short: "AI Rules Manager - A package manager for AI coding assistant rulesets",
 	Long:  "ARM helps you install, update, and manage coding rules across different AI tools like Cursor and Amazon Q Developer.",
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(version)
+	},
 }
 
 var configCmd = &cobra.Command{
@@ -33,6 +43,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 func main() {
