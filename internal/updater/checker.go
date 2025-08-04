@@ -74,20 +74,8 @@ func (c *Checker) CheckRuleset(ruleset InstalledRuleset, constraint string) Chec
 		}
 	}
 
-	// Get registry
-	reg, err := c.manager.GetRegistry(ruleset.Source)
-	if err != nil {
-		return CheckResult{
-			Name:       ruleset.Name,
-			Current:    ruleset.Version,
-			Constraint: constraint,
-			Status:     CheckError,
-			Error:      fmt.Errorf("failed to get registry: %w", err),
-		}
-	}
-
-	// Get available versions
-	versions, err := reg.ListVersions(ruleset.Name)
+	// Get available versions using cache
+	versions, err := c.manager.CachedListVersions(ruleset.Source, ruleset.Name)
 	if err != nil {
 		return CheckResult{
 			Name:       ruleset.Name,

@@ -1,4 +1,4 @@
-![arm-header](./assets/arm-header.png)
+![arm-header](./assets/header.png)
 
 A package manager for AI coding assistant rulesets. Install, update, and manage coding rules across different AI tools like Cursor and Amazon Q Developer.
 

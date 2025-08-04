@@ -384,14 +384,12 @@ func (u *Updater) showResults(results []UpdateResult) {
 
 // installUpdate performs the actual update installation
 func (u *Updater) installUpdate(name, version string) error {
-	// Get registry for this ruleset
-	registry, err := u.manager.GetRegistryForRuleset(name)
-	if err != nil {
-		return fmt.Errorf("failed to get registry: %w", err)
-	}
+	// Get registry name for cached download
+	registryName := u.manager.ParseRegistryName(name)
+	cleanName := u.manager.StripRegistryPrefix(name)
 
-	// Download the new version
-	reader, err := registry.Download(name, version)
+	// Download the new version using cache
+	reader, err := u.manager.CachedDownload(registryName, cleanName, version)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
