@@ -2,10 +2,10 @@
 
 *High-level project phases and priorities for project management*
 
-## Current Status: Phase 1 Complete ✅
+## Current Status: Phase 2 Complete ✅, Phase 3 In Progress 🚧
 
 **Last Updated**: January 2025
-**Next Milestone**: P2.2 Registry Abstraction (January 2025)
+**Next Milestone**: P3.2 Outdated Command (February 2025)
 
 ## Development Phases
 
@@ -41,14 +41,20 @@
    - AWS S3 support ✅
    - GitHub registry removed (see ADR-001)
 
-### Phase 3: Update/Outdated Functionality 📋 PLANNED
+### Phase 3: Update/Outdated Functionality 🚧 IN PROGRESS
 **Timeline**: Q1 2025
 **Scope**: Version management and updates
 
-**Features**:
-- `arm update` - Update installed rulesets
-- `arm outdated` - Show available updates
-- Semantic version resolution
+**Completed**:
+1. **P3.1 Update Command** ✅ (January 2025)
+   - `arm update` with --dry-run support
+   - Version constraint checking
+   - Progress bars and backup/restore
+
+**In Progress**:
+2. **P3.2 Outdated Command** (February 2025)
+   - `arm outdated` - Show available updates
+   - Semantic version resolution
 
 ### Phase 4: Cache Management 📋 PLANNED
 **Timeline**: Q2 2025
@@ -76,10 +82,15 @@
 - <2s installation time
 - Cross-platform support
 
-### Phase 2 Targets
-- Support for 3+ registry types
-- Zero-config multi-registry setup
+### Phase 2 Achievements ✅
+- Support for 4 registry types (GitLab, S3, HTTP, Filesystem)
+- Multi-registry configuration system
 - Secure authentication handling
+
+### Phase 3 Progress 🚧
+- 1/2 update commands implemented
+- Version constraint system operational
+- Progress reporting and error handling
 
 ## Risk Assessment
 
