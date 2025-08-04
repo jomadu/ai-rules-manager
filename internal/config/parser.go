@@ -10,28 +10,41 @@ import (
 
 // ARMConfig represents the parsed .armrc configuration
 type ARMConfig struct {
-	Sources map[string]Source `ini:"sources"`
-	Cache   CacheConfig       `ini:"cache"`
+	Sources     map[string]Source `ini:"sources"`
+	Cache       CacheConfig       `ini:"cache"`
+	Performance PerformanceConfig `ini:"performance"`
 }
 
 // Source represents a registry source configuration
 type Source struct {
-	URL       string `ini:"-"`
-	Type      string `ini:"type"`
-	AuthToken string `ini:"authToken"`
-	Timeout   string `ini:"timeout"`
-	ProjectID string `ini:"projectID"` // For GitLab project registry
-	GroupID   string `ini:"groupID"`   // For GitLab group registry
-	Bucket    string `ini:"bucket"`    // For S3
-	Region    string `ini:"region"`    // For S3
-	Prefix    string `ini:"prefix"`    // For S3 prefix
-	Path      string `ini:"path"`      // For filesystem registry
+	URL         string `ini:"-"`
+	Type        string `ini:"type"`
+	AuthToken   string `ini:"authToken"`
+	Timeout     string `ini:"timeout"`
+	Concurrency int    `ini:"concurrency"` // Source-specific concurrency override
+	ProjectID   string `ini:"projectID"`   // For GitLab project registry
+	GroupID     string `ini:"groupID"`     // For GitLab group registry
+	Bucket      string `ini:"bucket"`      // For S3
+	Region      string `ini:"region"`      // For S3
+	Prefix      string `ini:"prefix"`      // For S3 prefix
+	Path        string `ini:"path"`        // For filesystem registry
 }
 
 // CacheConfig represents cache configuration
 type CacheConfig struct {
 	Location string `ini:"location"`
 	MaxSize  string `ini:"maxSize"`
+}
+
+// PerformanceConfig represents performance configuration
+type PerformanceConfig struct {
+	DefaultConcurrency int                   `ini:"defaultConcurrency"`
+	RegistryTypes      map[string]TypeConfig `ini:"-"`
+}
+
+// TypeConfig represents performance settings for a registry type
+type TypeConfig struct {
+	Concurrency int `ini:"concurrency"`
 }
 
 // ParseFile parses an .armrc file and returns the configuration
@@ -43,6 +56,10 @@ func ParseFile(path string) (*ARMConfig, error) {
 
 	config := &ARMConfig{
 		Sources: make(map[string]Source),
+		Performance: PerformanceConfig{
+			DefaultConcurrency: 3, // Default fallback
+			RegistryTypes:      make(map[string]TypeConfig),
+		},
 	}
 
 	// Parse sources section
@@ -86,6 +103,11 @@ func ParseFile(path string) (*ARMConfig, error) {
 			if path := section.Key("path"); path != nil {
 				source.Path = path.Value()
 			}
+			if concurrency := section.Key("concurrency"); concurrency != nil {
+				if val, err := concurrency.Int(); err == nil {
+					source.Concurrency = val
+				}
+			}
 			config.Sources[sourceName] = source
 		}
 	}
@@ -97,6 +119,29 @@ func ParseFile(path string) (*ARMConfig, error) {
 		}
 		if maxSize := cacheSection.Key("maxSize"); maxSize != nil {
 			config.Cache.MaxSize = maxSize.Value()
+		}
+	}
+
+	// Parse performance section
+	if perfSection := cfg.Section("performance"); perfSection != nil {
+		if defaultConcurrency := perfSection.Key("defaultConcurrency"); defaultConcurrency != nil {
+			if val, err := defaultConcurrency.Int(); err == nil {
+				config.Performance.DefaultConcurrency = val
+			}
+		}
+	}
+
+	// Parse performance.{type} sections
+	for _, section := range cfg.Sections() {
+		if strings.HasPrefix(section.Name(), "performance.") {
+			registryType := strings.TrimPrefix(section.Name(), "performance.")
+			typeConfig := TypeConfig{}
+			if concurrency := section.Key("concurrency"); concurrency != nil {
+				if val, err := concurrency.Int(); err == nil {
+					typeConfig.Concurrency = val
+				}
+			}
+			config.Performance.RegistryTypes[registryType] = typeConfig
 		}
 	}
 

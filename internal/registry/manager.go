@@ -9,15 +9,23 @@ import (
 	"github.com/jomadu/arm/internal/config"
 )
 
+// ConfigManager interface for dependency injection
+type ConfigManager interface {
+	GetConfig() *config.ARMConfig
+	GetSource(name string) (config.Source, bool)
+	SetSource(name string, source *config.Source)
+	Load() error
+}
+
 // Manager manages multiple registries and provides registry selection
 type Manager struct {
-	configManager *config.Manager
+	configManager ConfigManager
 	registries    map[string]Registry
 	cache         *cache.Manager
 }
 
 // NewManager creates a new registry manager
-func NewManager(configManager *config.Manager) *Manager {
+func NewManager(configManager ConfigManager) *Manager {
 	cacheManager, err := cache.NewManager()
 	if err != nil {
 		log.Printf("Warning: Cache initialization failed, performance may be reduced: %v", err)
@@ -90,6 +98,44 @@ func (m *Manager) StripRegistryPrefix(rulesetName string) string {
 		}
 	}
 	return rulesetName
+}
+
+// GetConcurrency returns the concurrency limit for a registry source
+func (m *Manager) GetConcurrency(sourceName string) int {
+	source, exists := m.configManager.GetSource(sourceName)
+	if !exists {
+		return m.configManager.GetConfig().Performance.DefaultConcurrency
+	}
+
+	// 1. Source-specific override (highest priority)
+	if source.Concurrency > 0 {
+		return source.Concurrency
+	}
+
+	// 2. Registry type default
+	if typeConfig, exists := m.configManager.GetConfig().Performance.RegistryTypes[source.Type]; exists && typeConfig.Concurrency > 0 {
+		return typeConfig.Concurrency
+	}
+
+	// 3. Global default with registry type fallbacks
+	defaultConcurrency := m.configManager.GetConfig().Performance.DefaultConcurrency
+	if defaultConcurrency <= 0 {
+		// Hardcoded fallbacks by registry type
+		switch source.Type {
+		case "gitlab":
+			return 2
+		case "s3":
+			return 8
+		case "http":
+			return 4
+		case "filesystem":
+			return 10
+		default:
+			return 3
+		}
+	}
+
+	return defaultConcurrency
 }
 
 // createRegistry creates a registry instance based on source configuration

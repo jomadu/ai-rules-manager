@@ -6,6 +6,7 @@ import (
 
 	"github.com/jomadu/arm/internal/config"
 	"github.com/jomadu/arm/internal/installer"
+	"github.com/jomadu/arm/internal/performance"
 	"github.com/jomadu/arm/internal/registry"
 	"github.com/jomadu/arm/pkg/types"
 	"github.com/spf13/cobra"
@@ -44,22 +45,27 @@ func installFromManifest() error {
 
 	registryManager := registry.NewManager(configManager)
 
+	// Prepare download jobs
+	var jobs []performance.DownloadJob
 	for name, versionSpec := range manifest.Dependencies {
-		fmt.Printf("Installing %s@%s...\n", name, versionSpec)
-
-		// Get registry name and clean name
 		registryName := registryManager.ParseRegistryName(name)
 		cleanName := registryManager.StripRegistryPrefix(name)
 
-		// Create installer with caching support
-		installer := installer.NewWithManager(registryManager, registryName, cleanName)
-		if err := installer.Install(cleanName, versionSpec); err != nil {
-			return fmt.Errorf("failed to install %s: %w", name, err)
-		}
+		jobs = append(jobs, performance.DownloadJob{
+			Name:            name,
+			VersionSpec:     versionSpec,
+			RegistryName:    registryName,
+			CleanName:       cleanName,
+			RegistryManager: registryManager,
+		})
 	}
 
-	fmt.Println("All dependencies installed successfully")
-	return nil
+	// Download in parallel
+	downloader := performance.NewParallelDownloader(registryManager)
+	results := downloader.DownloadAll(jobs)
+
+	// Print results and return error if any failed
+	return performance.PrintResults(results)
 }
 
 func installRuleset(rulesetSpec string) error {
