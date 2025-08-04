@@ -13,8 +13,8 @@ func TestCheckRulesetUpdate(t *testing.T) {
 	// Create temporary directory for test files
 	tempDir := t.TempDir()
 	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(oldDir) }()
+	_ = os.Chdir(tempDir)
 
 	// Create test manifest
 	manifest := &types.RulesManifest{
@@ -74,11 +74,11 @@ func TestCheckRulesetUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Mock the version checking logic
 			result := mockCheckRulesetUpdate(tt.ruleset, tt.availVersions)
-			
+
 			if result.Status != tt.expectedStatus {
 				t.Errorf("Expected status %v, got %v (error: %v)", tt.expectedStatus, result.Status, result.Error)
 			}
-			
+
 			if tt.expectedNew != "" && result.NewVersion != tt.expectedNew {
 				t.Errorf("Expected new version %s, got %s", tt.expectedNew, result.NewVersion)
 			}
@@ -172,8 +172,8 @@ func TestBackupRestore(t *testing.T) {
 	// Create temporary directory for test
 	tempDir := t.TempDir()
 	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(oldDir) }()
+	_ = os.Chdir(tempDir)
 
 	// Create test manifest
 	manifest := &types.RulesManifest{
@@ -189,11 +189,11 @@ func TestBackupRestore(t *testing.T) {
 
 	// Create mock installation
 	testFile := filepath.Join(".cursorrules", "arm", "test-rules", "1.0.0", "rule.md")
-	err = os.MkdirAll(filepath.Dir(testFile), 0755)
+	err = os.MkdirAll(filepath.Dir(testFile), 0o755)
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
-	err = os.WriteFile(testFile, []byte("test content"), 0644)
+	err = os.WriteFile(testFile, []byte("test content"), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}

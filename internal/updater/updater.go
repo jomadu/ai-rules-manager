@@ -19,11 +19,11 @@ type Updater struct {
 }
 
 type UpdateResult struct {
-	Name        string
-	OldVersion  string
-	NewVersion  string
-	Status      UpdateStatus
-	Error       error
+	Name       string
+	OldVersion string
+	NewVersion string
+	Status     UpdateStatus
+	Error      error
 }
 
 type UpdateStatus int
@@ -52,7 +52,7 @@ func New() (*Updater, error) {
 
 	// Get cache directory
 	cacheDir := ".arm/cache"
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
@@ -90,10 +90,7 @@ func (u *Updater) Update(rulesetName string, dryRun bool) error {
 	fmt.Printf("Checking %d ruleset(s) for updates...\n", len(rulesToCheck))
 
 	// Check for updates
-	updates, err := u.checkForUpdates(rulesToCheck)
-	if err != nil {
-		return fmt.Errorf("failed to check for updates: %w", err)
-	}
+	updates := u.checkForUpdates(rulesToCheck)
 
 	// Filter to only rulesets that need updates
 	var needsUpdate []UpdateResult
@@ -129,7 +126,7 @@ func (u *Updater) Update(rulesetName string, dryRun bool) error {
 	return nil
 }
 
-func (u *Updater) checkForUpdates(rulesets []InstalledRuleset) ([]UpdateResult, error) {
+func (u *Updater) checkForUpdates(rulesets []InstalledRuleset) []UpdateResult {
 	var results []UpdateResult
 
 	bar := progressbar.NewOptions(len(rulesets),
@@ -145,7 +142,7 @@ func (u *Updater) checkForUpdates(rulesets []InstalledRuleset) ([]UpdateResult, 
 	}
 
 	fmt.Println() // New line after progress bar
-	return results, nil
+	return results
 }
 
 func (u *Updater) checkRulesetUpdate(ruleset InstalledRuleset) UpdateResult {
@@ -321,7 +318,7 @@ func (u *Updater) performSingleUpdate(update UpdateResult) UpdateResult {
 func (u *Updater) createBackup(name, version string) (string, error) {
 	// Create backup directory
 	backupDir := filepath.Join(u.cacheDir, "backups", name, version)
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
+	if err := os.MkdirAll(backupDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
@@ -395,9 +392,9 @@ func (u *Updater) copyDir(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer srcFile.Close()
+		defer func() { _ = srcFile.Close() }()
 
-		if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 			return err
 		}
 
@@ -405,7 +402,7 @@ func (u *Updater) copyDir(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer dstFile.Close()
+		defer func() { _ = dstFile.Close() }()
 
 		_, err = srcFile.WriteTo(dstFile)
 		return err
@@ -414,7 +411,7 @@ func (u *Updater) copyDir(src, dst string) error {
 
 func (u *Updater) showResults(results []UpdateResult) {
 	fmt.Println("\nUpdate Results:")
-	
+
 	successCount := 0
 	failureCount := 0
 
@@ -445,7 +442,7 @@ func (u *Updater) installUpdate(name, version string) error {
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	// For now, just simulate the installation
 	// TODO: Implement proper extraction and installation
