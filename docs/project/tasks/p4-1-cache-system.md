@@ -10,21 +10,18 @@ Implement comprehensive caching system for downloaded rulesets, registry metadat
 - Implement cache expiration policies
 
 ## Tasks
-- [ ] **Cache storage structure**:
+- [x] **Cache storage structure**:
   ```
-  .mpm/cache/
+  ~/.arm/cache/
     packages/
-      <source>/
+      <registry-host>/
         <ruleset>/
           <version>/
             package.tar.gz
-            metadata.json
     registry/
-      <source>/
+      <registry-host>/
         metadata.json
         versions.json
-    temp/
-      downloads/
   ```
 - [ ] **Package caching**:
   - Store downloaded .tar.gz files
