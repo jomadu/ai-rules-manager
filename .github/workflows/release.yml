@@ -36,10 +36,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        npx semantic-release
-        if [ -f .semantic-release-version ]; then
+        npx semantic-release > release-output.txt 2>&1
+        if grep -q "Published release" release-output.txt; then
           echo "released=true" >> $GITHUB_OUTPUT
-          echo "version=$(cat .semantic-release-version)" >> $GITHUB_OUTPUT
+          VERSION=$(grep "Published release" release-output.txt | sed -n 's/.*version \([0-9]\+\.[0-9]\+\.[0-9]\+.*\) containing.*/\1/p')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
         else
           echo "released=false" >> $GITHUB_OUTPUT
         fi

@@ -31,18 +31,16 @@
         "preset": "conventionalcommits"
       }
     ],
-
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "sed -i 's/var version = \".*\"/var version = \"${nextRelease.version}\"/g' cmd/arm/main.go"
+      }
+    ],
     [
       "@semantic-release/github",
       {
         "assets": []
-      }
-    ],
-    [
-      "@semantic-release/git",
-      {
-        "assets": [],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ]
   ]
