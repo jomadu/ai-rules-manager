@@ -1,4 +1,4 @@
-# AI Rules Manager (ARM)
+![arm-header](./assets/arm-header.png)
 
 A package manager for AI coding assistant rulesets. Install, update, and manage coding rules across different AI tools like Cursor and Amazon Q Developer.
 
@@ -107,13 +107,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 After installation, your project will look like:
 
 ```
-.arm/
-  cache/
-    company/
-      typescript-rules/
-        1.0.1/
-          rule-1.md
-          rule-2.md
+# Project files
 .cursorrules/
   arm/
     company/
@@ -132,6 +126,19 @@ After installation, your project will look like:
 rules.json
 rules.lock
 .armrc
+
+# Global cache (shared across projects)
+~/.arm/
+  cache/
+    packages/
+      registry.armjs.org/
+        typescript-rules/
+          1.0.1/
+            package.tar.gz
+    registry/
+      registry.armjs.org/
+        metadata.json
+        versions.json
 ```
 
 ## Development Status
