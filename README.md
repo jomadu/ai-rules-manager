@@ -77,17 +77,17 @@ authToken = $COMPANY_REGISTRY_TOKEN
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `arm install [ruleset]` | Install rulesets |
-| `arm uninstall <ruleset>` | Remove a ruleset |
-| `arm update [ruleset]` | Update rulesets |
-| `arm list [--format=table|json]` | List installed rulesets |
-| `arm outdated` | Show outdated rulesets |
-| `arm config [list\|get\|set] [key] [value]` | Manage configuration |
-| `arm clean` | Clean cache and unused files |
-| `arm help` | Show help |
-| `arm version` | Show version |
+| Command | Description | Status |
+|---------|-------------|--------|
+| `arm install [ruleset]` | Install rulesets | ✅ |
+| `arm uninstall <ruleset>` | Remove a ruleset | ✅ |
+| `arm update [ruleset]` | Update rulesets | ✅ |
+| `arm list [--format=table\|json]` | List installed rulesets | ✅ |
+| `arm outdated` | Show outdated rulesets | 📋 |
+| `arm config [list\|get\|set] [key] [value]` | Manage configuration | ✅ |
+| `arm clean` | Clean cache and unused files | 📋 |
+| `arm help` | Show help | ✅ |
+| `arm version` | Show version | ✅ |
 
 ## Supported Targets
 
@@ -136,15 +136,15 @@ rules.lock
 
 ## Development Status
 
-✅ **Phase 1 Complete** - Core functionality implemented and tested. See our [development roadmap](docs/project/roadmap.md):
+✅ **Phase 2 Complete** - Multi-registry support implemented and tested. See our [development roadmap](docs/project/roadmap.md):
 
 - **Phase 1**: Core commands (install, uninstall, list) - ✅ **COMPLETED**
-- **Phase 2**: Configuration and registry support - 🚧 **IN PROGRESS**
-- **Phase 3**: Update/outdated functionality - 📋 **PLANNED**
+- **Phase 2**: Configuration and registry support - ✅ **COMPLETED**
+- **Phase 3**: Update/outdated functionality - 🚧 **IN PROGRESS**
 - **Phase 4**: Cache management and cleanup - 📋 **PLANNED**
 - **Phase 5**: Testing and documentation - 📋 **PLANNED**
 
-📋 **Current Focus**: Multi-registry configuration support. See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
+🚧 **Current Focus**: Update command functionality. P3.1 (Update Command) completed, working on P3.2 (Outdated Command). See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
 
 📈 **Technical Tasks**: See [docs/project/tasks.md](docs/project/tasks.md) for detailed implementation tracking.
 
