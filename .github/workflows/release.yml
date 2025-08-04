@@ -35,13 +35,17 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        npx semantic-release > release-output.txt 2>&1
+        npx semantic-release > release-output.txt 2>&1 || true
+        cat release-output.txt
         if grep -q "Published release" release-output.txt; then
           echo "released=true" >> $GITHUB_OUTPUT
-          VERSION=$(grep "Published release" release-output.txt | sed -n 's/.*version \([0-9]\+\.[0-9]\+\.[0-9]\+.*\) containing.*/\1/p')
+          # Get the latest tag as version
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
         else
           echo "released=false" >> $GITHUB_OUTPUT
+          echo "No release published"
         fi
 
   build-binaries:
