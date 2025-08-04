@@ -59,8 +59,8 @@
 | Task | Status | Priority | Details |
 |------|--------|----------|---------|
 | P5.3 Documentation | ✅ | **HIGH** | [P5.3](tasks/p5-3-documentation.md) |
-| P5.4 Distribution | 📋 | **HIGH** | [P5.4](tasks/p5-4-distribution.md) |
-| P5.5 Automated Releases | 📋 | **HIGH** | [P5.5](tasks/p5-5-automated-releases.md) |
+| P5.4 Distribution | ✅ | **HIGH** | [P5.4](tasks/p5-4-distribution.md) |
+| P5.5 Automated Releases | ✅ | **HIGH** | [P5.5](tasks/p5-5-automated-releases.md) |
 | P5.1 Testing | 🔄 | **MEDIUM** | [P5.1](tasks/p5-1-testing.md) - CLI tests only |
 | P5.2 Error Handling | 📋 | **LOW** | [P5.2](tasks/p5-2-error-handling.md) |
 
