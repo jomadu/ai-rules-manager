@@ -11,11 +11,12 @@ ARM solves the problem of managing and sharing AI coding rulesets across teams a
 ### Installation
 
 ```bash
-# Install via curl (coming soon)
-curl -sSL https://install.arm.dev | sh
+# Install via script
+curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
 
-# Or download binary from releases
-wget https://github.com/user/arm/releases/latest/download/arm-linux-amd64
+# Or download binary manually
+wget https://github.com/jomadu/ai-rules-manager/releases/latest/download/arm-linux-amd64.tar.gz
+tar -xzf arm-linux-amd64.tar.gz
 chmod +x arm-linux-amd64
 sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```
