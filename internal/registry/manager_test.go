@@ -6,7 +6,7 @@ import (
 	"github.com/jomadu/arm/internal/config"
 )
 
-func TestManager_parseRegistryName(t *testing.T) {
+func TestManager_ParseRegistryName(t *testing.T) {
 	// Create mock config manager
 	configManager := config.NewManager()
 	_ = configManager.Load() // Ignore load errors for testing
@@ -28,9 +28,9 @@ func TestManager_parseRegistryName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := manager.parseRegistryName(tt.ruleset)
+			result := manager.ParseRegistryName(tt.ruleset)
 			if result != tt.expected {
-				t.Errorf("parseRegistryName(%s) = %s, want %s", tt.ruleset, result, tt.expected)
+				t.Errorf("ParseRegistryName(%s) = %s, want %s", tt.ruleset, result, tt.expected)
 			}
 		})
 	}

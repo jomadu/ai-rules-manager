@@ -2,8 +2,10 @@ package registry
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
+	"github.com/jomadu/arm/internal/cache"
 	"github.com/jomadu/arm/internal/config"
 )
 
@@ -11,13 +13,20 @@ import (
 type Manager struct {
 	configManager *config.Manager
 	registries    map[string]Registry
+	cache         *cache.Manager
 }
 
 // NewManager creates a new registry manager
 func NewManager(configManager *config.Manager) *Manager {
+	cacheManager, err := cache.NewManager()
+	if err != nil {
+		log.Printf("Warning: Cache initialization failed, performance may be reduced: %v", err)
+	}
+
 	return &Manager{
 		configManager: configManager,
 		registries:    make(map[string]Registry),
+		cache:         cacheManager,
 	}
 }
 
@@ -48,7 +57,7 @@ func (m *Manager) GetRegistry(name string) (Registry, error) {
 
 // GetRegistryForRuleset determines which registry to use for a ruleset
 func (m *Manager) GetRegistryForRuleset(rulesetName string) (Registry, error) {
-	registryName := m.parseRegistryName(rulesetName)
+	registryName := m.ParseRegistryName(rulesetName)
 	return m.GetRegistry(registryName)
 }
 
@@ -57,9 +66,9 @@ func (m *Manager) InvalidateCache() {
 	m.registries = make(map[string]Registry)
 }
 
-// parseRegistryName extracts registry name from ruleset name
+// ParseRegistryName extracts registry name from ruleset name
 // Examples: "company@typescript-rules" -> "company", "typescript-rules" -> "default"
-func (m *Manager) parseRegistryName(rulesetName string) string {
+func (m *Manager) ParseRegistryName(rulesetName string) string {
 	parts := strings.Split(rulesetName, "@")
 	if len(parts) >= 2 {
 		// Check if first part is a registry name

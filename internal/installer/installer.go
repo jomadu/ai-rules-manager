@@ -15,13 +15,30 @@ import (
 	"github.com/jomadu/arm/pkg/types"
 )
 
+// RegistryManager interface for cached operations
+type RegistryManager interface {
+	CachedDownload(registryName, rulesetName, version string) (io.ReadCloser, error)
+}
+
 type Installer struct {
-	registry registry.Registry
+	registry        registry.Registry
+	registryManager RegistryManager
+	registryName    string
+	rulesetName     string
 }
 
 func New(reg registry.Registry) *Installer {
 	return &Installer{
 		registry: reg,
+	}
+}
+
+// NewWithManager creates an installer with caching support
+func NewWithManager(manager RegistryManager, registryName, rulesetName string) *Installer {
+	return &Installer{
+		registryManager: manager,
+		registryName:    registryName,
+		rulesetName:     rulesetName,
 	}
 }
 
@@ -76,7 +93,16 @@ func (i *Installer) downloadRuleset(org, pkg, version string) ([]byte, error) {
 		name = org + "@" + pkg
 	}
 
-	reader, err := i.registry.Download(name, version)
+	var reader io.ReadCloser
+	var err error
+
+	// Use cached download if manager is available
+	if i.registryManager != nil {
+		reader, err = i.registryManager.CachedDownload(i.registryName, i.rulesetName, version)
+	} else {
+		reader, err = i.registry.Download(name, version)
+	}
+
 	if err != nil {
 		return nil, err
 	}
