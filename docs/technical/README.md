@@ -1,38 +1,21 @@
 # Technical Documentation
 
-Implementation guides and technical details for ARM developers and AI coding assistants.
+Implementation details for ARM developers.
 
-## Documentation Sections
+## Core Architecture
 
-**[core/](core/)** - Core ARM architecture and implementation
-- Configuration system and target handling
-- Metadata generation and registry capabilities
-- Testing procedures and architecture decisions
+- **[Configuration System](core/armrc-configuration.md)** - .armrc parsing and hierarchy
+- **[Registry Interface](core/registry-capabilities.md)** - Registry abstraction layer
+- **[Testing](core/testing.md)** - Test strategy and procedures
+- **[ADRs](core/adr/)** - Architecture decision records
 
-**[registries/](registries/)** - Registry-specific implementation guides
-- GitLab, S3, HTTP, and Filesystem registry setup
-- Publishing workflows and troubleshooting
-- Registry selection and best practices
+## Implementation Guides
 
-**[s3-registry.md](s3-registry.md)** - S3 registry guide
-- S3 prefix structure and version discovery
-- Configuration, publishing workflows, and best practices
-- AWS integration and troubleshooting
+- **[Update Command](update-command.md)** - Version checking and update logic
+- **[Target System](core/configuration-driven-targets.md)** - Multi-target deployment
+- **[Metadata](core/metadata-generation.md)** - Package metadata handling
 
-**[http-registry.md](http-registry.md)** - HTTP registry guide
-- Generic HTTP file server setup and configuration
-- URL patterns, authentication, and server examples
-- Publishing workflows and limitations
+## Development Reference
 
-**[filesystem-registry.md](filesystem-registry.md)** - Filesystem registry guide
-- Local directory structure and version discovery
-- Development workflows and use cases
-- Performance considerations and troubleshooting
-
-## For AI Assistants
-
-When working on ARM development:
-1. **Check** `../project/tasks.md` for current priorities and status
-2. **Reference** `../project/tasks/` for specific task requirements
-3. **Use** implementation guides here for technical architecture details
-4. **Follow** testing procedures in `testing.md` for validation
+For current tasks and priorities, see [project documentation](../project/).
+For user guides and registry setup, see [user documentation](../user/).

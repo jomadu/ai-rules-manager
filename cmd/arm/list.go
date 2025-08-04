@@ -14,8 +14,16 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List installed rulesets",
-	Long:  "Display all installed rulesets with their versions and sources",
-	RunE:  runList,
+	Long: `Display all installed rulesets with their versions and registry sources.
+
+Shows information from the rules.lock file including ruleset names,
+installed versions, and source registries.
+
+Examples:
+  arm list                    # Show table format
+  arm list --format=json      # Show JSON format
+  arm list --format=table     # Show table format (default)`,
+	RunE: runList,
 }
 
 var listFormat string

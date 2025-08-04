@@ -1,8 +1,17 @@
-.PHONY: build test lint fmt clean install-tools setup-hooks
+.PHONY: build test lint fmt clean install-tools setup-hooks build-all
 
 # Build the binary
 build:
 	go build -o arm ./cmd/arm
+
+# Build for all platforms
+build-all:
+	@echo "Building for all platforms..."
+	GOOS=linux GOARCH=amd64 go build -o dist/arm-linux-amd64 ./cmd/arm
+	GOOS=linux GOARCH=arm64 go build -o dist/arm-linux-arm64 ./cmd/arm
+	GOOS=darwin GOARCH=amd64 go build -o dist/arm-darwin-amd64 ./cmd/arm
+	GOOS=darwin GOARCH=arm64 go build -o dist/arm-darwin-arm64 ./cmd/arm
+	GOOS=windows GOARCH=amd64 go build -o dist/arm-windows-amd64.exe ./cmd/arm
 
 # Run tests
 test:
@@ -20,7 +29,7 @@ fmt:
 # Clean build artifacts
 clean:
 	rm -f arm coverage.out
-	rm -rf .venv
+	rm -rf .venv dist/
 
 # Install development tools
 install-tools:

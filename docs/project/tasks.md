@@ -54,13 +54,15 @@
 
 ## Phase 5: Testing & Distribution 📋
 
-| Task | Status | Details |
-|------|--------|---------|
-| P5.1 Testing | 🔄 | [P5.1](tasks/p5-1-testing.md) |
-| P5.2 Error Handling | 📋 | [P5.2](tasks/p5-2-error-handling.md) |
-| P5.3 Documentation | 📋 | [P5.3](tasks/p5-3-documentation.md) |
-| P5.4 Distribution | 📋 | [P5.4](tasks/p5-4-distribution.md) |
-| P5.5 Automated Releases | 📋 | [P5.5](tasks/p5-5-automated-releases.md) |
+**Current Priority**: Documentation → Distribution → Automated Releases
+
+| Task | Status | Priority | Details |
+|------|--------|----------|---------|
+| P5.3 Documentation | ✅ | **HIGH** | [P5.3](tasks/p5-3-documentation.md) |
+| P5.4 Distribution | 📋 | **HIGH** | [P5.4](tasks/p5-4-distribution.md) |
+| P5.5 Automated Releases | 📋 | **HIGH** | [P5.5](tasks/p5-5-automated-releases.md) |
+| P5.1 Testing | 🔄 | **MEDIUM** | [P5.1](tasks/p5-1-testing.md) - CLI tests only |
+| P5.2 Error Handling | 📋 | **LOW** | [P5.2](tasks/p5-2-error-handling.md) |
 
 ## Cross-Cutting Concerns
 
