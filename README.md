@@ -83,7 +83,7 @@ authToken = $COMPANY_REGISTRY_TOKEN
 | `arm uninstall <ruleset>` | Remove a ruleset | ✅ |
 | `arm update [ruleset]` | Update rulesets | ✅ |
 | `arm list [--format=table\|json]` | List installed rulesets | ✅ |
-| `arm outdated` | Show outdated rulesets | 📋 |
+| `arm outdated` | Show outdated rulesets | ✅ |
 | `arm config [list\|get\|set] [key] [value]` | Manage configuration | ✅ |
 | `arm clean` | Clean cache and unused files | 📋 |
 | `arm help` | Show help | ✅ |
@@ -140,11 +140,11 @@ rules.lock
 
 - **Phase 1**: Core commands (install, uninstall, list) - ✅ **COMPLETED**
 - **Phase 2**: Configuration and registry support - ✅ **COMPLETED**
-- **Phase 3**: Update/outdated functionality - 🚧 **IN PROGRESS**
+- **Phase 3**: Update/outdated functionality - ✅ **COMPLETED**
 - **Phase 4**: Cache management and cleanup - 📋 **PLANNED**
 - **Phase 5**: Testing and documentation - 📋 **PLANNED**
 
-🚧 **Current Focus**: Update command functionality. P3.1 (Update Command) completed, working on P3.2 (Outdated Command). See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
+✅ **Phase 3 Complete**: Update/Outdated functionality implemented. Both P3.1 (Update Command) and P3.2 (Outdated Command) completed. See [docs/project/roadmap.md](docs/project/roadmap.md) for development priorities.
 
 📈 **Technical Tasks**: See [docs/project/tasks.md](docs/project/tasks.md) for detailed implementation tracking.
 

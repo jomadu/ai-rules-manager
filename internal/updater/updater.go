@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hashicorp/go-version"
 	"github.com/jomadu/arm/internal/config"
 	"github.com/jomadu/arm/internal/registry"
 	"github.com/jomadu/arm/pkg/types"
@@ -168,85 +167,39 @@ func (u *Updater) checkRulesetUpdate(ruleset InstalledRuleset) UpdateResult {
 		}
 	}
 
-	// Parse current version
-	currentVer, err := version.NewVersion(ruleset.Version)
-	if err != nil {
+	// Use shared checker logic
+	checker := NewChecker(u.manager)
+	result := checker.CheckRuleset(ruleset, constraint)
+
+	// Convert CheckResult to UpdateResult
+	switch result.Status {
+	case CheckOutdated:
 		return UpdateResult{
-			Name:       ruleset.Name,
-			OldVersion: ruleset.Version,
-			Status:     UpdateFailed,
-			Error:      fmt.Errorf("invalid current version: %w", err),
+			Name:       result.Name,
+			OldVersion: result.Current,
+			NewVersion: result.Available,
+			Status:     UpdateSuccess,
 		}
-	}
-
-	// Parse constraint
-	constraints, err := version.NewConstraint(constraint)
-	if err != nil {
+	case CheckUpToDate:
 		return UpdateResult{
-			Name:       ruleset.Name,
-			OldVersion: ruleset.Version,
-			Status:     UpdateFailed,
-			Error:      fmt.Errorf("invalid version constraint: %w", err),
-		}
-	}
-
-	// Get available versions from registry
-	reg, err := u.manager.GetRegistry(ruleset.Source)
-	if err != nil {
-		return UpdateResult{
-			Name:       ruleset.Name,
-			OldVersion: ruleset.Version,
-			Status:     UpdateFailed,
-			Error:      fmt.Errorf("failed to get registry: %w", err),
-		}
-	}
-
-	versions, err := reg.ListVersions(ruleset.Name)
-	if err != nil {
-		return UpdateResult{
-			Name:       ruleset.Name,
-			OldVersion: ruleset.Version,
-			Status:     UpdateFailed,
-			Error:      fmt.Errorf("failed to list versions: %w", err),
-		}
-	}
-
-	// Find the latest version that satisfies constraints
-	var latestValid *version.Version
-	for _, vStr := range versions {
-		v, err := version.NewVersion(vStr)
-		if err != nil {
-			continue // Skip invalid versions
-		}
-
-		if constraints.Check(v) && (latestValid == nil || v.GreaterThan(latestValid)) {
-			latestValid = v
-		}
-	}
-
-	if latestValid == nil {
-		return UpdateResult{
-			Name:       ruleset.Name,
-			OldVersion: ruleset.Version,
-			Status:     UpdateSkipped,
-			Error:      fmt.Errorf("no valid versions found"),
-		}
-	}
-
-	// Check if update is needed
-	if !latestValid.GreaterThan(currentVer) {
-		return UpdateResult{
-			Name:       ruleset.Name,
-			OldVersion: ruleset.Version,
+			Name:       result.Name,
+			OldVersion: result.Current,
 			Status:     UpdateNotNeeded,
 		}
-	}
-
-	return UpdateResult{
-		Name:       ruleset.Name,
-		OldVersion: ruleset.Version,
-		NewVersion: latestValid.String(),
-		Status:     UpdateSuccess,
+	case CheckError, CheckNoCompatible:
+		return UpdateResult{
+			Name:       result.Name,
+			OldVersion: result.Current,
+			Status:     UpdateFailed,
+			Error:      result.Error,
+		}
+	default:
+		return UpdateResult{
+			Name:       result.Name,
+			OldVersion: result.Current,
+			Status:     UpdateFailed,
+			Error:      fmt.Errorf("unknown check status"),
+		}
 	}
 }
 

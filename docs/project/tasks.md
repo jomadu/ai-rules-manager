@@ -41,7 +41,7 @@
 | Task | Status | Details |
 |------|--------|---------|
 | P3.1 Update Command | 📋 | [P3.1](tasks/p3-1-update-command.md) |
-| P3.2 Outdated Command | 📋 | [P3.2](tasks/p3-2-outdated-command.md) |
+| P3.2 Outdated Command | ✅ | [P3.2](tasks/p3-2-outdated-command.md) |
 | P3.3 Version Checking | 📋 | [P3.3](tasks/p3-3-version-checking.md) |
 
 ## Phase 4: Cache Management 📋
