@@ -3,6 +3,7 @@ module github.com/jomadu/arm
 go 1.22
 
 require (
+	github.com/fatih/color v1.18.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.8.0
@@ -15,6 +16,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
