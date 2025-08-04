@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jomadu/arm/internal/errors"
 	"github.com/jomadu/arm/internal/parser"
 	"github.com/jomadu/arm/internal/registry"
 	"github.com/jomadu/arm/pkg/types"
@@ -52,7 +53,9 @@ func (i *Installer) Install(name, versionSpec string) error {
 	// Download ruleset
 	tarData, err := i.downloadRuleset(org, pkg, version)
 	if err != nil {
-		return fmt.Errorf("failed to download ruleset: %w", err)
+		return errors.Wrap(err, errors.ErrPackageNotFound, fmt.Sprintf("Failed to download %s@%s", name, version)).
+			WithContext("package", name).
+			WithContext("version", version)
 	}
 
 	// Calculate checksum
@@ -60,16 +63,21 @@ func (i *Installer) Install(name, versionSpec string) error {
 
 	// Extract to target directories
 	if err := i.extractRuleset(org, pkg, version, tarData); err != nil {
-		return fmt.Errorf("failed to extract ruleset: %w", err)
+		return errors.Wrap(err, errors.ErrPermissionDenied, fmt.Sprintf("Failed to extract %s@%s", name, version)).
+			WithContext("package", name).
+			WithContext("version", version).
+			WithSuggestion("Check disk space and write permissions")
 	}
 
 	// Update manifest and lock files
 	if err := i.updateManifest(name, versionSpec); err != nil {
-		return fmt.Errorf("failed to update manifest: %w", err)
+		return errors.Wrap(err, errors.ErrPermissionDenied, "Failed to update manifest").
+			WithSuggestion("Check write permissions for rules.json")
 	}
 
 	if err := i.updateLockFile(name, version, checksum); err != nil {
-		return fmt.Errorf("failed to update lock file: %w", err)
+		return errors.Wrap(err, errors.ErrPermissionDenied, "Failed to update lock file").
+			WithSuggestion("Check write permissions for rules.lock")
 	}
 
 	fmt.Printf("Successfully installed %s@%s\n", name, version)

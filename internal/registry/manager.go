@@ -7,6 +7,7 @@ import (
 
 	"github.com/jomadu/arm/internal/cache"
 	"github.com/jomadu/arm/internal/config"
+	"github.com/jomadu/arm/internal/errors"
 )
 
 // ConfigManager interface for dependency injection
@@ -48,13 +49,15 @@ func (m *Manager) GetRegistry(name string) (Registry, error) {
 	// Get source configuration
 	source, exists := m.configManager.GetSource(name)
 	if !exists {
-		return nil, fmt.Errorf("registry '%s' not found in configuration", name)
+		return nil, errors.SourceNotFound(name)
 	}
 
 	// Create registry based on type
 	registry, err := m.createRegistry(&source)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create registry '%s': %w", name, err)
+		return nil, errors.Wrap(err, errors.ErrConfigInvalid, fmt.Sprintf("Failed to create registry '%s'", name)).
+			WithContext("registry", name).
+			WithContext("type", source.Type)
 	}
 
 	// Cache the registry
@@ -148,19 +151,24 @@ func (m *Manager) createRegistry(source *config.Source) (Registry, error) {
 	switch regType {
 	case RegistryTypeGitLab:
 		if source.ProjectID == "" && source.GroupID == "" {
-			return nil, fmt.Errorf("either projectID or groupID is required for GitLab registry")
+			return nil, errors.New(errors.ErrConfigInvalid, "GitLab registry requires either projectID or groupID").
+				WithSuggestion("Add projectID with: arm config set sources.<name>.projectID <id>").
+				WithSuggestion("Or add groupID with: arm config set sources.<name>.groupID <id>")
 		}
 		return NewGitLab(source.URL, source.AuthToken, source.ProjectID, source.GroupID), nil
 
 	case RegistryTypeS3:
 		if source.Bucket == "" || source.Region == "" {
-			return nil, fmt.Errorf("bucket and region are required for S3 registry")
+			return nil, errors.New(errors.ErrConfigInvalid, "S3 registry requires bucket and region").
+				WithSuggestion("Add bucket with: arm config set sources.<name>.bucket <bucket-name>").
+				WithSuggestion("Add region with: arm config set sources.<name>.region <aws-region>")
 		}
 		return NewS3(source.AuthToken, source.Bucket, source.Region, source.Prefix), nil
 
 	case RegistryTypeFilesystem:
 		if source.Path == "" {
-			return nil, fmt.Errorf("path is required for filesystem registry")
+			return nil, errors.New(errors.ErrConfigInvalid, "Filesystem registry requires path").
+				WithSuggestion("Add path with: arm config set sources.<name>.path <directory-path>")
 		}
 		return NewFilesystem(source.Path), nil
 
@@ -168,6 +176,8 @@ func (m *Manager) createRegistry(source *config.Source) (Registry, error) {
 		return NewGenericHTTP(source.URL, source.AuthToken), nil
 
 	default:
-		return nil, fmt.Errorf("unsupported registry type: %s", regType)
+		return nil, errors.New(errors.ErrConfigInvalid, fmt.Sprintf("Unsupported registry type: %s", regType)).
+			WithSuggestion("Supported types: gitlab, s3, http, filesystem").
+			WithSuggestion("Set type with: arm config set sources.<name>.type <type>")
 	}
 }
