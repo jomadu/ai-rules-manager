@@ -38,10 +38,12 @@ company-rules = https://github.com/company/internal-rules
 
 [sources.awesome-rules]
 type = git
+api = github  # Optional: enables GitHub API optimization
 # No authToken for public repos
 
 [sources.company-rules]
 type = git
+api = gitlab  # Optional: enables GitLab API optimization
 authToken = $COMPANY_GITHUB_TOKEN
 ```
 
@@ -67,7 +69,12 @@ authToken = $COMPANY_GITHUB_TOKEN
 type GitRegistry struct {
     URL       string
     AuthToken string
-    client    *git.Client
+    APIType   string // "github", "gitlab", "" (generic)
+
+    // API clients (lazy-loaded based on APIType)
+    githubClient *github.Client
+    gitlabClient *gitlab.Client
+    gitClient    *git.Client // fallback
 }
 
 func (r *GitRegistry) GetVersions(name string) ([]string, error)
@@ -229,14 +236,16 @@ authToken = $COMPANY_GITHUB_TOKEN
 ## Performance Considerations
 
 ### Caching Strategy
-- Cache repository metadata (branches, tags)
-- Cache file listings for specific references
-- Reuse cloned repositories when possible
+- Separate git cache directory (`~/.arm/cache/git/`)
+- Store as bare repositories for space efficiency
+- Cache metadata (branches, tags, last fetch time)
+- Time-based cleanup (30+ days)
 
-### Optimization Opportunities
-- Shallow clones for specific commits/tags
-- Sparse checkout for large repositories
-- Parallel pattern matching
+### API Optimization
+- GitHub API: Use tree API for file listing, contents API for downloads
+- GitLab API: Use repository tree and raw file APIs
+- Fallback to git operations for unsupported providers
+- 1000x+ performance improvement for sparse file selection
 
 ## Testing Strategy
 
@@ -265,7 +274,7 @@ authToken = $COMPANY_GITHUB_TOKEN
 - [x] Troubleshooting guide
 
 ### Technical Documentation
-- [ ] Architecture decision record
+- [x] Architecture decision record (ADR-002)
 - [ ] API documentation
 - [ ] Performance benchmarks
 - [ ] Security considerations

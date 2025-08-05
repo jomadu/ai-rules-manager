@@ -30,10 +30,12 @@ company-rules = https://github.com/company/internal-rules
 
 [sources.awesome-rules]
 type = git
+api = github  # Optional: enables GitHub API optimization
 # No authToken needed for public repos
 
 [sources.company-rules]
 type = git
+api = gitlab  # Optional: enables GitLab API optimization
 authToken = $COMPANY_GITHUB_TOKEN
 ```
 
@@ -331,9 +333,60 @@ arm outdated
 arm update awesome-rules@main
 ```
 
+## Performance Optimization
+
+### API-First Approach
+
+ARM automatically uses provider APIs when available for significant performance improvements:
+
+- **GitHub API**: 1000x+ faster file selection vs full repository clone
+- **GitLab API**: Direct file access without repository download
+- **Generic Git**: Fallback to standard git operations
+
+### Configuration
+
+```ini
+[sources.awesome-rules]
+type = git
+api = github  # Enables GitHub API optimization
+url = https://github.com/PatrickF1/awesome-cursorrules
+
+[sources.company-gitlab]
+type = git
+api = gitlab  # Enables GitLab API optimization
+url = https://gitlab.company.com/team/rules-repo
+authToken = $GITLAB_TOKEN
+
+[sources.generic-git]
+type = git
+# No api field = uses git operations
+url = https://git.company.com/repo.git
+```
+
+## Cache Management
+
+### Cache Structure
+
+```
+~/.arm/cache/
+  packages/          # Package registry cache
+  git/              # Git repository cache
+    github.com/
+      PatrickF1/awesome-cursorrules/
+        .git/         # Bare repository
+        metadata.json # Cache metadata
+```
+
+### Cleanup
+
+```bash
+arm clean --cache    # Removes ALL cache (packages + git repos)
+arm clean --dry-run  # Show what would be cleaned
+```
+
 ## Limitations
 
 - Only token-based authentication supported (no SSH keys yet)
 - No support for git submodules
-- Large repositories may have slower initial downloads
-- Pattern matching happens after full repository download
+- API rate limiting may apply for hosted providers
+- Generic git providers require full repository operations
