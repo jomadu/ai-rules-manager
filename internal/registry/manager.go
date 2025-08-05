@@ -172,12 +172,19 @@ func (m *Manager) createRegistry(source *config.Source) (Registry, error) {
 		}
 		return NewFilesystem(source.Path), nil
 
+	case RegistryTypeGit:
+		if source.URL == "" {
+			return nil, errors.New(errors.ErrConfigInvalid, "Git registry requires URL").
+				WithSuggestion("Add URL with: arm config set sources.<n>.url <git-repo-url>")
+		}
+		return NewGitRegistry(source.Name, source.URL, source.AuthToken, source.APIType)
+
 	case RegistryTypeGeneric:
 		return NewGenericHTTP(source.URL, source.AuthToken), nil
 
 	default:
 		return nil, errors.New(errors.ErrConfigInvalid, fmt.Sprintf("Unsupported registry type: %s", regType)).
-			WithSuggestion("Supported types: gitlab, s3, http, filesystem").
+			WithSuggestion("Supported types: gitlab, s3, http, filesystem, git").
 			WithSuggestion("Set type with: arm config set sources.<name>.type <type>")
 	}
 }

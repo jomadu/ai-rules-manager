@@ -3,7 +3,9 @@ module github.com/jomadu/arm
 go 1.22
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/fatih/color v1.18.0
+	github.com/gobwas/glob v0.2.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.8.0

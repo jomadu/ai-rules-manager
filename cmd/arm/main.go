@@ -42,6 +42,7 @@ Examples:
 }
 
 func init() {
+	// Commands are added by their respective init() functions
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(versionCmd)
 }

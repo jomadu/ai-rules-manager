@@ -8,4 +8,5 @@ const (
 	RegistryTypeGitLab     RegistryType = "gitlab"
 	RegistryTypeS3         RegistryType = "s3"
 	RegistryTypeFilesystem RegistryType = "filesystem"
+	RegistryTypeGit        RegistryType = "git"
 )

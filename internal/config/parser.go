@@ -30,6 +30,8 @@ type Source struct {
 	Region      string `ini:"region"`      // For S3
 	Prefix      string `ini:"prefix"`      // For S3 prefix
 	Path        string `ini:"path"`        // For filesystem registry
+	APIType     string `ini:"api"`         // For git registry API optimization
+	Name        string `ini:"-"`           // Source name for git registry
 }
 
 // CacheConfig represents cache configuration
@@ -108,6 +110,10 @@ func ParseFile(path string) (*ARMConfig, error) {
 			if path := section.Key("path"); path != nil {
 				source.Path = path.Value()
 			}
+			if apiType := section.Key("api"); apiType != nil {
+				source.APIType = apiType.Value()
+			}
+			source.Name = sourceName
 			if concurrency := section.Key("concurrency"); concurrency != nil && concurrency.Value() != "" {
 				if val, err := concurrency.Int(); err == nil {
 					if val <= 0 {
@@ -190,6 +196,7 @@ func substituteEnvVars(config *ARMConfig) {
 		source.Region = substituteString(source.Region, envVarPattern)
 		source.Prefix = substituteString(source.Prefix, envVarPattern)
 		source.Path = substituteString(source.Path, envVarPattern)
+		source.APIType = substituteString(source.APIType, envVarPattern)
 		config.Sources[name] = source
 	}
 
