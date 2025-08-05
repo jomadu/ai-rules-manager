@@ -30,6 +30,9 @@ arm install company@typescript-rules
 # Install from HTTP registry (exact version required)
 arm install company@typescript-rules@1.0.0
 
+# Install from git repository with file patterns
+arm install awesome-rules@main:rules/*.md,docs/*.txt
+
 # Install from manifest
 arm install
 
@@ -110,6 +113,7 @@ concurrency = 8
 
 - **GitLab Package Registry** - Project and group-level registries with full metadata and version discovery
 - **AWS S3** - S3 bucket-based registries with prefix support and S3 prefix-based version discovery
+- **Git Repositories** - Direct installation from git repos with glob patterns, branch/tag/commit targeting
 - **Generic HTTP** - Simple file server registries (exact versions required)
 - **Local File System** - Local directory registries with filesystem-based version discovery
 

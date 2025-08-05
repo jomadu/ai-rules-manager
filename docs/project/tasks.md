@@ -64,6 +64,12 @@
 | P5.1 Testing | 🔄 | **MEDIUM** | [P5.1](tasks/p5-1-testing.md) - CLI tests only |
 | P5.2 Error Handling | 📋 | **LOW** | [P5.2](tasks/p5-2-error-handling.md) |
 
+## Phase 6: Extended Registry Support 📋
+
+| Task | Status | Priority | Details |
+|------|--------|----------|---------|
+| P6.1 Git Repository Registry | 📋 | **MEDIUM** | [P6.1](tasks/p6-1-git-registry.md) - Git repos with glob patterns |
+
 ## Cross-Cutting Concerns
 
 | Task | Status | Details |
