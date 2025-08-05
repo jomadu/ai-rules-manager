@@ -78,6 +78,22 @@ type = filesystem
 path = /path/to/local/registry
 ```
 
+### Git Repository Registry
+
+```ini
+[sources.awesome-rules]
+type = git
+url = https://github.com/PatrickF1/awesome-cursorrules
+authToken = $GITHUB_TOKEN
+
+[sources.company-rules]
+type = git
+url = https://github.com/company/internal-rules
+authToken = $COMPANY_GITHUB_TOKEN
+```
+
+**Note**: Public repositories don't require authentication tokens.
+
 ## Authentication
 
 ### Environment Variables
@@ -97,6 +113,8 @@ Store tokens in environment variables, not in `.armrc` files:
 export GITLAB_TOKEN="glpat-xxxxxxxxxxxxxxxxxxxx"
 export AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
 export AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+export COMPANY_GITHUB_TOKEN="ghp_yyyyyyyyyyyyyyyyyyyy"
 ```
 
 ## Performance Settings
