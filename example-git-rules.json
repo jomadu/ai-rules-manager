@@ -1,0 +1,15 @@
+{
+  "targets": [".cursorrules", ".amazonq/rules"],
+  "dependencies": {
+    "typescript-rules": "^1.0.0",
+    "awesome-rules@main": {
+      "patterns": ["rules/*.md", "docs/*.txt"]
+    },
+    "company-rules@v2.1.0": {
+      "patterns": ["security/**", "typescript/**"]
+    },
+    "experimental@abc1234": {
+      "patterns": ["experimental/*.md"]
+    }
+  }
+}
