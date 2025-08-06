@@ -130,10 +130,19 @@ func ConfigInvalid(file, details string) *ARMError {
 }
 
 func SourceNotFound(source string) *ARMError {
-	return New(ErrSourceNotFound, fmt.Sprintf("Registry source '%s' not found in configuration", source)).
-		WithContext("source", source).
-		WithSuggestion("Add source with: arm config set sources." + source + " <URL>").
-		WithSuggestion("List available sources with: arm config list")
+	err := New(ErrSourceNotFound, fmt.Sprintf("Registry source '%s' not found in configuration", source)).
+		WithContext("source", source)
+
+	if source == "default" {
+		err = err.WithSuggestion("Add a default source with: arm config set sources.default <URL>").
+			WithSuggestion("Or use a registry prefix like: arm install company@package-name").
+			WithSuggestion("List available sources with: arm config list")
+	} else {
+		err = err.WithSuggestion("Add source with: arm config set sources." + source + " <URL>").
+			WithSuggestion("List available sources with: arm config list")
+	}
+
+	return err
 }
 
 func PermissionDenied(path string) *ARMError {
