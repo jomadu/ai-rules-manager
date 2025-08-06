@@ -112,6 +112,69 @@ func TestManager_GetConcurrency_HardcodedFallbacks(t *testing.T) {
 	}
 }
 
+func TestManager_ParseRegistryName(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      *config.ARMConfig
+		rulesetName string
+		expected    string
+	}{
+		{
+			name: "explicit registry prefix",
+			config: &config.ARMConfig{
+				Sources: map[string]config.Source{
+					"company": {Type: "gitlab"},
+				},
+			},
+			rulesetName: "company@typescript-rules",
+			expected:    "company",
+		},
+		{
+			name: "default source exists",
+			config: &config.ARMConfig{
+				Sources: map[string]config.Source{
+					"default": {Type: "http"},
+					"company": {Type: "gitlab"},
+				},
+			},
+			rulesetName: "typescript-rules",
+			expected:    "default",
+		},
+		{
+			name: "single source auto-detection",
+			config: &config.ARMConfig{
+				Sources: map[string]config.Source{
+					"company": {Type: "gitlab"},
+				},
+			},
+			rulesetName: "typescript-rules",
+			expected:    "company",
+		},
+		{
+			name: "multiple sources without default",
+			config: &config.ARMConfig{
+				Sources: map[string]config.Source{
+					"company": {Type: "gitlab"},
+					"backup":  {Type: "s3"},
+				},
+			},
+			rulesetName: "typescript-rules",
+			expected:    "default", // Will trigger error with helpful message
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configManager := &mockConfigManager{config: tt.config}
+			manager := &Manager{configManager: configManager}
+			result := manager.ParseRegistryName(tt.rulesetName)
+			if result != tt.expected {
+				t.Errorf("ParseRegistryName(%s) = %s, expected %s", tt.rulesetName, result, tt.expected)
+			}
+		})
+	}
+}
+
 // mockConfigManager implements the config manager interface for testing
 type mockConfigManager struct {
 	config *config.ARMConfig

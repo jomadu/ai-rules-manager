@@ -78,7 +78,7 @@ func (m *Manager) InvalidateCache() {
 }
 
 // ParseRegistryName extracts registry name from ruleset name
-// Examples: "company@typescript-rules" -> "company", "typescript-rules" -> "default"
+// Examples: "company@typescript-rules" -> "company", "typescript-rules" -> "default" or auto-detected source
 func (m *Manager) ParseRegistryName(rulesetName string) string {
 	parts := strings.Split(rulesetName, "@")
 	if len(parts) >= 2 {
@@ -87,7 +87,21 @@ func (m *Manager) ParseRegistryName(rulesetName string) string {
 			return parts[0]
 		}
 	}
-	return "default"
+
+	// Check if default source exists
+	if _, exists := m.configManager.GetSource("default"); exists {
+		return "default"
+	}
+
+	// Auto-detect single source when default doesn't exist
+	config := m.configManager.GetConfig()
+	if config != nil && len(config.Sources) == 1 {
+		for sourceName := range config.Sources {
+			return sourceName
+		}
+	}
+
+	return "default" // Will trigger SourceNotFound error with helpful message
 }
 
 // StripRegistryPrefix removes registry prefix from ruleset name
