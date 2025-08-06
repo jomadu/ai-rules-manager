@@ -4,13 +4,6 @@
 
 ## Documentation by Audience
 
-### 👥 [User Documentation](user/)
-**For end users of ARM**
-- Installation and getting started
-- Configuration and registry setup
-- Command reference and troubleshooting
-- Registry-specific guides (GitLab, S3, HTTP, Filesystem)
-
 ### 📋 [Product Documentation](product/)
 **For product managers and stakeholders**
 - Product requirements and specifications
