@@ -29,3 +29,5 @@ Thumbs.db
 .venv/
 __pycache__/
 *.pyc
+
+node_modules
