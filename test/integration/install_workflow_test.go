@@ -47,7 +47,7 @@ func TestInstallWorkflowIntegration(t *testing.T) {
 			setupFiles: func(tempDir string) error {
 				configContent := `[sources]
 default = https://registry.armjs.org/`
-				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0o644)
 			},
 			command:        []string{armBinary, "install"},
 			expectedFiles:  []string{".armrc", "rules.json"},
@@ -59,7 +59,7 @@ default = https://registry.armjs.org/`
 			setupFiles: func(tempDir string) error {
 				configContent := `[sources]
 default = https://registry.armjs.org/`
-				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0o644)
 			},
 			command:        []string{armBinary, "install", "test-rules@1.0.0"},
 			expectedFiles:  []string{".armrc", "rules.json"},
@@ -75,7 +75,7 @@ default = https://registry.armjs.org/`
     "existing-rules": "1.0.0"
   }
 }`
-				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0o644)
 			},
 			command:        []string{armBinary, "install"},
 			expectedFiles:  []string{".armrc", "rules.json"},
@@ -91,7 +91,7 @@ default = https://registry.armjs.org/`
     "existing-rules": "1.0.0"
   }
 }`
-				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0o644)
 			},
 			command:        []string{armBinary, "install", "new-rules@2.0.0"},
 			expectedFiles:  []string{".armrc", "rules.json"},
@@ -182,20 +182,20 @@ func TestInstallWorkflowWithValidRegistry(t *testing.T) {
 
 	// Create filesystem registry with test package
 	registryDir := filepath.Join(tempDir, "registry")
-	err = os.MkdirAll(registryDir, 0755)
+	err = os.MkdirAll(registryDir, 0o755)
 	require.NoError(t, err)
 
 	packageDir := filepath.Join(registryDir, "test-rules", "1.0.0")
-	err = os.MkdirAll(packageDir, 0755)
+	err = os.MkdirAll(packageDir, 0o755)
 	require.NoError(t, err)
 
 	// Create test rule file in temp directory
 	tempRuleDir := filepath.Join(tempDir, "temp-rules")
-	err = os.MkdirAll(tempRuleDir, 0755)
+	err = os.MkdirAll(tempRuleDir, 0o755)
 	require.NoError(t, err)
 
 	ruleContent := "# Test Rules\n\nUse proper testing practices."
-	err = os.WriteFile(filepath.Join(tempRuleDir, "test-rules.md"), []byte(ruleContent), 0644)
+	err = os.WriteFile(filepath.Join(tempRuleDir, "test-rules.md"), []byte(ruleContent), 0o644)
 	require.NoError(t, err)
 
 	// Create tar.gz package
@@ -211,7 +211,7 @@ filesystem = ` + registryDir + `
 [sources.filesystem]
 type = filesystem
 path = ` + registryDir
-		err = os.WriteFile(".armrc", []byte(configContent), 0644)
+		err = os.WriteFile(".armrc", []byte(configContent), 0o644)
 		require.NoError(t, err)
 
 		// Create manifest
@@ -221,7 +221,7 @@ path = ` + registryDir
     "filesystem@test-rules": "1.0.0"
   }
 }`
-		err = os.WriteFile("rules.json", []byte(manifestContent), 0644)
+		err = os.WriteFile("rules.json", []byte(manifestContent), 0o644)
 		require.NoError(t, err)
 
 		// Run install
@@ -296,4 +296,3 @@ func contains(slice []string, item string) bool {
 	}
 	return false
 }
-
