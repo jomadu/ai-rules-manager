@@ -2,17 +2,28 @@
 
 Technical documentation for ARM developers and contributors.
 
-## Overview
+## Quick Start
 
-This section contains technical implementation details, development guides, and contribution information for ARM developers.
+```bash
+# Clone and setup
+git clone https://github.com/jomadu/ai-rules-manager.git
+cd ai-rules-manager && make setup
 
-## Documentation
+# Run tests and build
+make test && make build
+```
 
-- **[Getting Started](getting-started.md)** - Development environment setup
-- **[Architecture](architecture.md)** - System design and component overview
-- **[API Reference](api-reference.md)** - Internal API documentation
-- **[Testing Guide](testing.md)** - Testing strategies and guidelines
-- **[Contributing](contributing.md)** - Contribution guidelines and processes
+## Documentation Structure
+
+### 🏗️ [Architecture](architecture/)
+- **[Overview](architecture/overview.md)** - High-level system design
+- **[Components](architecture/components.md)** - Core components breakdown
+- **[Registries](architecture/registries.md)** - Registry system design
+- **[Caching](architecture/caching.md)** - Cache architecture
+- **[ADRs](architecture/adr/)** - Architecture Decision Records
+
+### 🧪 Testing
+- **Testing philosophy and coverage requirements**
 
 ## Quick Start
 
@@ -26,8 +37,8 @@ This section contains technical implementation details, development guides, and 
 
 ```bash
 # Clone repository
-git clone https://github.com/user/arm.git
-cd arm
+git clone https://github.com/jomadu/ai-rules-manager.git
+cd ai-rules-manager
 
 # Install development tools
 make setup
@@ -79,11 +90,12 @@ ARM supports multiple registry types through a common interface:
 4. Submit pull request
 5. Code review and merge
 
-### Testing Strategy
+### Testing Philosophy
 
-- **Unit Tests**: Core logic and utilities
-- **Integration Tests**: End-to-end workflows
-- **CLI Tests**: Command-line interface validation
+- **Test-Driven Development** - Write tests before implementation
+- **Comprehensive Coverage** - 85%+ test coverage target
+- **Fast Feedback** - Quick test execution for development workflow
+- **Reliable Tests** - Consistent results across environments
 
 ### Code Quality
 
