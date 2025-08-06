@@ -191,7 +191,7 @@ concurrency = 2`
 		assert.NotNil(t, reg)
 
 		concurrency := registryManager.GetConcurrency("github-repo")
-		assert.Equal(t, 2, concurrency) // Should use git-specific concurrency
+		assert.Equal(t, 3, concurrency) // Should use default concurrency since no source-specific override
 	})
 
 	t.Run("gitlab_registry", func(t *testing.T) {

@@ -25,10 +25,10 @@ func TestInstallWorkflows(t *testing.T) {
 				// No files created - clean directory
 				return nil
 			},
-			args:          []string{},
-			expectedFiles: []string{".armrc", "rules.json"},
+			args:           []string{},
+			expectedFiles:  []string{".armrc", "rules.json"},
 			expectedOutput: "Created stub configuration files (.armrc and rules.json).\nPlease configure your registries in .armrc and add dependencies to rules.json.",
-			expectError:   false,
+			expectError:    false,
 		},
 		{
 			name: "scenario_1b_no_config_files_install_ruleset",
@@ -36,34 +36,34 @@ func TestInstallWorkflows(t *testing.T) {
 				// No files created - clean directory
 				return nil
 			},
-			args:          []string{"typescript-rules@1.0.0"},
-			expectedFiles: []string{".armrc", "rules.json"},
+			args:           []string{"typescript-rules@1.0.0"},
+			expectedFiles:  []string{".armrc", "rules.json"},
 			expectedOutput: "Created stub configuration files (.armrc and rules.json).\nRuleset typescript-rules@1.0.0 was not installed due to missing source configuration.\nPlease configure your registries in .armrc and run the install command again.",
-			expectError:   false,
+			expectError:    false,
 		},
 		{
 			name: "scenario_3a_has_armrc_no_rules_install",
 			setupFiles: func(tempDir string) error {
 				configContent := `[sources]
 default = https://registry.armjs.org/`
-				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0o644)
 			},
-			args:          []string{},
-			expectedFiles: []string{".armrc", "rules.json"},
+			args:           []string{},
+			expectedFiles:  []string{".armrc", "rules.json"},
 			expectedOutput: "Created stub rules.json file.\nPlease add dependencies to rules.json and run 'arm install' again.",
-			expectError:   false,
+			expectError:    false,
 		},
 		{
 			name: "scenario_3b_has_armrc_no_rules_install_ruleset",
 			setupFiles: func(tempDir string) error {
 				configContent := `[sources]
 default = https://registry.armjs.org/`
-				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, ".armrc"), []byte(configContent), 0o644)
 			},
-			args:          []string{"security-rules@2.1.0"},
-			expectedFiles: []string{".armrc", "rules.json"},
+			args:           []string{"security-rules@2.1.0"},
+			expectedFiles:  []string{".armrc", "rules.json"},
 			expectedOutput: "Created rules.json file with the specified ruleset.\nInstalling security-rules@2.1.0...",
-			expectError:   true, // Will fail due to network call, but that's expected
+			expectError:    true, // Will fail due to network call, but that's expected
 		},
 		{
 			name: "scenario_4a_has_rules_no_armrc_install",
@@ -74,12 +74,12 @@ default = https://registry.armjs.org/`
     "existing-rules": "1.0.0"
   }
 }`
-				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0o644)
 			},
-			args:          []string{},
-			expectedFiles: []string{".armrc", "rules.json"},
+			args:           []string{},
+			expectedFiles:  []string{".armrc", "rules.json"},
 			expectedOutput: "No registry sources configured. Please configure a source in .armrc file.\nCreated stub .armrc file in",
-			expectError:   true,
+			expectError:    true,
 		},
 		{
 			name: "scenario_4b_has_rules_no_armrc_install_ruleset",
@@ -90,12 +90,12 @@ default = https://registry.armjs.org/`
     "existing-rules": "1.0.0"
   }
 }`
-				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0644)
+				return os.WriteFile(filepath.Join(tempDir, "rules.json"), []byte(manifestContent), 0o644)
 			},
-			args:          []string{"new-rules@1.5.0"},
-			expectedFiles: []string{".armrc", "rules.json"},
+			args:           []string{"new-rules@1.5.0"},
+			expectedFiles:  []string{".armrc", "rules.json"},
 			expectedOutput: "No registry sources configured. Please configure a source in .armrc file.\nCreated stub .armrc file in",
-			expectError:   true,
+			expectError:    true,
 		},
 	}
 
@@ -263,7 +263,7 @@ func TestConfigDetection(t *testing.T) {
 	t.Run("fileExists", func(t *testing.T) {
 		assert.False(t, fileExists("nonexistent.txt"))
 
-		err := os.WriteFile("test.txt", []byte("test"), 0644)
+		err := os.WriteFile("test.txt", []byte("test"), 0o644)
 		require.NoError(t, err)
 		assert.True(t, fileExists("test.txt"))
 	})
@@ -273,7 +273,7 @@ func TestConfigDetection(t *testing.T) {
 	})
 
 	t.Run("hasValidConfig_empty_config", func(t *testing.T) {
-		err := os.WriteFile(".armrc", []byte("# Just comments"), 0644)
+		err := os.WriteFile(".armrc", []byte("# Just comments"), 0o644)
 		require.NoError(t, err)
 		assert.False(t, hasValidConfig())
 	})
@@ -281,7 +281,7 @@ func TestConfigDetection(t *testing.T) {
 	t.Run("hasValidConfig_valid_config", func(t *testing.T) {
 		configContent := `[sources]
 default = https://registry.armjs.org/`
-		err := os.WriteFile(".armrc", []byte(configContent), 0644)
+		err := os.WriteFile(".armrc", []byte(configContent), 0o644)
 		require.NoError(t, err)
 		assert.True(t, hasValidConfig())
 	})

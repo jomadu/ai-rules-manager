@@ -205,7 +205,7 @@ func createStubConfig() error {
 # api = github
 # # authToken = $GITHUB_TOKEN  # Optional for private repos
 `
-	return os.WriteFile(".armrc", []byte(stubContent), 0644)
+	return os.WriteFile(".armrc", []byte(stubContent), 0o644)
 }
 
 // createStubManifest creates a stub rules.json file
