@@ -1,299 +1,240 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-Common issues and solutions when using ARM.
+Common issues and solutions for ARM.
 
 ## Installation Issues
 
-### Binary Not Found
+### "arm: command not found"
 
-**Problem**: `arm: command not found`
+ARM is not in your PATH.
 
-**Solution**:
+**Solution:**
 ```bash
-# Check if binary is in PATH
+# Check if ARM is installed
 which arm
 
-# Add to PATH if needed
-export PATH=$PATH:/usr/local/bin
+# If not found, reinstall
+curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
 
-# Or move binary to PATH location
-sudo mv arm /usr/local/bin/
+# Or add to PATH manually
+export PATH="/usr/local/bin:$PATH"
 ```
 
-### Permission Denied
+### Permission denied during installation
 
-**Problem**: `permission denied: ./arm`
+Installation script needs sudo access.
 
-**Solution**:
+**Solution:**
 ```bash
-chmod +x arm
+# Run with explicit sudo
+curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | sudo bash
+
+# Or install manually to user directory
+mkdir -p ~/bin
+wget https://github.com/jomadu/ai-rules-manager/releases/latest/download/arm-linux-amd64.tar.gz
+tar -xzf arm-linux-amd64.tar.gz -C ~/bin
+export PATH="$HOME/bin:$PATH"
 ```
 
-## Configuration Issues
+## Registry Issues
 
-### Registry Not Found
+### "No registries configured"
 
-**Problem**: `registry not found: company`
+ARM needs at least one registry configured before installing rulesets.
 
-**Solution**:
+**Solution:**
 ```bash
-# Check configuration
+# Configure a registry first
+arm config set sources.company https://gitlab.company.com
+arm config set sources.company.type gitlab
+
+# Or create .armrc manually
+cat > ~/.armrc << EOF
+[sources]
+company = https://gitlab.company.com
+
+[sources.company]
+type = gitlab
+projectID = 12345
+EOF
+```
+
+### "Authentication failed"
+
+Registry authentication is incorrect or expired.
+
+**Solution:**
+```bash
+# Check current config
 arm config list
 
-# Add missing registry
-arm config set sources.company https://internal.company.local/
+# Update authentication token
+arm config set sources.company.authToken $NEW_TOKEN
+
+# For GitLab, ensure token has read_api scope
+# For S3, check AWS credentials
+aws sts get-caller-identity
 ```
 
-### Authentication Failed
+### "Ruleset not found"
 
-**Problem**: `authentication failed for registry`
+The requested ruleset doesn't exist in the registry.
 
-**Solution**:
+**Solution:**
 ```bash
-# Check environment variables
-echo $GITLAB_TOKEN
-echo $AWS_ACCESS_KEY_ID
+# Check available rulesets (if registry supports listing)
+arm search typescript
 
-# Set missing tokens
-export GITLAB_TOKEN="your-token-here"
+# Verify registry configuration
+arm config get sources.company
+
+# Try explicit registry
+arm install company@typescript-rules
 ```
 
-## Installation Issues
+## Network Issues
 
-### Package Not Found
+### "Connection timeout"
 
-**Problem**: `package not found: typescript-rules`
+Network connectivity or firewall issues.
 
-**Solutions**:
-1. Check package name spelling
-2. Verify registry contains the package
-3. Check registry configuration
-
+**Solution:**
 ```bash
-# Debug mode for more details
-export ARM_DEBUG=1
-arm install typescript-rules
-```
+# Test connectivity
+curl -I https://gitlab.company.com
 
-### Version Constraint Issues
+# Check proxy settings
+echo $HTTP_PROXY
+echo $HTTPS_PROXY
 
-**Problem**: `no compatible version found`
-
-**Solutions**:
-1. Check available versions: `arm outdated typescript-rules`
-2. Relax version constraints in `rules.json`
-3. Use `latest` version
-
-```json
-{
-  "dependencies": {
-    "typescript-rules": "latest"
-  }
-}
-```
-
-### Network Issues
-
-**Problem**: `connection timeout` or `network unreachable`
-
-**Solutions**:
-1. Check internet connection
-2. Verify registry URLs are accessible
-3. Check corporate firewall/proxy settings
-
-```bash
-# Test registry connectivity
-curl -I https://registry.armjs.org/
-
-# Use proxy if needed
+# Configure proxy if needed
 export HTTP_PROXY=http://proxy.company.com:8080
 export HTTPS_PROXY=http://proxy.company.com:8080
 ```
 
-## File System Issues
+### "SSL certificate verification failed"
 
-### Permission Denied
+SSL/TLS certificate issues.
 
-**Problem**: `permission denied: .cursorrules`
-
-**Solutions**:
+**Solution:**
 ```bash
-# Check file permissions
-ls -la .cursorrules
+# Update CA certificates
+sudo apt-get update && sudo apt-get install ca-certificates
 
-# Fix permissions
-chmod 755 .cursorrules
+# For corporate networks, add custom CA
+sudo cp company-ca.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+
+# Temporary workaround (not recommended)
+export ARM_SKIP_TLS_VERIFY=true
 ```
 
-### Disk Space
+## File System Issues
 
-**Problem**: `no space left on device`
+### "Permission denied" writing to target directories
 
-**Solutions**:
+ARM can't write to `.cursorrules` or `.amazonq/rules`.
+
+**Solution:**
+```bash
+# Check directory permissions
+ls -la .cursorrules .amazonq/rules
+
+# Fix permissions
+chmod 755 .cursorrules .amazonq/rules
+
+# Create directories if missing
+mkdir -p .cursorrules .amazonq/rules
+```
+
+### "Disk space full"
+
+Insufficient disk space for cache or target directories.
+
+**Solution:**
 ```bash
 # Check disk space
 df -h
 
 # Clean ARM cache
-arm clean --cache
+arm clean --all
 
-# Clean project targets
-arm clean
+# Remove old rulesets
+arm uninstall old-ruleset
 ```
 
-## Lock File Issues
+## Version Conflicts
 
-### Corrupted Lock File
+### "Version conflict detected"
 
-**Problem**: `lock file corrupted`
+Multiple rulesets require incompatible versions of the same dependency.
 
-**Solution**:
+**Solution:**
 ```bash
-# Remove and regenerate
-rm rules.lock
-arm install
+# Check current versions
+arm list
+
+# Update rules.json with compatible versions
+# Change "^1.0.0" to "^2.0.0" if needed
+
+# Force update
+arm update --force
 ```
 
-### Lock File Conflicts
+### "No compatible version found"
 
-**Problem**: Git merge conflicts in `rules.lock`
+Requested version range has no matching releases.
 
-**Solution**:
+**Solution:**
 ```bash
-# Delete lock file and reinstall
-rm rules.lock
-arm install
-git add rules.lock
-git commit -m "fix: regenerate lock file"
-```
+# Check available versions
+arm info typescript-rules
 
-## Update Issues
+# Use broader version range in rules.json
+"typescript-rules": "*"
 
-### Update Failures
-
-**Problem**: Updates fail partway through
-
-**Solutions**:
-1. Use dry-run to check what would be updated
-2. Update one ruleset at a time
-3. Check for breaking changes
-
-```bash
-# Check what would be updated
-arm update --dry-run
-
-# Update specific ruleset
-arm update typescript-rules
-```
-
-### Version Conflicts
-
-**Problem**: `version conflict detected`
-
-**Solution**:
-```bash
-# Check outdated packages
-arm outdated
-
-# Update rules.json constraints
-# Then reinstall
-rm rules.lock
-arm install
-```
-
-## Performance Issues
-
-### Slow Downloads
-
-**Problem**: Downloads are very slow
-
-**Solutions**:
-1. Increase concurrency settings
-2. Use closer registry mirrors
-3. Check network bandwidth
-
-```bash
-# Increase concurrency
-arm config set performance.defaultConcurrency 8
-
-# Check registry performance
-time curl -I https://registry.armjs.org/
-```
-
-### High Memory Usage
-
-**Problem**: ARM uses too much memory
-
-**Solutions**:
-1. Reduce concurrency
-2. Clean cache regularly
-3. Process fewer packages at once
-
-```bash
-# Reduce concurrency
-arm config set performance.defaultConcurrency 2
-
-# Clean cache
-arm clean --cache
-```
-
-## Debug Mode
-
-Enable debug mode for detailed logging:
-
-```bash
-export ARM_DEBUG=1
-arm install typescript-rules
+# Or specify exact version
+arm install typescript-rules@1.2.3
 ```
 
 ## Getting Help
 
-### Check Version
+### Enable Verbose Output
 
 ```bash
-arm version
+arm --verbose install typescript-rules
+arm --verbose config list
 ```
 
-### View Configuration
+### Check Configuration
 
 ```bash
+# View all settings
 arm config list
+
+# Check specific values
+arm config get sources
+arm config get performance
 ```
 
-### Check Installed Packages
+### Reset Configuration
 
 ```bash
-arm list --format=json
+# Remove global config
+rm ~/.armrc
+
+# Remove project config
+rm rules.json rules.lock
+
+# Clear cache
+arm clean --all
 ```
 
-### Test Registry Connectivity
+### Report Issues
 
-```bash
-# Test default registry
-curl -I https://registry.armjs.org/
+If problems persist:
 
-# Test custom registry
-curl -H "Authorization: Bearer $TOKEN" -I https://internal.company.local/
-```
-
-## Common Error Messages
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `registry not found` | Missing registry config | Add registry to `.armrc` |
-| `authentication failed` | Invalid/missing token | Check environment variables |
-| `package not found` | Wrong package name/registry | Verify package exists |
-| `version constraint not satisfied` | No compatible version | Update version constraints |
-| `permission denied` | File/directory permissions | Fix file permissions |
-| `network timeout` | Network connectivity | Check internet/proxy settings |
-| `disk full` | No disk space | Clean cache or free disk space |
-
-## Reporting Issues
-
-When reporting issues, include:
-
-1. ARM version: `arm version`
-2. Operating system and version
-3. Configuration: `arm config list`
-4. Error message and full command
-5. Debug output: `ARM_DEBUG=1 arm <command>`
+1. Run with `--verbose` flag
+2. Check ARM version: `arm version`
+3. Include error output and configuration
+4. Report at: https://github.com/jomadu/ai-rules-manager/issues
