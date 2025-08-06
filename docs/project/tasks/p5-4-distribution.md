@@ -69,11 +69,11 @@ curl -sSL https://install.arm.dev | sh
 brew install arm
 
 # Debian/Ubuntu
-wget https://github.com/user/arm/releases/latest/download/arm_linux_amd64.deb
+wget https://github.com/jomadu/ai-rules-manager/releases/latest/download/arm_linux_amd64.deb
 sudo dpkg -i arm_linux_amd64.deb
 
 # Manual download
-wget https://github.com/user/arm/releases/latest/download/arm-linux-amd64
+wget https://github.com/jomadu/ai-rules-manager/releases/latest/download/arm-linux-amd64
 chmod +x arm-linux-amd64
 sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```

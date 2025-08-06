@@ -26,9 +26,9 @@
 ### 🔧 [Development Documentation](development/)
 **For developers and contributors**
 - Development environment setup
-- Architecture and API reference
-- Testing guidelines and contribution process
-- Technical implementation details
+- System architecture and design decisions
+- Implementation guides and technical details
+- Testing strategies and ADRs
 
 ## Quick Start by Role
 
