@@ -24,32 +24,30 @@ sudo mv arm-linux-amd64 /usr/local/bin/arm
 ### Basic Usage
 
 ```bash
-# Install from GitLab/S3/Filesystem registries (version discovery supported)
+# Initialize a new project (creates default rules.json and .armrc)
+arm install
+
+# Configure sources (GitLab registries, git repositories, etc.)
+arm config set sources.company https://gitlab.company.com
+arm config set sources.company.type gitlab
+
+# Set targets in rules.json for your IDE
+# Edit rules.json: "targets": [".cursorrules", ".amazonq/rules"]
+
+# Install rulesets from configured sources
 arm install company@typescript-rules
 
-# Install from HTTP registry (exact version required)
-arm install company@typescript-rules@1.0.0
-
-# Install from git repository with file patterns
+# Or install directly from git repositories
 arm install awesome-rules@main:rules/*.md,docs/*.txt
-
-# Install from manifest
-arm install
 
 # List installed rulesets
 arm list
-arm list --format=json  # JSON output
 
 # Update all rulesets
 arm update
 
 # Check for outdated rulesets
 arm outdated
-
-# Manage configuration
-arm config list
-arm config get sources.default
-arm config set sources.company https://internal.company.local/
 ```
 
 ## Configuration
@@ -70,7 +68,6 @@ arm config set sources.company https://internal.company.local/
 
 ```ini
 [sources]
-default = https://registry.armjs.org/
 company = https://gitlab.company.com
 
 [sources.company]

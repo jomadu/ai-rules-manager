@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jomadu/arm/internal/config"
@@ -41,6 +42,14 @@ func runInstall(cmd *cobra.Command, args []string) error {
 }
 
 func installFromManifest() error {
+	// Check if we need to initialize default files
+	if shouldInitialize() {
+		if err := initializeProject(); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	manifest, err := types.LoadManifest("rules.json")
 	if err != nil {
 		return fmt.Errorf("failed to load manifest: %w", err)
@@ -112,4 +121,88 @@ func parseRulesetSpec(spec string) (name, version string) {
 		return fmt.Sprintf("%s@%s", parts[0], parts[1]), parts[2]
 	}
 	return spec, "latest"
+}
+
+// shouldInitialize checks if we should create default files
+func shouldInitialize() bool {
+	_, rulesExists := os.Stat("rules.json")
+	_, armrcExists := os.Stat(".armrc")
+	return os.IsNotExist(rulesExists) || os.IsNotExist(armrcExists)
+}
+
+// initializeProject creates default rules.json and .armrc files
+func initializeProject() error {
+	_, rulesExists := os.Stat("rules.json")
+	_, armrcExists := os.Stat(".armrc")
+
+	var created []string
+
+	// Create rules.json if missing
+	if os.IsNotExist(rulesExists) {
+		manifest := &types.RulesManifest{
+			Targets:      []string{},
+			Dependencies: make(map[string]string),
+		}
+		if err := manifest.SaveManifestWithoutValidation("rules.json"); err != nil {
+			return fmt.Errorf("failed to create rules.json: %w", err)
+		}
+		created = append(created, "rules.json")
+	}
+
+	// Create .armrc if missing
+	if os.IsNotExist(armrcExists) {
+		armrcContent := `# ARM Configuration File
+# Configure registries for ruleset installation
+
+# Example configurations (uncomment and modify as needed):
+
+# GitLab Package Registry
+# [sources]
+# company = https://gitlab.company.com
+# [sources.company]
+# type = gitlab
+# projectID = 12345
+# authToken = $GITLAB_TOKEN
+
+# AWS S3 Registry
+# [sources]
+# s3 = s3://my-rules-bucket/packages/
+# [sources.s3]
+# type = s3
+# region = us-east-1
+# authToken = $AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY
+
+# Git Repository
+# [sources]
+# awesome = https://github.com/user/awesome-rules
+# [sources.awesome]
+# type = git
+# api = github
+# authToken = $GITHUB_TOKEN
+
+# HTTP Registry
+# [sources]
+# http = https://registry.example.com/
+# [sources.http]
+# type = http
+
+# Default Public Registry
+# [sources]
+# default = https://registry.armjs.org/
+`
+		if err := os.WriteFile(".armrc", []byte(armrcContent), 0o644); err != nil {
+			return fmt.Errorf("failed to create .armrc: %w", err)
+		}
+		created = append(created, ".armrc")
+	}
+
+	if len(created) > 0 {
+		fmt.Printf("Created default configuration files: %s\n", strings.Join(created, ", "))
+		fmt.Println("\nNext steps:")
+		fmt.Println("1. Configure sources (GitLab registries, git repositories, etc.) in .armrc or use the arm config commands")
+		fmt.Println("2. Set targets in rules.json (e.g., [\".cursorrules\", \".amazonq/rules\"])")
+		fmt.Println("3. Add rulesets to rules.json dependencies or use the arm install commands")
+	}
+
+	return nil
 }

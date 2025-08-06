@@ -63,6 +63,20 @@ func (m *RulesManifest) SaveManifest(path string) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
+// SaveManifestWithoutValidation saves a rules.json file without validation (for initialization)
+func (m *RulesManifest) SaveManifestWithoutValidation(path string) error {
+	if m.Dependencies == nil {
+		m.Dependencies = make(map[string]string)
+	}
+
+	data, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+
+	return os.WriteFile(path, data, 0o644)
+}
+
 // Validate performs validation on the manifest
 func (m *RulesManifest) Validate() error {
 	if len(m.Targets) == 0 {
