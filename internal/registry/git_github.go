@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -72,9 +73,19 @@ func (r *GitRegistry) getGitHubFileList(commitSHA string) ([]string, error) {
 func (r *GitRegistry) downloadFiles(files []string, commitSHA, targetDir string) error {
 	switch r.APIType {
 	case "github":
-		return r.downloadGitHubFiles(files, commitSHA, targetDir)
+		err := r.downloadGitHubFiles(files, commitSHA, targetDir)
+		if err == nil {
+			return nil
+		}
+		// Fall back to generic git on API failure
+		return r.downloadGenericGitFiles(files, commitSHA, targetDir)
 	case "gitlab":
-		return r.downloadGitLabFiles(files, commitSHA, targetDir)
+		err := r.downloadGitLabFiles(files, commitSHA, targetDir)
+		if err == nil {
+			return nil
+		}
+		// Fall back to generic git on API failure
+		return r.downloadGenericGitFiles(files, commitSHA, targetDir)
 	default:
 		return r.downloadGenericGitFiles(files, commitSHA, targetDir)
 	}
@@ -147,9 +158,19 @@ func (r *GitRegistry) downloadGitHubFile(owner, repo, filePath, commitSHA, targe
 func (r *GitRegistry) fetchMetadata() (*GitMetadata, error) {
 	switch r.APIType {
 	case "github":
-		return r.fetchGitHubMetadata()
+		meta, err := r.fetchGitHubMetadata()
+		if err == nil {
+			return meta, nil
+		}
+		// Fall back to generic git on API failure
+		return r.fetchGenericGitMetadata()
 	case "gitlab":
-		return r.fetchGitLabMetadata()
+		meta, err := r.fetchGitLabMetadata()
+		if err == nil {
+			return meta, nil
+		}
+		// Fall back to generic git on API failure
+		return r.fetchGenericGitMetadata()
 	default:
 		return r.fetchGenericGitMetadata()
 	}
@@ -301,4 +322,13 @@ func (r *GitRegistry) parseGitHubURL() (owner, repo string, err error) {
 	repo = strings.TrimSuffix(parts[1], ".git")
 
 	return owner, repo, nil
+}
+
+// decodeBase64 decodes base64 content from GitHub API
+func decodeBase64(content string) ([]byte, error) {
+	// Remove whitespace and newlines
+	content = strings.ReplaceAll(content, "\n", "")
+	content = strings.ReplaceAll(content, " ", "")
+
+	return base64.StdEncoding.DecodeString(content)
 }

@@ -44,6 +44,11 @@ func NewWithManager(manager RegistryManager, registryName, rulesetName string) *
 }
 
 func (i *Installer) Install(name, versionSpec string) error {
+	// Check if this is a git registry
+	if gitReg, ok := i.registry.(*registry.GitRegistry); ok {
+		return i.installFromGit(gitReg, name, versionSpec)
+	}
+
 	// Parse org and package from name
 	org, pkg := types.ParseRulesetName(name)
 
@@ -243,4 +248,62 @@ func (i *Installer) updateLockFile(name, version, checksum string) error {
 
 	// Save lock file
 	return lock.SaveLockFile(lockPath)
+}
+
+func (i *Installer) installFromGit(gitReg *registry.GitRegistry, name, versionSpec string) error {
+	// Parse git reference and file patterns from version spec
+	ref, patterns := i.parseGitVersionSpec(versionSpec)
+
+	// Load manifest to get target directories
+	manifest, err := types.LoadManifest("rules.json")
+	if err != nil {
+		manifest = &types.RulesManifest{
+			Targets:      types.GetDefaultTargets(),
+			Dependencies: make(map[string]string),
+		}
+	}
+
+	// Install files to each target directory
+	for _, target := range manifest.Targets {
+		targetDir := filepath.Join(target, "arm", name, ref)
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
+		}
+
+		if err := gitReg.InstallFiles(name, ref, patterns, targetDir); err != nil {
+			return fmt.Errorf("failed to install files: %w", err)
+		}
+	}
+
+	// Update manifest and lock files
+	if err := i.updateManifest(name, versionSpec); err != nil {
+		return err
+	}
+
+	// Generate a proper checksum for git installations
+	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("git:%s:%s", gitReg.URL, ref))))
+	if err := i.updateLockFile(name, ref, checksum); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully installed %s@%s\n", name, versionSpec)
+	return nil
+}
+
+func (i *Installer) parseGitVersionSpec(versionSpec string) (ref string, patterns []string) {
+	if versionSpec == "latest" {
+		return "main", []string{"*"}
+	}
+
+	// Check for pattern syntax: ref:pattern1,pattern2
+	if strings.Contains(versionSpec, ":") {
+		parts := strings.SplitN(versionSpec, ":", 2)
+		ref = parts[0]
+		patternStr := parts[1]
+		patterns = strings.Split(patternStr, ",")
+		return ref, patterns
+	}
+
+	// No patterns specified, use ref with wildcard
+	return versionSpec, []string{"*"}
 }

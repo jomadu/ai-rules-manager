@@ -232,9 +232,19 @@ func (r *GitRegistry) resolveReference(gitRef *GitReference) (string, error) {
 func (r *GitRegistry) getFileList(commitSHA string) ([]string, error) {
 	switch r.APIType {
 	case "github":
-		return r.getGitHubFileList(commitSHA)
+		files, err := r.getGitHubFileList(commitSHA)
+		if err == nil {
+			return files, nil
+		}
+		// Fall back to generic git on API failure
+		return r.getGenericGitFileList(commitSHA)
 	case "gitlab":
-		return r.getGitLabFileList(commitSHA)
+		files, err := r.getGitLabFileList(commitSHA)
+		if err == nil {
+			return files, nil
+		}
+		// Fall back to generic git on API failure
+		return r.getGenericGitFileList(commitSHA)
 	default:
 		return r.getGenericGitFileList(commitSHA)
 	}
