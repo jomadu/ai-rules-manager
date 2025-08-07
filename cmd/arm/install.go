@@ -156,7 +156,13 @@ func installRuleset(rulesetSpec string) error {
 	registryName := registryManager.ParseRegistryName(name)
 	cleanName := registryManager.StripRegistryPrefix(name)
 
-	installer := installer.NewWithManager(registryManager, registryName, cleanName)
+	// Get the actual registry for git detection
+	reg, err := registryManager.GetRegistry(registryName)
+	if err != nil {
+		return fmt.Errorf("failed to get registry: %w", err)
+	}
+
+	installer := installer.New(reg)
 	return installer.Install(cleanName, version)
 }
 
