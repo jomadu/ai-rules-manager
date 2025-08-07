@@ -1,40 +1,26 @@
+## context
+
+product is called ai-rules-manager.
+
+A package manager for AI coding assistant rulesets. Install, update, and manage coding rules across different AI tools like Cursor and Amazon Q Developer.
+
+ARM solves the problem of managing and sharing AI coding rulesets across teams and projects. Instead of manually copying rules files to .cursorrules .amazonq/rules directories, ARM provides a centralized way to manage the installation of coding rulesets from multiple registries.
+
+Implemented in go, so it's fast and compatible.
+
+GitLab Package Registry - Project and group-level registries with full metadata and version discovery
+AWS S3 - S3 bucket-based registries with prefix support and S3 prefix-based version discovery
+Git Repositories - Direct installation from git repos with glob patterns, branch/tag/commit targeting
+Generic HTTP - Simple file server registries (exact versions required)
+Local File System - Local directory registries with filesystem-based version discovery
+
 version spec is source/ruleset@version
+
+it's assumed that rulesets are bundled into {ruleset}@{version}.tar.gz files.
 
 Configuration: .armrc (user/project config)
 Manifest: arm.json (dependencies)
 Lock file: arm.lock (resolved versions)
-
-```sh
-// Install rulesets
-arm install source/ruleset@version, ...
-arm install
-
-// Remove a ruleset
-arm uninstall source/ruleset@version, ...
-arm uninstall
-
-// Update rulesets
-arm update source/ruleset@version, ...
-arm update
-
-// List installed rulesets
-arm list [--format=table\|json]
-
-// Show outdated rulesets
-arm outdated
-
-// Manage configuration
-arm config [list\|get\|set] [key] [value]
-
-// Clean cache and unused files
-arm clean
-
-// Show help
-arm help
-
-// Show version
-arm version
-```
 
 `~/.arm/.armrc`
 ```
@@ -56,11 +42,19 @@ rateLimit=100
 // defaults for gitlab based registries
 concurrency=2
 rateLimit=60
+
+[cache]
+// default cache path is ~/.arm/cache, but can be configured
+// example of modified cache path
+// path=~/.arm/my-cache
 ```
 
 `~/.arm/arm.json`
 ```
 {
+    "engines": {
+        "arm": "~1.0.0"
+    },
     "channels": {
         "q": {
             "directories": ["~/.aws/amazonq/rules"]
@@ -77,7 +71,7 @@ rateLimit=60
 ```
 
 ```
-~/aws
+~/.aws
     amazonq
         rules
             arm
@@ -137,6 +131,9 @@ rateLimit=60
 `./arm.json`
 ```
 {
+    "engines": {
+        "arm": "~1.0.0"
+    },
     "channels": {
         "cursor": {
             "directories": [".cursor/rules"]
@@ -292,4 +289,40 @@ prefix/
     package/
         version/
             ruleset.tar.gz
+```
+
+
+## stories raw
+
+```sh
+// check the installed version of arm
+// show help
+// initialize with install globally
+// initialize with install locally
+// # global (i.e in ~/.arm/.armrc)
+// configure global s3 registry type default configuration
+// configure global gitlab registry type default configuration
+// configure global git registry type default configuration
+// configure global registries - default and named
+// configure global cache default configuration
+// # local (i.e in ./.armrc) (overrides global)
+// configure local s3 registry type default configuration
+// configure local gitlab registry type default configuration
+// configure local git registry type default configuration
+// configure local registries - default and named
+// configure local cache default configuration
+// install ruleset(s) globally
+// install ruleset(s) locally
+// uninstall ruleset(s) globally
+// uninstall ruleset(s) locally
+// list rulessets installed globally
+// list rulessets installed locally
+// show outdated global rulesets
+// show outdated local rulesets
+// update global ruleset(s)
+// update local ruleset(s)
+// clean global cache
+// clean cache used by local config
+// clean unused local packages
+// clean unused global packages
 ```
