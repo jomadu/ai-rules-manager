@@ -1,7 +1,0 @@
-{
-  "targets": [".cursorrules", ".amazonq/rules"],
-  "dependencies": {
-    "typescript-rules": "^1.0.0",
-    "security-rules": "^1.2.0"
-  }
-}
