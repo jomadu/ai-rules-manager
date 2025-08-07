@@ -4,7 +4,37 @@ Configuration: .armrc (user/project config)
 Manifest: arm.json (dependencies)
 Lock file: arm.lock (resolved versions)
 
+```sh
+// Install rulesets
+arm install source/ruleset@version, ...
+arm install
 
+// Remove a ruleset
+arm uninstall source/ruleset@version, ...
+arm uninstall
+
+// Update rulesets
+arm update source/ruleset@version, ...
+arm update
+
+// List installed rulesets
+arm list [--format=table\|json]
+
+// Show outdated rulesets
+arm outdated
+
+// Manage configuration
+arm config [list\|get\|set] [key] [value]
+
+// Clean cache and unused files
+arm clean
+
+// Show help
+arm help
+
+// Show version
+arm version
+```
 
 `~/.arm/.armrc`
 ```
@@ -36,9 +66,9 @@ rateLimit=60
             "directories": ["~/.aws/amazonq/rules"]
         }
     },
-    "dependencies": {
+    "rulesets": {
         "bongo-rules": {
-            "version": "^1.0.0", // installs the bongo-rules ruleset from the default dk registry followin semver range, since source wasn't specified
+            "version": "^1.0.0", // installs the bongo-rules ruleset from the default dk registry following semver range, since source wasn't specified
             "channels": [
                 "q"
             ]
@@ -72,22 +102,22 @@ kart = gitlab://gitlab.yoshi.com/project/1234
 mario = gitlab://gitlab.wario.com/group/5678
 
 [registries.awesome-cursorrules]
-// if authToken, apiType, or apiVersion are not provided, uses git operations with users git auth
+// for git type registries, if authToken, apiType, or apiVersion are not provided, uses git operations with users git auth
 // concurrency and rate limit on specific registries overrides the default configured for the registry type
 concurrency = 2
 rateLimit = 10
 
 [registries.cursor-rules]
-authToken = $GITHUB_PAT // if authToken, apiType and apiVersion are specified, uses the api to retrieve files
+authToken = $GITHUB_PAT // for git type registry if authToken, apiType and apiVersion are specified, uses the specific api to retrieve files (not all will be supported, but some will)
 apiType = github
 apiVersion = 2022-11-28
 
 [registries.peach]
-// omission of profile uses default profile
+// omission of profile uses default aws profile
 prefix = /registries/panda-bear
 
 [registries.toad]
-profile = toad
+profile = toad // uses a toad aws profile
 // ommision of prefix uses no prefix
 
 [registries.kart]
@@ -96,10 +126,10 @@ apiVersion = 3
 
 [registries.mario]
 authToken = $GITLAB_MARIO_TOKEN
-// omission of apiVersion defaults to the latest version of the api (4)
+// omission of apiVersion defaults to the latest version of the api (4 for gitlab at the time of writing)
 
 [gitlab]
-// defaults for gitlab based registries, overrides the ~/.arm/.armrc config
+// defaults for gitlab based registries in this directory, overrides the ~/.arm/.armrc config
 concurrency=2
 rateLimit=60
 ```
@@ -117,14 +147,15 @@ rateLimit=60
     },
     "rulesets": {
         "wahoo-rules": {
-            "version": "^1.0.0", // installs the wahoo-rules ruleset from the default registry followin semver range, since source wasn't specified
+            "version": "^1.0.0", // installs the wahoo-rules ruleset from the default registry following semver range, since source wasn't specified
             "channels": [
                 "q"
             ]
         }
         "awesome-cursorrules/rules-new-python": {
             "version": "latest", // tracks the latest changes to the default branch of the project. rules-new/python-*.mdc is the glob pattern selecting the set of files to install
-            "patterns": [
+            // for git based registries, the scope of the package is defined by a set of glob patterns
+            "matchingPatterns": [
                 "rules-new/python-*.mdc"
             ]
             "channels": [
@@ -133,7 +164,7 @@ rateLimit=60
         }
         "cursor-rules/base-devops": {
             "version": "main" // tracks latest changes to a named branch
-            "patterns": [
+            "matchingPatterns": [
                 ".cursor/rules/01-base-devops.mdc"
             ]
             "channels": [
@@ -142,7 +173,7 @@ rateLimit=60
         }
         "cursor-rules/base-agentic": {
             "version": "^1.0.0", // tracks semver tags, supports tagging with v1.0.0 and 1.0.0 syntax
-            "patterns": [
+            "matchingPatterns": [
                 ".cursor/rules/01-base-agentic.mdc"
             ]
             "channels": [
@@ -151,7 +182,7 @@ rateLimit=60
         }
         "cursor-rules/inspirations": {
             "version": "53c5307", // pinned to a commit
-            "patterns": {
+            "matchingPatterns": {
                 ".cursor/rules/inspirations.mdc"
             }
             "channels": [
@@ -190,6 +221,11 @@ rateLimit=60
 ./
     .amazonq
         rules
+            default
+                wahoo-rules
+                    1.1.0
+                        wa.mdc
+                        hoo.mdc
             peach
                 dress-rules
                     1.0.4
@@ -212,11 +248,6 @@ rateLimit=60
                         knee-drive.md
     .cursor
         rules
-            default
-                wahoo-rules
-                    1.1.0
-                        wa.mdc
-                        hoo.mdc
             awesome-cursorrules
                 rules-new-python
                     latest
@@ -239,6 +270,26 @@ rateLimit=60
                         .cursor
                             rules
                                 inspirations.mdc
+```
 
 
+```
+~/.arm/cache
+    registries
+        {registry}
+            repository
+                ...
+            {package}
+                {version}
+                    ruleset.tar.gz
+            metadata.json
+            versions.json
+```
+
+s3 structure
+```
+prefix/
+    package/
+        version/
+            ruleset.tar.gz
 ```
