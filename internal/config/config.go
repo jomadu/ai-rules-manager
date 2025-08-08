@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,44 @@ type Config struct {
 	TypeDefaults map[string]map[string]string    // [git], [s3], etc. sections
 	NetworkConfig map[string]string         // [network] section
 	CacheConfig map[string]string           // [cache] section
+	
+	// JSON configuration
+	Channels map[string]ChannelConfig       // channels from arm.json
+	Rulesets map[string]map[string]RulesetSpec // rulesets from arm.json
+	Engines map[string]string               // engines from arm.json
+	LockFile *LockFile                      // arm.lock content
+}
+
+// ChannelConfig represents a channel configuration
+type ChannelConfig struct {
+	Directories []string `json:"directories"`
+}
+
+// RulesetSpec represents a ruleset specification
+type RulesetSpec struct {
+	Version  string   `json:"version"`
+	Patterns []string `json:"patterns,omitempty"`
+}
+
+// ARMConfig represents the arm.json file structure
+type ARMConfig struct {
+	Engines  map[string]string                    `json:"engines"`
+	Channels map[string]ChannelConfig            `json:"channels"`
+	Rulesets map[string]map[string]RulesetSpec   `json:"rulesets"`
+}
+
+// LockFile represents the arm.lock file structure
+type LockFile struct {
+	Rulesets map[string]map[string]LockedRuleset `json:"rulesets"`
+}
+
+// LockedRuleset represents a locked ruleset entry
+type LockedRuleset struct {
+	Version  string `json:"version"`
+	Resolved string `json:"resolved"`
+	Registry string `json:"registry"`
+	Type     string `json:"type"`
+	Region   string `json:"region,omitempty"`
 }
 
 // Load loads the ARM configuration from files
@@ -27,6 +66,9 @@ func Load() (*Config, error) {
 		TypeDefaults: make(map[string]map[string]string),
 		NetworkConfig: make(map[string]string),
 		CacheConfig: make(map[string]string),
+		Channels: make(map[string]ChannelConfig),
+		Rulesets: make(map[string]map[string]RulesetSpec),
+		Engines: make(map[string]string),
 	}
 
 	// Load global config
@@ -39,6 +81,11 @@ func Load() (*Config, error) {
 	localPath := ".armrc"
 	if err := cfg.loadINIFile(localPath, false); err != nil {
 		return nil, fmt.Errorf("failed to load local config: %w", err)
+	}
+
+	// Load JSON configuration files
+	if err := cfg.loadJSONFiles(); err != nil {
+		return nil, fmt.Errorf("failed to load JSON config: %w", err)
 	}
 
 	return cfg, nil
@@ -152,6 +199,95 @@ func (c *Config) processCacheConfig(section *ini.Section) error {
 		c.CacheConfig[key.Name()] = value
 	}
 	return nil
+}
+
+// loadJSONFiles loads arm.json and arm.lock files
+func (c *Config) loadJSONFiles() error {
+	// Load global arm.json
+	globalJSONPath := filepath.Join(os.Getenv("HOME"), ".arm", "arm.json")
+	if err := c.loadARMJSON(globalJSONPath, false); err != nil {
+		return fmt.Errorf("failed to load global arm.json: %w", err)
+	}
+
+	// Load local arm.json (overrides global)
+	localJSONPath := "arm.json"
+	if err := c.loadARMJSON(localJSONPath, false); err != nil {
+		return fmt.Errorf("failed to load local arm.json: %w", err)
+	}
+
+	// Load lock file
+	lockPath := "arm.lock"
+	if err := c.loadLockFile(lockPath); err != nil {
+		return fmt.Errorf("failed to load lock file: %w", err)
+	}
+
+	return nil
+}
+
+// loadARMJSON loads and parses an arm.json file
+func (c *Config) loadARMJSON(path string, required bool) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if required {
+			return fmt.Errorf("required JSON file not found: %s", path)
+		}
+		return nil // Optional file doesn't exist
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read JSON file %s: %w", path, err)
+	}
+
+	// Expand environment variables in JSON content
+	expandedData := expandEnvVarsInJSON(string(data))
+
+	var armConfig ARMConfig
+	if err := json.Unmarshal([]byte(expandedData), &armConfig); err != nil {
+		return fmt.Errorf("failed to parse JSON file %s: %w", path, err)
+	}
+
+	// Merge into config (local overrides global)
+	for k, v := range armConfig.Engines {
+		c.Engines[k] = v
+	}
+	for k, v := range armConfig.Channels {
+		c.Channels[k] = v
+	}
+	for registry, rulesets := range armConfig.Rulesets {
+		if c.Rulesets[registry] == nil {
+			c.Rulesets[registry] = make(map[string]RulesetSpec)
+		}
+		for name, spec := range rulesets {
+			c.Rulesets[registry][name] = spec
+		}
+	}
+
+	return nil
+}
+
+// loadLockFile loads and parses an arm.lock file
+func (c *Config) loadLockFile(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil // Lock file is optional
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read lock file %s: %w", path, err)
+	}
+
+	var lockFile LockFile
+	if err := json.Unmarshal(data, &lockFile); err != nil {
+		return fmt.Errorf("failed to parse lock file %s: %w", path, err)
+	}
+
+	c.LockFile = &lockFile
+	return nil
+}
+
+// expandEnvVarsInJSON expands environment variables in JSON string content
+func expandEnvVarsInJSON(jsonContent string) string {
+	return expandEnvVars(jsonContent)
 }
 
 // expandEnvVars expands environment variables in the format $VAR and ${VAR}
