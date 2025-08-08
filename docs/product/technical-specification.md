@@ -44,7 +44,10 @@ rateLimit=10/minute   # from global
 - Standard JSON format
 - Schema validation with detailed error messages
 - No comment support (standard JSON)
-- No environment variable expansion (literal string values only)
+- Environment variable expansion supported in string values: `$HOME`, `${USER}`, etc.
+- Expansion processing: environment variables → tilde expansion → schema validation
+- Missing environment variables resolve to empty strings
+- Expanded values cached until file modification
 
 ### 1.3 Registry Configuration
 
@@ -149,7 +152,7 @@ ttl = 3600
 {
   "channels": {
     "cursor": {
-      "directories": [".cursor/rules", ".custom/cursor"]
+      "directories": ["$HOME/.cursor/rules", "${PROJECT_ROOT}/custom"]
     },
     "q": {
       "directories": ["~/.aws/amazonq/rules"]
@@ -160,12 +163,60 @@ ttl = 3600
 
 **Directory Handling:**
 - Multiple directories per channel supported
+- Environment variable expansion supported (`$HOME`, `${PROJECT_ROOT}`)
 - Tilde expansion supported (`~/.aws/amazonq/rules`)
-- No environment variable expansion (`$HOME` not supported)
+- Both expansions can be used together
 - ARM creates directories if they don't exist
 - Validates directory write permissions during configuration
 
-### 1.5 Cache Configuration
+### 1.5 Ruleset Configuration
+
+**Ruleset Structure (arm.json):**
+```json
+{
+  "engines": {
+    "arm": "^1.2.3"
+  },
+  "channels": {
+    "cursor": {
+      "directories": ["$HOME/.cursor/rules", "${PROJECT_ROOT}/custom"]
+    }
+  },
+  "rulesets": {
+    "default": {
+      "my-rules": {
+        "version": "^1.0.0",
+        "patterns": ["rules/*.md", "**/*.mdc"]
+      },
+      "python-rules": {
+        "version": "~2.1.0"
+      }
+    },
+    "my-registry": {
+      "custom-rules": {
+        "version": "latest"
+      }
+    }
+  }
+}
+```
+
+**Registry Namespacing:**
+- Rulesets are organized by registry name
+- Registry names must match those configured in .armrc
+- Each registry can contain multiple rulesets
+- Ruleset names are unique within each registry namespace
+
+**Environment Variable Support:**
+- All string values support `$VAR` and `${VAR}` syntax
+- Missing variables resolve to empty strings
+- Processing order: environment expansion → tilde expansion → validation
+- Examples:
+  - `"$HOME/.cursor/rules"` → `"/Users/john/.cursor/rules"`
+  - `"${PROJECT_ROOT}/custom"` → `"/workspace/my-project/custom"`
+  - `"$MISSING_VAR/path"` → `"/path"` (empty string substitution)
+
+### 1.6 Cache Configuration
 
 **Cache Path:**
 - Default: `~/.arm/cache`
