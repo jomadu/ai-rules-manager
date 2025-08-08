@@ -45,12 +45,12 @@
   - [x] 1.2 Create internal package structure (config, registry, cli, cache, version, install)
   - [x] 1.3 Set up main.go entry point with basic CLI framework
   - [x] 1.4 Configure build system and update Makefile for ARM binary
-- [ ] 2.0 Configuration System Implementation
+- [x] 2.0 Configuration System Implementation
   - [x] 2.1 Implement INI parser for .armrc files with environment variable expansion
   - [x] 2.2 Implement JSON parser for arm.json and arm.lock files
   - [x] 2.3 Create hierarchical configuration merger (global + local)
   - [x] 2.4 Add configuration validation with registry type checking
-  - [ ] 2.5 Implement stub file generation for .armrc and arm.json
+  - [x] 2.5 Implement stub file generation for .armrc and arm.json
 - [ ] 3.0 Registry System Implementation
   - [ ] 3.1 Define registry interface and common authentication handling
   - [ ] 3.2 Implement Git registry with clone/API modes and pattern matching

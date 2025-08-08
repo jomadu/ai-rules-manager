@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"gopkg.in/ini.v1"
+	"github.com/max-dunn/ai-rules-manager/internal/version"
 )
 
 // Config represents the ARM configuration
@@ -509,6 +510,156 @@ func validateChannels(channels map[string]ChannelConfig) error {
 		}
 	}
 	return nil
+}
+
+// GenerateStubFiles generates stub configuration files if they don't exist
+func GenerateStubFiles(global bool) error {
+	var armrcPath, jsonPath string
+	
+	if global {
+		homeDir := os.Getenv("HOME")
+		armDir := filepath.Join(homeDir, ".arm")
+		if err := os.MkdirAll(armDir, 0755); err != nil {
+			return fmt.Errorf("failed to create .arm directory: %w", err)
+		}
+		armrcPath = filepath.Join(armDir, ".armrc")
+		jsonPath = filepath.Join(armDir, "arm.json")
+	} else {
+		armrcPath = ".armrc"
+		jsonPath = "arm.json"
+	}
+
+	// Generate .armrc stub if it doesn't exist
+	if _, err := os.Stat(armrcPath); os.IsNotExist(err) {
+		if err := generateARMRCStub(armrcPath); err != nil {
+			return fmt.Errorf("failed to generate .armrc stub: %w", err)
+		}
+	}
+
+	// Generate arm.json stub if it doesn't exist
+	if _, err := os.Stat(jsonPath); os.IsNotExist(err) {
+		if err := generateARMJSONStub(jsonPath); err != nil {
+			return fmt.Errorf("failed to generate arm.json stub: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// generateARMRCStub generates a stub .armrc file
+func generateARMRCStub(path string) error {
+	stubContent := `# ARM Configuration File
+# Configure registries and default settings
+
+[registries]
+# Default registry used when no source is specified
+# default = github.com/user/registry
+
+# Named registries
+# my-git-registry = https://github.com/user/repo
+# my-s3-registry = my-bucket
+# my-gitlab-registry = https://gitlab.example.com/projects/123
+# my-https-registry = https://example.com/registry
+# my-local-registry = /path/to/local/registry
+
+# Required type configuration for all registries
+# [registries.default]
+# type = git
+
+# [registries.my-git-registry]
+# type = git
+# authToken = $GITHUB_TOKEN  # optional, for API mode
+# apiType = github           # optional, enables API mode
+# apiVersion = 2022-11-28    # optional, API version
+
+# [registries.my-s3-registry]
+# type = s3
+# region = us-east-1         # required for S3 registries
+# profile = my-aws-profile   # optional, uses default AWS profile if omitted
+# prefix = /registries/path  # optional prefix within bucket
+
+# [registries.my-gitlab-registry]
+# type = gitlab
+# authToken = $GITLAB_TOKEN
+# apiVersion = 4
+
+# [registries.my-https-registry]
+# type = https
+
+# [registries.my-local-registry]
+# type = local
+
+# Type-based defaults (optional - ARM has built-in defaults)
+# [git]
+# concurrency = 1
+# rateLimit = 10/minute
+
+# [https]
+# concurrency = 5
+# rateLimit = 30/minute
+
+# [s3]
+# concurrency = 10
+# rateLimit = 100/hour
+
+# [gitlab]
+# concurrency = 2
+# rateLimit = 60/hour
+
+# [local]
+# concurrency = 20
+# rateLimit = 1000/second
+
+# Network configuration
+# [network]
+# timeout = 30
+# retry.maxAttempts = 3
+# retry.backoffMultiplier = 2.0
+# retry.maxBackoff = 30
+
+# Cache configuration
+# [cache]
+# path = ~/.arm/cache
+# maxSize = 1GB
+# ttl = 3600
+`
+
+	return os.WriteFile(path, []byte(stubContent), 0600)
+}
+
+// generateARMJSONStub generates a stub arm.json file
+func generateARMJSONStub(path string) error {
+	// Get current ARM version (will be injected by build system)
+	armVersion := getCurrentARMVersion()
+	
+	stubContent := fmt.Sprintf(`{
+  "engines": {
+    "arm": "^%s"
+  },
+  "channels": {},
+  "rulesets": {}
+}
+`, armVersion)
+
+	return os.WriteFile(path, []byte(stubContent), 0600)
+}
+
+// getCurrentARMVersion returns the current ARM version
+func getCurrentARMVersion() string {
+	currentVersion := version.GetVersion()
+	// Clean up version string (remove 'v' prefix and git info if present)
+	if strings.HasPrefix(currentVersion, "v") {
+		currentVersion = currentVersion[1:]
+	}
+	// Remove git commit info (e.g., "1.2.0-26-g2869e3f-dirty" -> "1.2.0")
+	if idx := strings.Index(currentVersion, "-"); idx != -1 {
+		currentVersion = currentVersion[:idx]
+	}
+	// Fallback to 1.0.0 if version is "dev" or empty
+	if currentVersion == "dev" || currentVersion == "" {
+		currentVersion = "1.0.0"
+	}
+	return currentVersion
 }
 
 // contains checks if a slice contains a string

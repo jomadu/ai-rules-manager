@@ -7,7 +7,7 @@ DIST_DIR := dist
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildTime=$(BUILD_TIME) -s -w"
+LDFLAGS := -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildTimestamp=$(BUILD_TIME) -X github.com/max-dunn/ai-rules-manager/internal/version.Version=$(VERSION) -X github.com/max-dunn/ai-rules-manager/internal/version.Commit=$(COMMIT) -X github.com/max-dunn/ai-rules-manager/internal/version.BuildTime=$(BUILD_TIME) -s -w"
 
 # Build the ARM binary
 build:
