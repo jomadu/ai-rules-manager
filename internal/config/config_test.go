@@ -157,3 +157,184 @@ func TestLoadMissingFile(t *testing.T) {
 		t.Error("Expected error for required missing file")
 	}
 }
+
+func TestLoadARMJSON(t *testing.T) {
+	// Create temporary directory
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "arm.json")
+
+	// Create test JSON file
+	jsonContent := `{
+  "engines": {
+    "arm": "^1.2.3"
+  },
+  "channels": {
+    "cursor": {
+      "directories": ["$HOME/.cursor/rules", "${PROJECT_ROOT}/custom"]
+    },
+    "q": {
+      "directories": ["~/.aws/amazonq/rules"]
+    }
+  },
+  "rulesets": {
+    "default": {
+      "my-rules": {
+        "version": "^1.0.0",
+        "patterns": ["rules/*.md", "**/*.mdc"]
+      },
+      "python-rules": {
+        "version": "~2.1.0"
+      }
+    },
+    "my-registry": {
+      "custom-rules": {
+        "version": "latest"
+      }
+    }
+  }
+}`
+
+	if err := os.WriteFile(jsonPath, []byte(jsonContent), 0600); err != nil {
+		t.Fatalf("Failed to create test JSON file: %v", err)
+	}
+
+	// Set environment variables for testing
+	os.Setenv("HOME", "/users/test")
+	os.Setenv("PROJECT_ROOT", "/workspace/project")
+	defer os.Unsetenv("HOME")
+	defer os.Unsetenv("PROJECT_ROOT")
+
+	// Load configuration
+	cfg := &Config{
+		Registries:      make(map[string]string),
+		RegistryConfigs: make(map[string]map[string]string),
+		TypeDefaults:    make(map[string]map[string]string),
+		NetworkConfig:   make(map[string]string),
+		CacheConfig:     make(map[string]string),
+		Channels:        make(map[string]ChannelConfig),
+		Rulesets:        make(map[string]map[string]RulesetSpec),
+		Engines:         make(map[string]string),
+	}
+
+	err := cfg.loadARMJSON(jsonPath, true)
+	if err != nil {
+		t.Fatalf("Failed to load JSON file: %v", err)
+	}
+
+	// Test engines
+	if cfg.Engines["arm"] != "^1.2.3" {
+		t.Errorf("Expected arm engine '^1.2.3', got %q", cfg.Engines["arm"])
+	}
+
+	// Test channels with environment variable expansion
+	if len(cfg.Channels["cursor"].Directories) != 2 {
+		t.Errorf("Expected 2 cursor directories, got %d", len(cfg.Channels["cursor"].Directories))
+	}
+	if cfg.Channels["cursor"].Directories[0] != "/users/test/.cursor/rules" {
+		t.Errorf("Expected '/users/test/.cursor/rules', got %q", cfg.Channels["cursor"].Directories[0])
+	}
+	if cfg.Channels["cursor"].Directories[1] != "/workspace/project/custom" {
+		t.Errorf("Expected '/workspace/project/custom', got %q", cfg.Channels["cursor"].Directories[1])
+	}
+
+	// Test rulesets
+	if cfg.Rulesets["default"]["my-rules"].Version != "^1.0.0" {
+		t.Errorf("Expected version '^1.0.0', got %q", cfg.Rulesets["default"]["my-rules"].Version)
+	}
+	if len(cfg.Rulesets["default"]["my-rules"].Patterns) != 2 {
+		t.Errorf("Expected 2 patterns, got %d", len(cfg.Rulesets["default"]["my-rules"].Patterns))
+	}
+}
+
+func TestLoadLockFile(t *testing.T) {
+	// Create temporary directory
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "arm.lock")
+
+	// Create test lock file
+	lockContent := `{
+  "rulesets": {
+    "default": {
+      "my-rules": {
+        "version": "1.2.0",
+        "resolved": "2024-01-15T10:30:00Z",
+        "registry": "my-bucket",
+        "type": "s3",
+        "region": "us-east-1"
+      }
+    },
+    "my-git": {
+      "python-rules": {
+        "version": "abc123def",
+        "resolved": "2024-01-15T10:30:00Z",
+        "registry": "https://github.com/user/repo",
+        "type": "git"
+      }
+    }
+  }
+}`
+
+	if err := os.WriteFile(lockPath, []byte(lockContent), 0600); err != nil {
+		t.Fatalf("Failed to create test lock file: %v", err)
+	}
+
+	// Load configuration
+	cfg := &Config{
+		Registries:      make(map[string]string),
+		RegistryConfigs: make(map[string]map[string]string),
+		TypeDefaults:    make(map[string]map[string]string),
+		NetworkConfig:   make(map[string]string),
+		CacheConfig:     make(map[string]string),
+		Channels:        make(map[string]ChannelConfig),
+		Rulesets:        make(map[string]map[string]RulesetSpec),
+		Engines:         make(map[string]string),
+	}
+
+	err := cfg.loadLockFile(lockPath)
+	if err != nil {
+		t.Fatalf("Failed to load lock file: %v", err)
+	}
+
+	// Test lock file content
+	if cfg.LockFile == nil {
+		t.Fatal("Expected lock file to be loaded")
+	}
+
+	lockedRuleset := cfg.LockFile.Rulesets["default"]["my-rules"]
+	if lockedRuleset.Version != "1.2.0" {
+		t.Errorf("Expected version '1.2.0', got %q", lockedRuleset.Version)
+	}
+	if lockedRuleset.Type != "s3" {
+		t.Errorf("Expected type 's3', got %q", lockedRuleset.Type)
+	}
+	if lockedRuleset.Region != "us-east-1" {
+		t.Errorf("Expected region 'us-east-1', got %q", lockedRuleset.Region)
+	}
+}
+
+func TestExpandEnvVarsInJSON(t *testing.T) {
+	jsonContent := `{
+  "path": "$HOME/test",
+  "url": "https://${HOST}:${PORT}/api",
+  "missing": "$MISSING_VAR/path"
+}`
+
+	// Set environment variables
+	os.Setenv("HOME", "/users/test")
+	os.Setenv("HOST", "localhost")
+	os.Setenv("PORT", "8080")
+	defer os.Unsetenv("HOME")
+	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("PORT")
+
+	expanded := expandEnvVarsInJSON(jsonContent)
+	expected := `{
+  "path": "/users/test/test",
+  "url": "https://localhost:8080/api",
+  "missing": "/path"
+}`
+
+	if expanded != expected {
+		t.Errorf("Environment variable expansion failed\nGot: %s\nExpected: %s", expanded, expected)
+	}
+}
