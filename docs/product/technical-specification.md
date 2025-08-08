@@ -48,27 +48,52 @@ rateLimit=10/minute   # from global
 
 ### 1.3 Registry Configuration
 
-**Supported URL Schemes:**
-- `https://github.com/user/repo` (Git repository with API support)
-- `https://gitlab.example.com/user/repo` (Git repository with API support)
-- `s3://bucket.region.amazonaws.com/`
-- `gitlab://gitlab.example.com/project/123` (GitLab package registry)
-- `gitlab://gitlab.example.com/group/123` (GitLab package registry)
-- `https://example.com/registry` (Generic HTTP registry)
-- `file:///path/to/local/registry`
+**Supported Registry Types:**
+- `git` - Git repositories (GitHub, GitLab, etc.) accessed via HTTPS
+- `https` - Generic HTTP registries with manifest.json
+- `s3` - AWS S3 bucket registries
+- `gitlab` - GitLab package registries
+- `local` - Local file system registries
 
 **Registry Configuration Structure:**
 ```ini
 [registries]
-default = git://github.com/user/default-registry
-my-git-registry = git://github.com/user/repo
-my-s3-registry = s3://my-bucket.us-east-1.amazonaws.com/
-my-gitlab-registry = gitlab://gitlab.example.com/project/123
+default = github.com/user/default-registry
+my-git-registry = https://github.com/user/repo
+my-s3-registry = my-bucket
+my-gitlab-registry = https://gitlab.example.com/projects/123
+
+# Required type configuration for all registries
+[registries.default]
+type = git
+
+[registries.my-git-registry]
+type = git
+authToken = $GITHUB_TOKEN  # optional, for API mode
+apiType = github           # optional, enables API mode
+apiVersion = 2022-11-28    # optional, API version
+concurrency = 5            # Override git default
+rateLimit = 20/minute      # Override git default
+
+[registries.my-s3-registry]
+type = s3
+region = us-east-1         # required for S3 registries
+profile = my-aws-profile   # optional, uses default profile if omitted
+prefix = /registries/path  # optional prefix within bucket
+
+[registries.my-gitlab-registry]
+type = gitlab
+authToken = $GITLAB_TOKEN
+apiVersion = 4
 
 # Type-based defaults
 [git]
 concurrency = 1
 rateLimit = 10/minute
+
+[https]
+concurrency = 5
+rateLimit = 30/minute
 
 [s3]
 concurrency = 10
@@ -78,35 +103,16 @@ rateLimit = 100/hour
 concurrency = 2
 rateLimit = 60/hour
 
-[http]
-concurrency = 5
-rateLimit = 30/minute
-
-# Registry-specific overrides (optional)
-[registries.my-git-registry]
-authToken = $GITHUB_TOKEN
-apiType = github
-apiVersion = 2022-11-28
-concurrency = 5           # Override git default
-rateLimit = 20/minute     # Override git default
-
-# S3 registry configuration (uses AWS credentials chain)
-[registries.my-s3-registry]
-profile = my-aws-profile  # optional, uses default profile if omitted
-prefix = /registries/path # optional
-# Uses s3 defaults: concurrency=10, rateLimit=100/hour
-
-# GitLab registry configuration
-[registries.my-gitlab-registry]
-authToken = $GITLAB_TOKEN
-apiVersion = 4
-# Uses gitlab defaults: concurrency=2, rateLimit=60/hour
+[local]
+concurrency = 20
+rateLimit = 1000/second
 ```
 
 **Validation Rules:**
-- URL format validation (defer connectivity checks to usage time)
 - Registry name validation (must match entry in `[registries]` section)
-- Registry-specific parameter validation based on URL scheme
+- Type validation (must be one of: git, https, s3, gitlab, local)
+- Required type parameter for all registries
+- Type-specific parameter validation (e.g., region required for S3)
 
 **Built-in Defaults:**
 ```ini
@@ -114,6 +120,10 @@ apiVersion = 4
 concurrency = 1
 rateLimit = 10/minute
 
+[https]
+concurrency = 5
+rateLimit = 30/minute
+
 [s3]
 concurrency = 10
 rateLimit = 100/hour
@@ -121,10 +131,6 @@ rateLimit = 100/hour
 [gitlab]
 concurrency = 2
 rateLimit = 60/hour
-
-[http]
-concurrency = 5
-rateLimit = 30/minute
 
 [local]
 concurrency = 20
@@ -176,19 +182,50 @@ ttl = 3600
 
 [registries]
 # Default registry used when no source is specified
-# default = git://github.com/user/registry
+# default = github.com/user/registry
 
 # Named registries
 # my-git-registry = https://github.com/user/repo
-# my-s3-registry = s3://bucket.region.amazonaws.com/
-# my-gitlab-registry = gitlab://gitlab.example.com/project/123
-# my-http-registry = https://example.com/registry
-# my-local-registry = file:///path/to/local/registry
+# my-s3-registry = my-bucket
+# my-gitlab-registry = https://gitlab.example.com/projects/123
+# my-https-registry = https://example.com/registry
+# my-local-registry = /path/to/local/registry
+
+# Required type configuration for all registries
+# [registries.default]
+# type = git
+
+# [registries.my-git-registry]
+# type = git
+# authToken = $GITHUB_TOKEN  # optional, for API mode
+# apiType = github           # optional, enables API mode
+# apiVersion = 2022-11-28    # optional, API version
+
+# [registries.my-s3-registry]
+# type = s3
+# region = us-east-1         # required for S3 registries
+# profile = my-aws-profile   # optional, uses default AWS profile if omitted
+# prefix = /registries/path  # optional prefix within bucket
+
+# [registries.my-gitlab-registry]
+# type = gitlab
+# authToken = $GITLAB_TOKEN
+# apiVersion = 4
+
+# [registries.my-https-registry]
+# type = https
+
+# [registries.my-local-registry]
+# type = local
 
 # Type-based defaults (optional - ARM has built-in defaults)
 # [git]
 # concurrency = 1
 # rateLimit = 10/minute
+
+# [https]
+# concurrency = 5
+# rateLimit = 30/minute
 
 # [s3]
 # concurrency = 10
@@ -198,32 +235,15 @@ ttl = 3600
 # concurrency = 2
 # rateLimit = 60/hour
 
-# [http]
-# concurrency = 5
-# rateLimit = 30/minute
-
-# Registry-specific overrides (optional)
-# [registries.my-git-registry]
-# authToken = $GITHUB_TOKEN
-# apiType = github
-# apiVersion = 2022-11-28
-# concurrency = 5           # Override git default
-# rateLimit = 20/minute     # Override git default
-
-# [registries.my-s3-registry]
-# profile = my-aws-profile  # optional, uses default AWS profile if omitted
-# prefix = /registries/path # optional prefix within bucket
-# Uses s3 defaults unless overridden here
-
-# [registries.my-gitlab-registry]
-# authToken = $GITLAB_TOKEN
-# apiVersion = 4
-# Uses gitlab defaults unless overridden here
+# [local]
+# concurrency = 20
+# rateLimit = 1000/second
 
 # Cache configuration
 # [cache]
 # path = ~/.arm/cache
 # maxSize = 1GB
+# ttl = 3600
 ```
 
 **arm.json Stub:**
@@ -241,10 +261,13 @@ ttl = 3600
 
 ### 2.1 Git Repository Registries
 
-**URL Format:**
+**Registry Value Format:**
 - `https://github.com/user/repo`
 - `https://github.com/org/repo`
 - `https://gitlab.example.com/user/repo`
+
+**Type Configuration:**
+- `type = git` (required)
 
 **Operation Modes:**
 
@@ -281,22 +304,27 @@ ttl = 3600
 my-git-registry = https://github.com/user/repo
 
 [registries.my-git-registry]
+type = git                 # required
 authToken = $GITHUB_TOKEN  # optional, for API mode
 apiType = github           # optional, enables API mode
 apiVersion = 2022-11-28    # optional, API version
-concurrency = 2
-rateLimit = 10/minute
+concurrency = 2            # override git defaults
+rateLimit = 10/minute      # override git defaults
 ```
 
 ### 2.2 AWS S3 Registries
 
-**URL Format:**
-- `s3://bucket.region.amazonaws.com/`
-- `s3://my-bucket.us-east-1.amazonaws.com/registries/`
+**Registry Value Format:**
+- `my-bucket` (bucket name only)
+- `my-bucket.with.dots` (literal bucket name)
+
+**Type Configuration:**
+- `type = s3` (required)
+- `region = us-east-1` (required)
 
 **Directory Structure:**
 ```
-s3://bucket/prefix/
+bucket/prefix/
 ├── ruleset1/
 │   ├── 1.0.0/
 │   │   └── ruleset.tar.gz
@@ -317,29 +345,33 @@ s3://bucket/prefix/
 - Parses object keys to extract ruleset names and version numbers
 - Supports semantic versioning for version resolution
 
-**Region Detection:**
-- Extracts AWS region from bucket URL (e.g., `us-east-1` from `s3://bucket.us-east-1.amazonaws.com/`)
-- Falls back to AWS credential chain default region (AWS_DEFAULT_REGION, profile config, or us-east-1)
-- Can be explicitly configured via `region` parameter in registry configuration
+**Region Configuration:**
+- `region` parameter is required for all S3 registries
+- Falls back to AWS credential chain default region if not specified
+- No region extraction from bucket name (bucket name is literal)
 
 **Configuration Example:**
 ```ini
 [registries]
-my-s3-registry = s3://my-bucket.us-east-1.amazonaws.com/
+my-s3-registry = my-bucket
 
 [registries.my-s3-registry]
+type = s3                 # required
+region = us-east-1        # required
 profile = my-aws-profile  # optional, uses default profile if omitted
-region = us-west-2        # optional, overrides region from URL or credential chain
 prefix = /registries/path # optional prefix within bucket
-concurrency = 10
-rateLimit = 100/hour
+concurrency = 10          # override s3 defaults
+rateLimit = 100/hour      # override s3 defaults
 ```
 
 ### 2.3 GitLab Package Registries
 
-**URL Format:**
-- `gitlab://gitlab.example.com/project/123` → Project-level registry
-- `gitlab://gitlab.example.com/group/456` → Group-level registry
+**Registry Value Format:**
+- `https://gitlab.example.com/projects/123` → Project-level registry
+- `https://gitlab.example.com/groups/456` → Group-level registry
+
+**Type Configuration:**
+- `type = gitlab` (required)
 
 **API Integration:**
 - Uses GitLab Generic Packages API for simple file storage
@@ -366,20 +398,24 @@ rateLimit = 100/hour
 **Configuration Example:**
 ```ini
 [registries]
-my-gitlab-registry = gitlab://gitlab.example.com/project/123
+my-gitlab-registry = https://gitlab.example.com/projects/123
 
 [registries.my-gitlab-registry]
-authToken = $GITLAB_TOKEN
-apiVersion = 4  # optional, defaults to latest (v4)
-concurrency = 2
-rateLimit = 60
+type = gitlab             # required
+authToken = $GITLAB_TOKEN # required for GitLab package registry access
+apiVersion = 4            # optional, defaults to latest (v4)
+concurrency = 2           # override gitlab defaults
+rateLimit = 60/hour       # override gitlab defaults
 ```
 
 ### 2.4 Generic HTTP Registries
 
-**URL Format:**
+**Registry Value Format:**
 - `https://example.com/registry`
 - `https://my-registry.example.com/rulesets`
+
+**Type Configuration:**
+- `type = https` (required)
 
 **Directory Structure:**
 ```
@@ -416,19 +452,24 @@ https://example.com/registry/
 **Configuration Example:**
 ```ini
 [registries]
-my-http-registry = https://example.com/registry
+my-https-registry = https://example.com/registry
 
-[registries.my-http-registry]
+[registries.my-https-registry]
+type = https                      # required
 authToken = $HTTP_REGISTRY_TOKEN  # optional, for bearer auth
-concurrency = 5
-rateLimit = 50
+concurrency = 5                   # override https defaults
+rateLimit = 30/minute             # override https defaults
 ```
 
 ### 2.5 Local File System Registries
 
-**URL Format:**
-- `file:///absolute/path/to/registry`
-- `file://./relative/path/to/registry`
+**Registry Value Format:**
+- `/absolute/path/to/registry`
+- `./relative/path/to/registry`
+- `relative/path/to/registry`
+
+**Type Configuration:**
+- `type = local` (required)
 
 **Directory Structure:**
 ```
@@ -453,18 +494,18 @@ rateLimit = 50
 - Maintains consistency across all registry implementations
 
 **Path Handling:**
-- Supports both absolute paths (`file:///home/user/registry`)
-- Supports relative paths (`file://./local-registry`)
+- Supports absolute paths (`/home/user/registry`)
+- Supports relative paths (`./local-registry`, `local-registry`)
 - Path resolution relative to current working directory for relative paths
 
 **Configuration Example:**
 ```ini
 [registries]
-my-local-registry = file:///path/to/local/registry
+my-local-registry = /path/to/local/registry
 
 [registries.my-local-registry]
-# No additional configuration required
-# Inherits default concurrency and rate limit settings
+type = local              # required
+# Inherits local defaults: concurrency=20, rateLimit=1000/second
 ```
 
 ## 3. Command Line Interface
@@ -831,14 +872,17 @@ Shows command usage, options, and examples in priority order.
       "my-rules": {
         "version": "1.2.0",
         "resolved": "2024-01-15T10:30:00Z",
-        "registry": "s3://bucket.amazonaws.com/"
+        "registry": "my-bucket",
+        "type": "s3",
+        "region": "us-east-1"
       }
     },
     "my-git": {
       "python-rules": {
         "version": "abc123def",
         "resolved": "2024-01-15T10:30:00Z",
-        "registry": "https://github.com/user/repo"
+        "registry": "https://github.com/user/repo",
+        "type": "git"
       }
     }
   }
@@ -1356,7 +1400,7 @@ Run 'arm update my-rules' to update specific ruleset
 $ arm install my-rules
 Error [CONFIG]: No configuration found
 Suggestion: Initialize ARM configuration:
-  arm config add registry default s3://your-bucket/
+  arm config add registry default my-bucket --type=s3 --region=us-east-1
 
 # Missing patterns for Git registry
 $ arm install git-registry/my-rules
