@@ -5,7 +5,7 @@ Guidelines for managing task lists in markdown files to track progress on comple
 ## Task Implementation
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y"
 - **Completion protocol:**
-  1. Start the sub-task by asking the user clarifying questions about the sub-task, and how they'd like it implemented.
+  1. Start the sub-task by asking the user clarifying questions about the sub-task, and how they'd like it implemented. provide options, tradeoffs, and your recommendation.
   2. When you finish a **sub‑task**, immediately mark it as completed by changing `[ ]` to `[x]`.
   3. If **all** subtasks underneath a parent task are now `[x]`, follow this sequence:
     - **First**: Run the full test suite (`pytest`, `npm test`, `bin/rails test`, etc.)
