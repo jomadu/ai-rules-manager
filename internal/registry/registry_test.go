@@ -9,7 +9,7 @@ import (
 
 func TestDefaultAuthProvider(t *testing.T) {
 	provider := NewDefaultAuthProvider()
-	
+
 	// Test empty credentials
 	auth, err := provider.GetCredentials("nonexistent")
 	if err != nil {
@@ -18,7 +18,7 @@ func TestDefaultAuthProvider(t *testing.T) {
 	if auth.Token != "" {
 		t.Error("Expected empty token for nonexistent registry")
 	}
-	
+
 	// Set auth config
 	expectedAuth := &AuthConfig{
 		Token:    "test-token",
@@ -26,7 +26,7 @@ func TestDefaultAuthProvider(t *testing.T) {
 		Region:   "us-east-1",
 	}
 	provider.SetAuth("test-registry", expectedAuth)
-	
+
 	// Get auth config
 	auth, err = provider.GetCredentials("test-registry")
 	if err != nil {
@@ -45,20 +45,20 @@ func TestDefaultAuthProvider(t *testing.T) {
 
 func TestAuthProviderEnvironmentVariables(t *testing.T) {
 	provider := NewDefaultAuthProvider()
-	
+
 	// Set environment variables
 	os.Setenv("TEST_TOKEN", "env-token")
 	os.Setenv("TEST_REGION", "us-west-2")
 	defer os.Unsetenv("TEST_TOKEN")
 	defer os.Unsetenv("TEST_REGION")
-	
+
 	// Set auth config with environment variables
 	authConfig := &AuthConfig{
 		Token:  "$TEST_TOKEN",
 		Region: "${TEST_REGION}",
 	}
 	provider.SetAuth("env-registry", authConfig)
-	
+
 	// Get expanded credentials
 	auth, err := provider.GetCredentials("env-registry")
 	if err != nil {
@@ -110,14 +110,14 @@ func TestExpandEnvVars(t *testing.T) {
 			expected: "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envVar != "" {
 				os.Setenv(tt.envVar, tt.envValue)
 				defer os.Unsetenv(tt.envVar)
 			}
-			
+
 			result := expandEnvVars(tt.input)
 			if result != tt.expected {
 				t.Errorf("expandEnvVars(%q) = %q, want %q", tt.input, result, tt.expected)
@@ -128,9 +128,9 @@ func TestExpandEnvVars(t *testing.T) {
 
 func TestValidateRegistryConfig(t *testing.T) {
 	tests := []struct {
-		name        string
-		config      *RegistryConfig
-		expectError bool
+		name          string
+		config        *RegistryConfig
+		expectError   bool
 		errorContains string
 	}{
 		{
@@ -167,7 +167,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Type: "git",
 				URL:  "https://github.com/user/repo",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "name cannot be empty",
 		},
 		{
@@ -176,7 +176,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Name: "test",
 				URL:  "https://github.com/user/repo",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "type cannot be empty",
 		},
 		{
@@ -186,7 +186,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Type: "ftp",
 				URL:  "ftp://example.com",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "unsupported registry type",
 		},
 		{
@@ -195,7 +195,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Name: "test",
 				Type: "git",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "requires URL",
 		},
 		{
@@ -205,7 +205,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Type: "git",
 				URL:  "http://github.com/user/repo",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "must use HTTPS",
 		},
 		{
@@ -215,7 +215,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Type: "s3",
 				URL:  "my-bucket",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "requires region",
 		},
 		{
@@ -224,11 +224,11 @@ func TestValidateRegistryConfig(t *testing.T) {
 				Name: "test",
 				Type: "local",
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "requires path",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateRegistryConfig(tt.config)
@@ -261,7 +261,7 @@ func TestRulesetInfo(t *testing.T) {
 		Type:        "git",
 		UpdatedAt:   time.Now(),
 	}
-	
+
 	if ruleset.Name != "test-ruleset" {
 		t.Errorf("Expected name 'test-ruleset', got %q", ruleset.Name)
 	}
@@ -287,7 +287,7 @@ func TestAuthConfigStructure(t *testing.T) {
 		APIType:    "github",
 		APIVersion: "2022-11-28",
 	}
-	
+
 	if auth.Token != "test-token" {
 		t.Errorf("Expected token 'test-token', got %q", auth.Token)
 	}

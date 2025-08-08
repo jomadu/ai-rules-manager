@@ -47,32 +47,32 @@ func TestNewGitRegistryInvalidConfig(t *testing.T) {
 
 func TestParseGitHubURL(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
+		name          string
+		url           string
 		expectedOwner string
 		expectedRepo  string
-		expectError bool
+		expectError   bool
 	}{
 		{
-			name:         "standard GitHub URL",
-			url:          "https://github.com/owner/repo",
+			name:          "standard GitHub URL",
+			url:           "https://github.com/owner/repo",
 			expectedOwner: "owner",
 			expectedRepo:  "repo",
-			expectError:  false,
+			expectError:   false,
 		},
 		{
-			name:         "GitHub URL with .git",
-			url:          "https://github.com/owner/repo.git",
+			name:          "GitHub URL with .git",
+			url:           "https://github.com/owner/repo.git",
 			expectedOwner: "owner",
 			expectedRepo:  "repo",
-			expectError:  false,
+			expectError:   false,
 		},
 		{
-			name:         "GitHub URL with trailing slash",
-			url:          "https://github.com/owner/repo/",
+			name:          "GitHub URL with trailing slash",
+			url:           "https://github.com/owner/repo/",
 			expectedOwner: "owner",
 			expectedRepo:  "repo",
-			expectError:  false,
+			expectError:   false,
 		},
 		{
 			name:        "invalid URL",

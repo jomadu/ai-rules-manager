@@ -12,22 +12,22 @@ import (
 type Registry interface {
 	// GetRulesets returns available rulesets matching the given patterns
 	GetRulesets(ctx context.Context, patterns []string) ([]RulesetInfo, error)
-	
+
 	// GetRuleset returns detailed information about a specific ruleset
 	GetRuleset(ctx context.Context, name, version string) (*RulesetInfo, error)
-	
+
 	// DownloadRuleset downloads a ruleset to the specified directory
 	DownloadRuleset(ctx context.Context, name, version, destDir string) error
-	
+
 	// GetVersions returns available versions for a ruleset
 	GetVersions(ctx context.Context, name string) ([]string, error)
-	
+
 	// GetType returns the registry type
 	GetType() string
-	
+
 	// GetName returns the registry name
 	GetName() string
-	
+
 	// Close cleans up any resources
 	Close() error
 }
@@ -48,12 +48,12 @@ type RulesetInfo struct {
 
 // AuthConfig contains authentication configuration
 type AuthConfig struct {
-	Token     string `json:"token"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	Profile   string `json:"profile"`   // For AWS profiles
-	Region    string `json:"region"`    // For AWS regions
-	APIType   string `json:"api_type"`  // For API-specific auth
+	Token      string `json:"token"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	Profile    string `json:"profile"`     // For AWS profiles
+	Region     string `json:"region"`      // For AWS regions
+	APIType    string `json:"api_type"`    // For API-specific auth
 	APIVersion string `json:"api_version"` // For API versioning
 }
 
@@ -72,17 +72,17 @@ type RegistryConfig struct {
 
 // RetryConfig contains retry configuration
 type RetryConfig struct {
-	MaxAttempts        int           `json:"max_attempts"`
-	BackoffMultiplier  float64       `json:"backoff_multiplier"`
-	MaxBackoff         time.Duration `json:"max_backoff"`
-	RetryableErrors    []string      `json:"retryable_errors"`
+	MaxAttempts       int           `json:"max_attempts"`
+	BackoffMultiplier float64       `json:"backoff_multiplier"`
+	MaxBackoff        time.Duration `json:"max_backoff"`
+	RetryableErrors   []string      `json:"retryable_errors"`
 }
 
 // AuthProvider handles authentication for registries
 type AuthProvider interface {
 	// GetCredentials returns credentials for the given registry
 	GetCredentials(registryName string) (*AuthConfig, error)
-	
+
 	// RefreshCredentials refreshes expired credentials
 	RefreshCredentials(registryName string) (*AuthConfig, error)
 }
@@ -110,7 +110,7 @@ func (p *DefaultAuthProvider) GetCredentials(registryName string) (*AuthConfig, 
 	if !exists {
 		return &AuthConfig{}, nil // Return empty auth if not configured
 	}
-	
+
 	// Expand environment variables in auth config
 	expandedAuth := &AuthConfig{
 		Token:      expandEnvVars(auth.Token),
@@ -121,7 +121,7 @@ func (p *DefaultAuthProvider) GetCredentials(registryName string) (*AuthConfig, 
 		APIType:    expandEnvVars(auth.APIType),
 		APIVersion: expandEnvVars(auth.APIVersion),
 	}
-	
+
 	return expandedAuth, nil
 }
 
@@ -137,7 +137,7 @@ func expandEnvVars(s string) string {
 	if s == "" {
 		return s
 	}
-	
+
 	// Handle $VAR and ${VAR} patterns
 	if strings.HasPrefix(s, "${") && strings.HasSuffix(s, "}") {
 		varName := s[2 : len(s)-1]
@@ -147,7 +147,7 @@ func expandEnvVars(s string) string {
 		varName := s[1:]
 		return os.Getenv(varName)
 	}
-	
+
 	return s
 }
 
@@ -159,12 +159,12 @@ func ValidateRegistryConfig(config *RegistryConfig) error {
 	if config.Type == "" {
 		return fmt.Errorf("registry type cannot be empty")
 	}
-	
+
 	validTypes := []string{"git", "https", "s3", "gitlab", "local"}
 	if !contains(validTypes, config.Type) {
 		return fmt.Errorf("unsupported registry type: %s", config.Type)
 	}
-	
+
 	// Type-specific validation
 	switch config.Type {
 	case "git", "https", "gitlab":
@@ -183,7 +183,7 @@ func ValidateRegistryConfig(config *RegistryConfig) error {
 			return fmt.Errorf("local registry requires path in URL field")
 		}
 	}
-	
+
 	return nil
 }
 

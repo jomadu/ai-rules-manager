@@ -46,7 +46,7 @@ func NewGitLabRegistry(config *RegistryConfig, auth *AuthConfig) (*GitLabRegistr
 func (g *GitLabRegistry) GetRulesets(ctx context.Context, patterns []string) ([]RulesetInfo, error) {
 	// Get all packages from GitLab Generic Packages API
 	url := fmt.Sprintf("%s/api/v4/projects/%s/packages", g.baseURL, g.projectID)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -77,10 +77,10 @@ func (g *GitLabRegistry) GetRulesets(ctx context.Context, patterns []string) ([]
 			ruleset, exists := rulesetMap[pkg.Name]
 			if !exists {
 				ruleset = &RulesetInfo{
-					Name:     pkg.Name,
-					Version:  pkg.Version,
-					Registry: g.config.Name,
-					Type:     "gitlab",
+					Name:      pkg.Name,
+					Version:   pkg.Version,
+					Registry:  g.config.Name,
+					Type:      "gitlab",
 					UpdatedAt: pkg.UpdatedAt,
 					Metadata: map[string]string{
 						"project_id": g.projectID,
@@ -132,7 +132,7 @@ func (g *GitLabRegistry) DownloadRuleset(ctx context.Context, name, version, des
 	url := fmt.Sprintf("%s/api/v4/projects/%s/packages/generic/%s/%s/ruleset.tar.gz",
 		g.baseURL, g.projectID, name, version)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (g *GitLabRegistry) DownloadRuleset(ctx context.Context, name, version, des
 func (g *GitLabRegistry) GetVersions(ctx context.Context, name string) ([]string, error) {
 	// Get packages filtered by name
 	url := fmt.Sprintf("%s/api/v4/projects/%s/packages?package_name=%s", g.baseURL, g.projectID, name)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

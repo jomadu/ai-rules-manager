@@ -15,11 +15,11 @@ import (
 
 // S3Registry implements the Registry interface for S3 buckets
 type S3Registry struct {
-	config   *RegistryConfig
-	auth     *AuthConfig
-	client   *s3.Client
-	bucket   string
-	prefix   string
+	config *RegistryConfig
+	auth   *AuthConfig
+	client *s3.Client
+	bucket string
+	prefix string
 }
 
 // NewS3Registry creates a new S3 registry instance
