@@ -7,8 +7,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// VersionInfo contains build version information
+type VersionInfo struct {
+	Version   string
+	Commit    string
+	BuildTime string
+}
+
 // NewRootCommand creates the root ARM command
-func NewRootCommand(cfg *config.Config) *cobra.Command {
+func NewRootCommand(cfg *config.Config, versionInfo *VersionInfo) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "arm",
 		Short: "AI Rules Manager - Package manager for AI coding assistant rulesets",
@@ -37,7 +44,7 @@ different AI tools like Cursor and Amazon Q Developer.`,
 	rootCmd.AddCommand(newUpdateCommand(cfg))
 	rootCmd.AddCommand(newCleanCommand(cfg))
 	rootCmd.AddCommand(newListCommand(cfg))
-	rootCmd.AddCommand(newVersionCommand())
+	rootCmd.AddCommand(newVersionCommand(versionInfo))
 
 	return rootCmd
 }
@@ -172,12 +179,15 @@ func newListCommand(_ *config.Config) *cobra.Command {
 }
 
 // newVersionCommand creates the version command
-func newVersionCommand() *cobra.Command {
+func newVersionCommand(versionInfo *VersionInfo) *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show ARM version",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("version not implemented")
+			fmt.Printf("ARM version %s\n", versionInfo.Version)
+			fmt.Printf("Commit: %s\n", versionInfo.Commit)
+			fmt.Printf("Built: %s\n", versionInfo.BuildTime)
+			return nil
 		},
 	}
 }

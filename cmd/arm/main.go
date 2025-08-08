@@ -8,6 +8,13 @@ import (
 	"github.com/max-dunn/ai-rules-manager/internal/config"
 )
 
+// Build information injected by ldflags
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildTime = "unknown"
+)
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -22,8 +29,13 @@ func run() error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Create root command
-	rootCmd := cli.NewRootCommand(cfg)
+	// Create root command with version info
+	versionInfo := &cli.VersionInfo{
+		Version:   version,
+		Commit:    commit,
+		BuildTime: buildTime,
+	}
+	rootCmd := cli.NewRootCommand(cfg, versionInfo)
 
 	// Execute command
 	return rootCmd.Execute()
