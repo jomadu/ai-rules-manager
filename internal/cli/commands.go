@@ -317,12 +317,12 @@ func newCleanCommand(cfg *config.Config) *cobra.Command {
 			global, _ := cmd.Flags().GetBool("global")
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			force, _ := cmd.Flags().GetBool("force")
-			
+
 			target := "all"
 			if len(args) > 0 {
 				target = args[0]
 			}
-			
+
 			return handleClean(target, global, dryRun, force)
 		},
 	}
@@ -1370,7 +1370,7 @@ func handleClean(target string, global, dryRun, force bool) error {
 		fmt.Printf("This will clean target '%s'. Continue? (y/N): ", target)
 		var response string
 		fmt.Scanln(&response)
-		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		if !strings.EqualFold(response, "y") && !strings.EqualFold(response, "yes") {
 			fmt.Println("Operation cancelled")
 			return nil
 		}
@@ -1422,7 +1422,7 @@ func handleClean(target string, global, dryRun, force bool) error {
 func cleanCache() (int, error) {
 	// Get cache path from config or use default
 	cachePath := filepath.Join(os.Getenv("HOME"), ".arm", "cache")
-	
+
 	// Load config to get custom cache path if set
 	if cfg, err := config.Load(); err == nil {
 		if customPath, exists := cfg.CacheConfig["path"]; exists && customPath != "" {
@@ -1477,39 +1477,39 @@ func cleanUnused(global bool) (int, error) {
 		for _, dir := range channelConfig.Directories {
 			expandedDir := expandEnvVars(dir)
 			armPath := filepath.Join(expandedDir, "arm")
-			
+
 			// Check if ARM directory exists
 			if _, err := os.Stat(armPath); os.IsNotExist(err) {
 				continue
 			}
-			
+
 			// Walk through registry directories
 			registries, err := os.ReadDir(armPath)
 			if err != nil {
 				continue
 			}
-			
+
 			for _, registryDir := range registries {
 				if !registryDir.IsDir() {
 					continue
 				}
-				
+
 				registryName := registryDir.Name()
 				registryPath := filepath.Join(armPath, registryName)
-				
+
 				// Walk through ruleset directories
 				rulesets, err := os.ReadDir(registryPath)
 				if err != nil {
 					continue
 				}
-				
+
 				for _, rulesetDir := range rulesets {
 					if !rulesetDir.IsDir() {
 						continue
 					}
-					
+
 					rulesetName := rulesetDir.Name()
-					
+
 					// Check if this ruleset is configured
 					if configuredRulesets[registryName] == nil || !configuredRulesets[registryName][rulesetName] {
 						// This is an unused ruleset, remove it
@@ -1520,13 +1520,13 @@ func cleanUnused(global bool) (int, error) {
 						}
 					}
 				}
-				
+
 				// Clean up empty registry directory
 				if isEmpty, _ := isDirEmpty(registryPath); isEmpty {
 					_ = os.Remove(registryPath)
 				}
 			}
-			
+
 			// Clean up empty ARM directory
 			if isEmpty, _ := isDirEmpty(armPath); isEmpty {
 				_ = os.Remove(armPath)
