@@ -43,7 +43,7 @@
 - [ ] 1.0 Core Infrastructure Setup
   - [x] 1.1 Initialize Go module with required dependencies (cobra, viper, aws-sdk-go-v2, go-git)
   - [x] 1.2 Create internal package structure (config, registry, cli, cache, version, install)
-  - [ ] 1.3 Set up main.go entry point with basic CLI framework
+  - [x] 1.3 Set up main.go entry point with basic CLI framework
   - [ ] 1.4 Configure build system and update Makefile for ARM binary
 - [ ] 2.0 Configuration System Implementation
   - [ ] 2.1 Implement INI parser for .armrc files with environment variable expansion
