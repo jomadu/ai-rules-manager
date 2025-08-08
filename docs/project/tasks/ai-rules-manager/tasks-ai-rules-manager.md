@@ -53,7 +53,7 @@
   - [x] 2.5 Implement stub file generation for .armrc and arm.json
 - [ ] 3.0 Registry System Implementation
   - [x] 3.1 Define registry interface and common authentication handling
-  - [ ] 3.2 Implement Git registry with clone/API modes and pattern matching
+  - [x] 3.2 Implement Git registry with clone/API modes and pattern matching
   - [ ] 3.3 Implement S3 registry with AWS credential chain and region handling
   - [ ] 3.4 Implement GitLab registry with package API integration
   - [ ] 3.5 Implement HTTPS registry with manifest.json discovery
