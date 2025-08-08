@@ -121,7 +121,7 @@ type exactResolver struct{}
 func (r *exactResolver) Resolve(versionSpec string, availableVersions []string) (string, error) {
 	// Remove '=' prefix if present
 	targetVersion := strings.TrimPrefix(versionSpec, "=")
-	
+
 	for _, v := range availableVersions {
 		if v == targetVersion || strings.TrimPrefix(v, "v") == targetVersion {
 			return v, nil
