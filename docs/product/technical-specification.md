@@ -1067,20 +1067,484 @@ arm config get cache.maxSize             # View current cache limit
 ## 6. Error Handling and User Experience
 
 ### 6.1 Error Message Standards
+
+**Structured Error Format:**
+```
+Error [CATEGORY]: Primary error message
+Details: Additional context or technical details
+Suggestion: Recommended corrective action
+```
+
+**Error Categories:**
+- `[NETWORK]` - Network connectivity, timeouts, DNS resolution
+- `[AUTH]` - Authentication failures, invalid credentials
+- `[CONFIG]` - Configuration file errors, invalid settings
+- `[REGISTRY]` - Registry-specific errors, unavailable registries
+- `[RULESET]` - Ruleset not found, version conflicts
+- `[FILESYSTEM]` - File permissions, disk space, path issues
+- `[VALIDATION]` - Input validation, malformed data
+- `[DEPENDENCY]` - Missing system dependencies (git, tar)
+
+**Example Error Messages:**
+```bash
+# Network Error
+Error [NETWORK]: Failed to connect to registry 's3://bucket.amazonaws.com/'
+Details: Connection timeout after 30 seconds
+Suggestion: Check your internet connection and registry URL
+
+# Configuration Error
+Error [CONFIG]: Invalid configuration in .armrc
+Details: Line 5: Unknown registry type 'invalid'
+Suggestion: Valid registry types are: git, s3, gitlab, http, local
+
+# Dependency Error
+Error [DEPENDENCY]: Required tool 'git' not found in PATH
+Details: Git is required for Git registry operations
+Suggestion: Install git using your package manager (e.g., 'brew install git')
+```
+
+**Exit Codes:**
+- `0` - Success
+- `1` - General error (config, validation, user input)
+- `2` - System error (network, filesystem, dependencies)
+
+**Verbosity Levels:**
+
+**Default Output:**
+```bash
+$ arm install my-rules
+Installing my-rules@1.2.0...
+✓ Downloaded my-rules@1.2.0
+✓ Installed to .cursor/rules/
+```
+
+**Quiet Mode (--quiet):**
+```bash
+$ arm install my-rules --quiet
+# No output on success, only critical errors
+```
+
+**Verbose Mode (--verbose):**
+```bash
+$ arm install my-rules --verbose
+[DEBUG] Loading configuration from .armrc
+[DEBUG] Cache hit: versions.json (fresh)
+[DEBUG] Resolving version ^1.0.0 -> 1.2.0
+[DEBUG] Downloading from s3://bucket/my-rules-1.2.0.tar.gz
+[DEBUG] HTTP GET 200 (1.2MB in 0.8s)
+[DEBUG] Extracting to /tmp/arm-extract-abc123
+[DEBUG] Copying 3 files to .cursor/rules/default/my-rules/1.2.0/
+[DEBUG] Updating arm.lock
+✓ Installed my-rules@1.2.0
+```
+
 ### 6.2 Configuration Validation
+
+**Validation Timing:**
+- **On Access**: Validate configuration files only when accessed or modified
+- **Not Every Command**: Skip validation for commands that don't need config
+- **Lazy Loading**: Load and validate config sections as needed
+
+**Validation Process:**
+1. **Syntax Check**: Verify INI/JSON syntax is valid
+2. **Schema Validation**: Check required fields and data types
+3. **Semantic Validation**: Verify registry URLs, paths exist
+4. **Dependency Check**: Ensure required tools are available
+
+**Invalid Configuration Behavior:**
+- **Corrupted Files**: Fail completely with clear error message
+- **Missing Files**: Create stub files with default values
+- **Invalid Values**: Fail with specific field-level errors
+- **No Fallback**: Never silently use defaults for invalid config
+
+**Configuration Error Examples:**
+```bash
+# Syntax Error
+Error [CONFIG]: Invalid INI syntax in ~/.armrc
+Details: Line 12: Expected '=' after key 'url'
+Suggestion: Check INI file syntax or run 'arm config validate'
+
+# Missing Required Field
+Error [CONFIG]: Missing required field in registry 'my-s3'
+Details: Field 'url' is required for S3 registries
+Suggestion: Add 'url = s3://your-bucket/' to [registry.my-s3] section
+
+# Invalid Registry Type
+Error [CONFIG]: Unknown registry type 'ftp' in registry 'my-ftp'
+Details: Supported types: git, s3, gitlab, http, local
+Suggestion: Change type to one of the supported registry types
+```
+
+**Dependency Validation:**
+```bash
+# Missing Git
+Error [DEPENDENCY]: Git not found in system PATH
+Details: Git is required for Git registry operations
+Suggestion: Install git:
+  macOS: brew install git
+  Ubuntu: sudo apt install git
+  Windows: Download from https://git-scm.com/
+
+# Missing Tar
+Error [DEPENDENCY]: Tar not found in system PATH
+Details: Tar is required for extracting ruleset archives
+Suggestion: Install tar using your system package manager
+```
+
 ### 6.3 Network Failure Handling
+
+**Retry Configuration:**
+```ini
+# .armrc configuration
+[network]
+timeout = 30                    # Global timeout in seconds
+retry.maxAttempts = 3          # Maximum retry attempts
+retry.backoffMultiplier = 2.0  # Exponential backoff multiplier
+retry.maxBackoff = 30          # Maximum backoff time in seconds
+```
+
+**Retry Logic:**
+- **Exponential Backoff**: 1s, 2s, 4s, 8s, 16s, 30s (capped)
+- **Maximum Wait**: 30 seconds total backoff time
+- **Retryable Errors**: Network timeouts, temporary DNS failures, 5xx HTTP errors
+- **Non-Retryable**: 4xx HTTP errors, authentication failures, malformed URLs
+
+**Network Error Handling:**
+
+**Connection Timeout:**
+```bash
+Error [NETWORK]: Connection timeout to registry 'my-s3'
+Details: No response after 30 seconds
+Suggestion: Check internet connection or increase timeout with:
+  arm config set network.timeout 60
+```
+
+**DNS Resolution:**
+```bash
+Error [NETWORK]: Failed to resolve hostname 'invalid-bucket.s3.amazonaws.com'
+Details: DNS lookup failed
+Suggestion: Verify registry URL is correct in .armrc
+```
+
+**HTTP Errors:**
+```bash
+# 404 Not Found
+Error [REGISTRY]: Ruleset 'my-rules@1.5.0' not found
+Details: HTTP 404 from s3://bucket/my-rules-1.5.0.tar.gz
+Suggestion: Check available versions with 'arm info my-rules --versions'
+
+# 403 Forbidden
+Error [AUTH]: Access denied to registry 'my-s3'
+Details: HTTP 403 - insufficient permissions
+Suggestion: Check AWS credentials or S3 bucket permissions
+```
+
+**Partial Failure Handling:**
+```bash
+$ arm install ruleset1 ruleset2 ruleset3
+✓ Installed ruleset1@1.0.0
+✗ Failed to install ruleset2: [NETWORK] Connection timeout
+✓ Installed ruleset3@2.1.0
+
+Warning: 1 of 3 rulesets failed to install
+Run 'arm install ruleset2' to retry failed installation
+```
+
 ### 6.4 User Guidance Messages
+
+**Command Suggestions:**
+
+**Typo Detection (Fuzzy Matching):**
+```bash
+$ arm instal my-rules
+Error [VALIDATION]: Unknown command 'instal'
+Did you mean: install
+
+$ arm install my-ruls
+Error [RULESET]: Ruleset 'my-ruls' not found
+Did you mean: my-rules
+Suggestion: Run 'arm search my-ruls' to find similar rulesets
+```
+
+**Missing Arguments:**
+```bash
+$ arm install
+Error [VALIDATION]: Missing required argument <ruleset-name>
+Usage: arm install <ruleset-name> [options]
+Example: arm install my-rules
+
+$ arm config add-registry
+Error [VALIDATION]: Missing required arguments
+Usage: arm config add-registry <name> <type> <url>
+Example: arm config add-registry my-git git https://github.com/user/repo
+```
+
+**Helpful Context:**
+```bash
+# No registries configured
+$ arm search python
+Error [CONFIG]: No registries configured
+Suggestion: Add a registry first:
+  arm config add-registry default s3 s3://your-bucket/
+  arm config add-registry my-git git https://github.com/user/repo
+
+# No rulesets installed
+$ arm list
+No rulesets installed
+Suggestion: Install rulesets with 'arm install <ruleset-name>'
+           Search available rulesets with 'arm search <query>'
+```
+
+**Progress Interruption (Ctrl+C):**
+```bash
+$ arm install large-ruleset
+Downloading large-ruleset@1.0.0... 45%
+^C
+Interrupted by user
+Cleaning up partial downloads...
+✓ Cleanup complete
+
+To resume: arm install large-ruleset
+```
+
+**Update Suggestions:**
+```bash
+$ arm outdated
+Outdated rulesets found:
+  my-rules: 1.0.0 → 1.2.0 (2 versions behind)
+  python-rules: 2.1.0 → 2.3.1 (2 versions behind)
+
+Run 'arm update' to update all rulesets
+Run 'arm update my-rules' to update specific ruleset
+```
+
+**Configuration Guidance:**
+```bash
+# First time setup
+$ arm install my-rules
+Error [CONFIG]: No configuration found
+Suggestion: Initialize ARM configuration:
+  arm config init
+  arm config add-registry default s3 s3://your-bucket/
+
+# Missing patterns for Git registry
+$ arm install git-registry/my-rules
+Error [VALIDATION]: Git registry rulesets require --patterns flag
+Example: arm install git-registry/my-rules --patterns "*.md,*.mdc"
+Suggestion: Specify file patterns to extract from the Git repository
+```
+
+**JSON Output for Scripting:**
+```bash
+$ arm install my-rules --json
+{
+  "success": false,
+  "error": {
+    "category": "NETWORK",
+    "message": "Connection timeout to registry 'my-s3'",
+    "details": "No response after 30 seconds",
+    "suggestion": "Check internet connection or increase timeout"
+  },
+  "exit_code": 2
+}
+```
 
 ## 7. File Management
 
 ### 7.1 Directory Structure
+
+**Channel Directory Layout:**
+```
+.cursor/rules/
+├── channel1/                    # Channel directory
+│   ├── registry-name/
+│   │   └── ruleset-name/
+│   │       ├── file1.md
+│   │       ├── file2.mdc
+│   │       └── subdir/
+│   │           └── file3.txt
+│   └── another-registry/
+│       └── another-ruleset/
+│           └── rules.md
+├── channel2/                    # Another channel
+│   ├── registry-name/
+│   │   └── ruleset-name/
+│   │       ├── file1.md         # Independent copy
+│   │       └── file2.mdc
+│   └── different-registry/
+│       └── different-ruleset/
+│           └── config.md
+└── default/                     # Default channel
+    └── registry-name/
+        └── ruleset-name/
+            └── main.md
+```
+
+**Directory Creation:**
+- **Automatic Creation**: ARM creates channel directories and parent paths automatically
+- **Path Structure**: Mirrors registry/ruleset structure within each channel
+- **Independent Channels**: Each channel maintains separate copies of all files
+- **Nested Directories**: Preserve subdirectory structure from source rulesets
+
+**Installation Directory Mapping:**
+```
+# Source structure in ruleset
+ruleset.tar.gz:
+├── python-rules.md
+├── javascript-rules.mdc
+└── advanced/
+    └── security.txt
+
+# Installed to channel
+.cursor/rules/channel1/my-registry/python-rules/
+├── python-rules.md
+├── javascript-rules.mdc
+└── advanced/
+    └── security.txt
+```
+
 ### 7.2 File Namespacing
+
+**Namespace Strategy:**
+- **Directory-Based**: Rely on registry/ruleset directory structure for namespacing
+- **No File Renaming**: Preserve original filenames from rulesets
+- **Natural Separation**: Different rulesets cannot conflict due to directory isolation
+- **Subdirectory Preservation**: Maintain internal directory structure of rulesets
+
+**File Extension Filtering:**
+- **Allowed Extensions**: `.md`, `.mdc`, `.txt`
+- **Rejected Extensions**: All other file types (`.json`, `.yaml`, `.py`, `.js`, etc.)
+- **Installation Behavior**: Skip unsupported files with notification
+- **Case Insensitive**: Extensions matched case-insensitively (`.MD`, `.Txt` allowed)
+
+**File Extension Handling:**
+```bash
+# During installation
+$ arm install my-rules --verbose
+[DEBUG] Processing ruleset files:
+✓ Installed: python-rules.md
+✓ Installed: config.mdc
+✓ Installed: readme.txt
+⚠ Skipped: config.json (unsupported extension)
+⚠ Skipped: script.py (unsupported extension)
+⚠ Skipped: binary-file (no extension)
+
+Installed 3 files, skipped 3 unsupported files
+```
+
+**Namespace Examples:**
+```
+# Multiple rulesets with same filename - no conflict
+.cursor/rules/channel1/
+├── registry-a/
+│   └── python-rules/
+│       └── main.md              # From registry-a/python-rules
+└── registry-b/
+    └── python-rules/
+        └── main.md              # From registry-b/python-rules (different content)
+```
+
 ### 7.3 Conflict Resolution
+
+**No File-Level Conflicts:**
+- **Directory Isolation**: Each ruleset installs to its own directory path
+- **Registry Namespacing**: Registry names prevent cross-registry conflicts
+- **Ruleset Namespacing**: Ruleset names prevent same-registry conflicts
+- **Channel Independence**: Same ruleset in different channels = independent copies
+
+**Conflict Scenarios and Resolution:**
+
+**Same Ruleset, Multiple Channels:**
+```bash
+# Installing to multiple channels creates independent copies
+$ arm install my-rules --channels channel1,channel2
+
+# Results in:
+.cursor/rules/channel1/default/my-rules/file.md
+.cursor/rules/channel2/default/my-rules/file.md
+# ^ Independent files, can diverge over time
+```
+
+**Existing Non-ARM Files:**
+```bash
+# ARM overwrites existing files in channel directories
+$ ls .cursor/rules/channel1/default/my-rules/
+manual-file.md  # User-created file
+
+$ arm install my-rules
+# If my-rules contains manual-file.md, it will be overwritten
+# No warning given - ARM assumes ownership of channel directories
+```
+
+**ARM-Managed File Updates:**
+```bash
+# Updating rulesets replaces existing ARM-managed files
+$ arm update my-rules
+# All files in .cursor/rules/*/default/my-rules/ are replaced
+# Previous version kept in installation directory until next update
+```
+
+**Directory Conflicts:**
+- **Channel Directory Exists**: ARM uses existing directory, creates subdirectories as needed
+- **Registry Directory Exists**: ARM uses existing directory, adds ruleset subdirectories
+- **Ruleset Directory Exists**: ARM replaces contents during installation/update
+
 ### 7.4 Permission Handling
+
+**Standardized Permissions:**
+- **Files**: 644 (user read/write, group/other read)
+- **Directories**: 755 (user read/write/execute, group/other read/execute)
+- **No Inheritance**: Ignore source permissions from tar.gz or git repositories
+- **Consistent Security**: All ARM-managed files use same permission model
+
+**Permission Application:**
+```bash
+# During installation, ARM sets standard permissions
+$ arm install my-rules
+$ ls -la .cursor/rules/channel1/default/my-rules/
+drwxr-xr-x  3 user group   96 Jan 15 10:30 .
+drwxr-xr-x  3 user group   96 Jan 15 10:30 ..
+-rw-r--r--  1 user group 1024 Jan 15 10:30 rules.md
+-rw-r--r--  1 user group  512 Jan 15 10:30 config.mdc
+drwxr-xr-x  2 user group   64 Jan 15 10:30 advanced/
+```
+
+**Permission Edge Cases:**
+- **Existing Files**: ARM changes permissions to standard values during installation
+- **User Modifications**: User permission changes are overwritten on next install/update
+- **System Restrictions**: If ARM cannot set permissions, installation fails with clear error
+- **Readonly Filesystems**: ARM detects and fails gracefully with appropriate error message
+
+**Directory Creation Process:**
+1. **Check Parent Path**: Verify channel directory path is valid
+2. **Create Missing Directories**: Create channel, registry, and ruleset directories as needed
+3. **Set Permissions**: Apply 755 permissions to all created directories
+4. **Verify Access**: Ensure ARM can write to target directories
+5. **Fail Gracefully**: Clear error messages if directory creation fails
+
+**File Installation Process:**
+1. **Filter Extensions**: Skip files with unsupported extensions
+2. **Create Target Path**: Ensure target directory exists
+3. **Copy File**: Copy from source to target location
+4. **Set Permissions**: Apply 644 permissions to installed file
+5. **Preserve Structure**: Maintain subdirectory hierarchy from source
+
+**Permission Error Handling:**
+```bash
+# Permission denied during installation
+Error [FILESYSTEM]: Cannot create directory '.cursor/rules/channel1/'
+Details: Permission denied (errno 13)
+Suggestion: Check directory permissions or run with appropriate privileges
+
+# Readonly filesystem
+Error [FILESYSTEM]: Cannot write to readonly filesystem
+Details: Target path '.cursor/rules/' is on readonly mount
+Suggestion: Choose a writable location or remount filesystem with write access
+```
 
 ## 8. Authentication and Security
 
-### 8.1 Authentication Methods by Registry Type
+### 8.1 Authentication Methods by Registry Type Registry Type
 ### 8.2 Credential Management
 ### 8.3 Environment Variable Support
 ### 8.4 Security Considerations
