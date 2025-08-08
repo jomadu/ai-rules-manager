@@ -48,7 +48,7 @@ func TestHTTPSRegistry_GetRulesets(t *testing.T) {
 					"js-rules":     {"2.0.0", "2.1.0"},
 				},
 			}
-			json.NewEncoder(w).Encode(manifest)
+			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
 		http.NotFound(w, r)
@@ -106,7 +106,7 @@ func TestHTTPSRegistry_GetRuleset(t *testing.T) {
 					"python-rules": {"1.0.0", "1.1.0", "1.2.0"},
 				},
 			}
-			json.NewEncoder(w).Encode(manifest)
+			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
 		http.NotFound(w, r)
@@ -174,7 +174,7 @@ func TestHTTPSRegistry_DownloadRuleset(t *testing.T) {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			w.Write([]byte("fake tar.gz content"))
+			_, _ = w.Write([]byte("fake tar.gz content"))
 			return
 		}
 		http.NotFound(w, r)
@@ -206,7 +206,7 @@ func TestHTTPSRegistry_DownloadRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test download
 	err = registry.DownloadRuleset(context.Background(), "python-rules", "1.0.0", tempDir)
@@ -241,7 +241,7 @@ func TestHTTPSRegistry_GetVersions(t *testing.T) {
 					"empty-rules":  {},
 				},
 			}
-			json.NewEncoder(w).Encode(manifest)
+			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
 		http.NotFound(w, r)
@@ -312,7 +312,7 @@ func TestHTTPSRegistry_ManifestCaching(t *testing.T) {
 					"python-rules": {"1.0.0"},
 				},
 			}
-			json.NewEncoder(w).Encode(manifest)
+			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
 		http.NotFound(w, r)
@@ -362,7 +362,7 @@ func TestHTTPSRegistry_InvalidManifest(t *testing.T) {
 	// Create test server with invalid manifest
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/manifest.json" {
-			w.Write([]byte(`{"invalid": "manifest"}`))
+			_, _ = w.Write([]byte(`{"invalid": "manifest"}`))
 			return
 		}
 		http.NotFound(w, r)

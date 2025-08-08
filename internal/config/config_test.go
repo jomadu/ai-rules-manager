@@ -48,10 +48,16 @@ func TestExpandEnvVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set environment variables
+			var varsToUnset []string
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-				defer os.Unsetenv(k)
+				_ = os.Setenv(k, v)
+				varsToUnset = append(varsToUnset, k)
 			}
+			defer func() {
+				for _, k := range varsToUnset {
+					_ = os.Unsetenv(k)
+				}
+			}()
 
 			result := expandEnvVars(tt.input)
 			if result != tt.expected {
@@ -90,13 +96,13 @@ timeout = 30
 path = ~/.arm/cache
 `
 
-	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
 		t.Fatalf("Failed to create test config file: %v", err)
 	}
 
 	// Set environment variable for testing
-	os.Setenv("GITHUB_TOKEN", "test-token")
-	defer os.Unsetenv("GITHUB_TOKEN")
+	_ = os.Setenv("GITHUB_TOKEN", "test-token")
+	defer func() { _ = os.Unsetenv("GITHUB_TOKEN") }()
 
 	// Load configuration
 	cfg := &Config{
@@ -196,15 +202,15 @@ func TestLoadARMJSON(t *testing.T) {
   }
 }`
 
-	if err := os.WriteFile(jsonPath, []byte(jsonContent), 0600); err != nil {
+	if err := os.WriteFile(jsonPath, []byte(jsonContent), 0o600); err != nil {
 		t.Fatalf("Failed to create test JSON file: %v", err)
 	}
 
 	// Set environment variables for testing
-	os.Setenv("HOME", "/users/test")
-	os.Setenv("PROJECT_ROOT", "/workspace/project")
-	defer os.Unsetenv("HOME")
-	defer os.Unsetenv("PROJECT_ROOT")
+	_ = os.Setenv("HOME", "/users/test")
+	_ = os.Setenv("PROJECT_ROOT", "/workspace/project")
+	defer func() { _ = os.Unsetenv("HOME") }()
+	defer func() { _ = os.Unsetenv("PROJECT_ROOT") }()
 
 	// Load configuration
 	cfg := &Config{
@@ -276,7 +282,7 @@ func TestLoadLockFile(t *testing.T) {
   }
 }`
 
-	if err := os.WriteFile(lockPath, []byte(lockContent), 0600); err != nil {
+	if err := os.WriteFile(lockPath, []byte(lockContent), 0o600); err != nil {
 		t.Fatalf("Failed to create test lock file: %v", err)
 	}
 
@@ -322,12 +328,12 @@ func TestExpandEnvVarsInJSON(t *testing.T) {
 }`
 
 	// Set environment variables
-	os.Setenv("HOME", "/users/test")
-	os.Setenv("HOST", "localhost")
-	os.Setenv("PORT", "8080")
-	defer os.Unsetenv("HOME")
-	defer os.Unsetenv("HOST")
-	defer os.Unsetenv("PORT")
+	_ = os.Setenv("HOME", "/users/test")
+	_ = os.Setenv("HOST", "localhost")
+	_ = os.Setenv("PORT", "8080")
+	defer func() { _ = os.Unsetenv("HOME") }()
+	defer func() { _ = os.Unsetenv("HOST") }()
+	defer func() { _ = os.Unsetenv("PORT") }()
 
 	expanded := expandEnvVarsInJSON(jsonContent)
 	expected := `{
@@ -512,7 +518,7 @@ func TestHierarchicalLoad(t *testing.T) {
 	// Create temporary directories
 	tmpDir := t.TempDir()
 	globalDir := filepath.Join(tmpDir, ".arm")
-	if err := os.MkdirAll(globalDir, 0755); err != nil {
+	if err := os.MkdirAll(globalDir, 0o755); err != nil {
 		t.Fatalf("Failed to create global dir: %v", err)
 	}
 
@@ -533,7 +539,7 @@ region = us-west-1
 concurrency = 1
 rateLimit = 10/minute`
 
-	if err := os.WriteFile(filepath.Join(globalDir, ".armrc"), []byte(globalINI), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(globalDir, ".armrc"), []byte(globalINI), 0o600); err != nil {
 		t.Fatalf("Failed to create global .armrc: %v", err)
 	}
 
@@ -544,7 +550,7 @@ rateLimit = 10/minute`
   "rulesets": {"default": {"global-rules": {"version": "1.0.0"}}}
 }`
 
-	if err := os.WriteFile(filepath.Join(globalDir, "arm.json"), []byte(globalJSON), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(globalDir, "arm.json"), []byte(globalJSON), 0o600); err != nil {
 		t.Fatalf("Failed to create global arm.json: %v", err)
 	}
 
@@ -563,7 +569,7 @@ type = local
 [git]
 concurrency = 2`
 
-	if err := os.WriteFile(filepath.Join(tmpDir, ".armrc"), []byte(localINI), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, ".armrc"), []byte(localINI), 0o600); err != nil {
 		t.Fatalf("Failed to create local .armrc: %v", err)
 	}
 
@@ -574,19 +580,19 @@ concurrency = 2`
   "rulesets": {"default": {"local-rules": {"version": "1.0.0"}}}
 }`
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "arm.json"), []byte(localJSON), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "arm.json"), []byte(localJSON), 0o600); err != nil {
 		t.Fatalf("Failed to create local arm.json: %v", err)
 	}
 
 	// Set HOME to tmpDir for testing
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	_ = os.Setenv("HOME", tmpDir)
+	defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 	// Change to tmpDir for local file loading
 	originalWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	// Load configuration
 	cfg, err := Load()
@@ -870,8 +876,8 @@ func TestGenerateStubFiles(t *testing.T) {
 	// Test local stub generation
 	tmpDir := t.TempDir()
 	originalWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	// Generate local stubs
 	err := GenerateStubFiles(false)
@@ -940,8 +946,8 @@ func TestGenerateGlobalStubFiles(t *testing.T) {
 	// Test global stub generation
 	tmpDir := t.TempDir()
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	_ = os.Setenv("HOME", tmpDir)
+	defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 	// Generate global stubs
 	err := GenerateStubFiles(true)
@@ -982,8 +988,8 @@ func TestGenerateARMRCStub(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat stub file: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
-		t.Errorf("Expected file permissions 0600, got %o", info.Mode().Perm())
+	if info.Mode().Perm() != 0o600 {
+		t.Errorf("Expected file permissions 0o600, got %o", info.Mode().Perm())
 	}
 
 	// Check content structure
@@ -1040,8 +1046,8 @@ func TestGenerateARMJSONStub(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to stat stub file: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
-		t.Errorf("Expected file permissions 0600, got %o", info.Mode().Perm())
+	if info.Mode().Perm() != 0o600 {
+		t.Errorf("Expected file permissions 0o600, got %o", info.Mode().Perm())
 	}
 
 	// Check that it's valid JSON

@@ -108,7 +108,7 @@ func (r *gitResolver) Validate(versionSpec string) error {
 		return nil
 	}
 	// Validate branch name or commit hash format
-	if len(versionSpec) == 0 {
+	if versionSpec == "" {
 		return fmt.Errorf("empty version specification")
 	}
 	// Basic validation - more specific validation would be registry-dependent
@@ -132,7 +132,7 @@ func (r *exactResolver) Resolve(versionSpec string, availableVersions []string) 
 
 func (r *exactResolver) Validate(versionSpec string) error {
 	targetVersion := strings.TrimPrefix(versionSpec, "=")
-	if len(targetVersion) == 0 {
+	if targetVersion == "" {
 		return fmt.Errorf("empty version specification")
 	}
 	return nil

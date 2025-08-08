@@ -198,7 +198,7 @@ func TestScanDirectory(t *testing.T) {
 
 	for _, filename := range testFiles {
 		filePath := filepath.Join(tmpDir, filename)
-		if err := os.WriteFile(filePath, []byte("test content"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("test content"), 0o644); err != nil {
 			t.Fatalf("Failed to create test file %s: %v", filename, err)
 		}
 	}
