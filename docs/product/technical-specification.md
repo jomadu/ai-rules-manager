@@ -139,6 +139,12 @@ rateLimit = 60/hour
 concurrency = 20
 rateLimit = 1000/second
 
+[network]
+timeout = 30
+retry.maxAttempts = 3
+retry.backoffMultiplier = 2.0
+retry.maxBackoff = 30
+
 [cache]
 path = ~/.arm/cache
 maxSize = 1GB
@@ -289,6 +295,13 @@ ttl = 3600
 # [local]
 # concurrency = 20
 # rateLimit = 1000/second
+
+# Network configuration
+# [network]
+# timeout = 30
+# retry.maxAttempts = 3
+# retry.backoffMultiplier = 2.0
+# retry.maxBackoff = 30
 
 # Cache configuration
 # [cache]
@@ -1302,12 +1315,17 @@ Suggestion: Check INI file syntax
 
 # Missing Required Field
 Error [CONFIG]: Missing required field in registry 'my-s3'
-Details: Field 'url' is required for S3 registries
-Suggestion: Add 'url = s3://your-bucket/' to [registries.my-s3] section
+Details: Field 'type' is required for all registries
+Suggestion: Add 'type = s3' to [registries.my-s3] section
+
+# Missing S3 Region
+Error [CONFIG]: Missing required field in registry 'my-s3'
+Details: Field 'region' is required for S3 registries
+Suggestion: Add 'region = us-east-1' to [registries.my-s3] section
 
 # Invalid Registry Type
 Error [CONFIG]: Unknown registry type 'ftp' in registry 'my-ftp'
-Details: Supported types: git, s3, gitlab, http, local
+Details: Supported types: git, https, s3, gitlab, local
 Suggestion: Change type to one of the supported registry types
 ```
 
@@ -1357,21 +1375,21 @@ Suggestion: Check internet connection or increase timeout with:
 
 **DNS Resolution:**
 ```bash
-Error [NETWORK]: Failed to resolve hostname 'invalid-bucket.s3.amazonaws.com'
-Details: DNS lookup failed
-Suggestion: Verify registry URL is correct in .armrc
+Error [NETWORK]: Failed to resolve hostname for registry 'my-git'
+Details: DNS lookup failed for https://github.com/user/repo
+Suggestion: Verify registry configuration is correct in .armrc
 ```
 
 **HTTP Errors:**
 ```bash
 # 404 Not Found
 Error [REGISTRY]: Ruleset 'my-rules@1.5.0' not found
-Details: HTTP 404 from s3://bucket/my-rules-1.5.0.tar.gz
+Details: HTTP 404 from S3 bucket 'my-bucket' in region 'us-east-1'
 Suggestion: Check available versions with 'arm info my-rules --versions'
 
 # 403 Forbidden
 Error [AUTH]: Access denied to registry 'my-s3'
-Details: HTTP 403 - insufficient permissions
+Details: HTTP 403 - insufficient permissions for S3 bucket 'my-bucket'
 Suggestion: Check AWS credentials or S3 bucket permissions
 ```
 
@@ -1411,8 +1429,8 @@ Example: arm install my-rules
 
 $ arm config add registry
 Error [VALIDATION]: Missing required arguments
-Usage: arm config add registry <name> <url> [options]
-Example: arm config add registry my-git git://github.com/user/repo
+Usage: arm config add registry <name> <value> --type=<type> [options]
+Example: arm config add registry my-git https://github.com/user/repo --type=git
 ```
 
 **Helpful Context:**
@@ -1467,6 +1485,12 @@ $ arm install git-registry/my-rules
 Error [VALIDATION]: Git registry rulesets require --patterns flag
 Example: arm install git-registry/my-rules --patterns "*.md,*.mdc"
 Suggestion: Specify file patterns to extract from the Git repository
+
+# Missing type configuration
+$ arm config add registry my-new https://github.com/user/repo
+Error [VALIDATION]: Missing required --type flag
+Example: arm config add registry my-new https://github.com/user/repo --type=git
+Suggestion: All registries require explicit type configuration
 ```
 
 **JSON Output for Scripting:**
@@ -1477,7 +1501,7 @@ $ arm install my-rules --json
   "error": {
     "category": "NETWORK",
     "message": "Connection timeout to registry 'my-s3'",
-    "details": "No response after 30 seconds",
+    "details": "No response after 30 seconds from S3 bucket 'my-bucket' in region 'us-east-1'",
     "suggestion": "Check internet connection or increase timeout"
   },
   "exit_code": 2
