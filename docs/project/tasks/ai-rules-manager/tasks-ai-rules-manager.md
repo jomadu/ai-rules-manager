@@ -56,7 +56,7 @@
   - [x] 3.2 Implement Git registry with clone/API modes and pattern matching
   - [x] 3.3 Implement S3 registry with AWS credential chain and region handling
   - [x] 3.4 Implement GitLab registry with package API integration
-  - [ ] 3.5 Implement HTTPS registry with manifest.json discovery
+  - [x] 3.5 Implement HTTPS registry with manifest.json discovery
   - [ ] 3.6 Implement Local filesystem registry with directory scanning
 - [ ] 4.0 CLI Command Interface Implementation
   - [ ] 4.1 Implement config command (set, get, list, add/remove registry/channel)

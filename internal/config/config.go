@@ -8,23 +8,23 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/ini.v1"
 	"github.com/max-dunn/ai-rules-manager/internal/version"
+	"gopkg.in/ini.v1"
 )
 
 // Config represents the ARM configuration
 type Config struct {
-	Registries map[string]string            // [registries] section
+	Registries      map[string]string            // [registries] section
 	RegistryConfigs map[string]map[string]string // [registries.name] sections
-	TypeDefaults map[string]map[string]string    // [git], [s3], etc. sections
-	NetworkConfig map[string]string         // [network] section
-	CacheConfig map[string]string           // [cache] section
-	
+	TypeDefaults    map[string]map[string]string // [git], [s3], etc. sections
+	NetworkConfig   map[string]string            // [network] section
+	CacheConfig     map[string]string            // [cache] section
+
 	// JSON configuration
-	Channels map[string]ChannelConfig       // channels from arm.json
+	Channels map[string]ChannelConfig          // channels from arm.json
 	Rulesets map[string]map[string]RulesetSpec // rulesets from arm.json
-	Engines map[string]string               // engines from arm.json
-	LockFile *LockFile                      // arm.lock content
+	Engines  map[string]string                 // engines from arm.json
+	LockFile *LockFile                         // arm.lock content
 }
 
 // ChannelConfig represents a channel configuration
@@ -40,9 +40,9 @@ type RulesetSpec struct {
 
 // ARMConfig represents the arm.json file structure
 type ARMConfig struct {
-	Engines  map[string]string                    `json:"engines"`
-	Channels map[string]ChannelConfig            `json:"channels"`
-	Rulesets map[string]map[string]RulesetSpec   `json:"rulesets"`
+	Engines  map[string]string                 `json:"engines"`
+	Channels map[string]ChannelConfig          `json:"channels"`
+	Rulesets map[string]map[string]RulesetSpec `json:"rulesets"`
 }
 
 // LockFile represents the arm.lock file structure
@@ -91,14 +91,14 @@ func Load() (*Config, error) {
 // loadConfigFromPaths loads configuration from specified file paths
 func loadConfigFromPaths(iniPath, jsonPath, lockPath string) (*Config, error) {
 	cfg := &Config{
-		Registries: make(map[string]string),
+		Registries:      make(map[string]string),
 		RegistryConfigs: make(map[string]map[string]string),
-		TypeDefaults: make(map[string]map[string]string),
-		NetworkConfig: make(map[string]string),
-		CacheConfig: make(map[string]string),
-		Channels: make(map[string]ChannelConfig),
-		Rulesets: make(map[string]map[string]RulesetSpec),
-		Engines: make(map[string]string),
+		TypeDefaults:    make(map[string]map[string]string),
+		NetworkConfig:   make(map[string]string),
+		CacheConfig:     make(map[string]string),
+		Channels:        make(map[string]ChannelConfig),
+		Rulesets:        make(map[string]map[string]RulesetSpec),
+		Engines:         make(map[string]string),
 	}
 
 	// Load INI file
@@ -234,14 +234,14 @@ func (c *Config) processCacheConfig(section *ini.Section) error {
 // mergeConfigs merges two configurations with local taking precedence at key level
 func mergeConfigs(global, local *Config) *Config {
 	merged := &Config{
-		Registries: make(map[string]string),
+		Registries:      make(map[string]string),
 		RegistryConfigs: make(map[string]map[string]string),
-		TypeDefaults: make(map[string]map[string]string),
-		NetworkConfig: make(map[string]string),
-		CacheConfig: make(map[string]string),
-		Channels: make(map[string]ChannelConfig),
-		Rulesets: make(map[string]map[string]RulesetSpec),
-		Engines: make(map[string]string),
+		TypeDefaults:    make(map[string]map[string]string),
+		NetworkConfig:   make(map[string]string),
+		CacheConfig:     make(map[string]string),
+		Channels:        make(map[string]ChannelConfig),
+		Rulesets:        make(map[string]map[string]RulesetSpec),
+		Engines:         make(map[string]string),
 	}
 
 	// Merge registries (key-level merge)
@@ -515,7 +515,7 @@ func validateChannels(channels map[string]ChannelConfig) error {
 // GenerateStubFiles generates stub configuration files if they don't exist
 func GenerateStubFiles(global bool) error {
 	var armrcPath, jsonPath string
-	
+
 	if global {
 		homeDir := os.Getenv("HOME")
 		armDir := filepath.Join(homeDir, ".arm")
@@ -631,7 +631,7 @@ func generateARMRCStub(path string) error {
 func generateARMJSONStub(path string) error {
 	// Get current ARM version (will be injected by build system)
 	armVersion := getCurrentARMVersion()
-	
+
 	stubContent := fmt.Sprintf(`{
   "engines": {
     "arm": "^%s"
@@ -676,7 +676,7 @@ func contains(slice []string, item string) bool {
 func expandEnvVars(s string) string {
 	// Pattern matches $VAR and ${VAR}
 	pattern := regexp.MustCompile(`\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)`)
-	
+
 	return pattern.ReplaceAllStringFunc(s, func(match string) string {
 		var varName string
 		if strings.HasPrefix(match, "${") {
@@ -686,7 +686,7 @@ func expandEnvVars(s string) string {
 			// $VAR format
 			varName = match[1:]
 		}
-		
+
 		// Return environment variable value or empty string if not found
 		return os.Getenv(varName)
 	})

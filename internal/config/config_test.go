@@ -620,73 +620,73 @@ concurrency = 2`
 
 func TestValidateRegistry(t *testing.T) {
 	tests := []struct {
-		name        string
-		registryName string
-		url         string
-		config      map[string]string
-		expectError bool
+		name          string
+		registryName  string
+		url           string
+		config        map[string]string
+		expectError   bool
 		errorContains string
 	}{
 		{
-			name:        "valid git registry",
+			name:         "valid git registry",
 			registryName: "my-git",
-			url:         "https://github.com/user/repo",
-			config:      map[string]string{"type": "git"},
-			expectError: false,
+			url:          "https://github.com/user/repo",
+			config:       map[string]string{"type": "git"},
+			expectError:  false,
 		},
 		{
-			name:        "valid s3 registry",
+			name:         "valid s3 registry",
 			registryName: "my-s3",
-			url:         "my-bucket",
-			config:      map[string]string{"type": "s3", "region": "us-east-1"},
-			expectError: false,
+			url:          "my-bucket",
+			config:       map[string]string{"type": "s3", "region": "us-east-1"},
+			expectError:  false,
 		},
 		{
-			name:        "missing config section",
-			registryName: "missing",
-			url:         "test",
-			config:      nil,
-			expectError: true,
+			name:          "missing config section",
+			registryName:  "missing",
+			url:           "test",
+			config:        nil,
+			expectError:   true,
 			errorContains: "missing configuration section",
 		},
 		{
-			name:        "missing type field",
-			registryName: "no-type",
-			url:         "test",
-			config:      map[string]string{},
-			expectError: true,
+			name:          "missing type field",
+			registryName:  "no-type",
+			url:           "test",
+			config:        map[string]string{},
+			expectError:   true,
 			errorContains: "missing required field 'type'",
 		},
 		{
-			name:        "invalid registry type",
-			registryName: "invalid",
-			url:         "test",
-			config:      map[string]string{"type": "ftp"},
-			expectError: true,
+			name:          "invalid registry type",
+			registryName:  "invalid",
+			url:           "test",
+			config:        map[string]string{"type": "ftp"},
+			expectError:   true,
 			errorContains: "unknown registry type 'ftp'",
 		},
 		{
-			name:        "s3 missing region",
-			registryName: "s3-no-region",
-			url:         "my-bucket",
-			config:      map[string]string{"type": "s3"},
-			expectError: true,
+			name:          "s3 missing region",
+			registryName:  "s3-no-region",
+			url:           "my-bucket",
+			config:        map[string]string{"type": "s3"},
+			expectError:   true,
 			errorContains: "missing required field 'region'",
 		},
 		{
-			name:        "git missing url",
-			registryName: "git-no-url",
-			url:         "",
-			config:      map[string]string{"type": "git"},
-			expectError: true,
+			name:          "git missing url",
+			registryName:  "git-no-url",
+			url:           "",
+			config:        map[string]string{"type": "git"},
+			expectError:   true,
 			errorContains: "missing registry URL",
 		},
 		{
-			name:        "git non-https url",
-			registryName: "git-http",
-			url:         "http://github.com/user/repo",
-			config:      map[string]string{"type": "git"},
-			expectError: true,
+			name:          "git non-https url",
+			registryName:  "git-http",
+			url:           "http://github.com/user/repo",
+			config:        map[string]string{"type": "git"},
+			expectError:   true,
 			errorContains: "must use HTTPS protocol",
 		},
 	}
@@ -711,9 +711,9 @@ func TestValidateRegistry(t *testing.T) {
 
 func TestValidateEngines(t *testing.T) {
 	tests := []struct {
-		name        string
-		engines     map[string]string
-		expectError bool
+		name          string
+		engines       map[string]string
+		expectError   bool
 		errorContains string
 	}{
 		{
@@ -737,15 +737,15 @@ func TestValidateEngines(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "empty arm version",
-			engines:     map[string]string{"arm": ""},
-			expectError: true,
+			name:          "empty arm version",
+			engines:       map[string]string{"arm": ""},
+			expectError:   true,
 			errorContains: "cannot be empty",
 		},
 		{
-			name:        "invalid arm version format",
-			engines:     map[string]string{"arm": "invalid"},
-			expectError: true,
+			name:          "invalid arm version format",
+			engines:       map[string]string{"arm": "invalid"},
+			expectError:   true,
 			errorContains: "invalid ARM engine version format",
 		},
 	}
@@ -770,9 +770,9 @@ func TestValidateEngines(t *testing.T) {
 
 func TestValidateChannels(t *testing.T) {
 	tests := []struct {
-		name        string
-		channels    map[string]ChannelConfig
-		expectError bool
+		name          string
+		channels      map[string]ChannelConfig
+		expectError   bool
 		errorContains string
 	}{
 		{
@@ -793,7 +793,7 @@ func TestValidateChannels(t *testing.T) {
 			channels: map[string]ChannelConfig{
 				"empty": {Directories: []string{}},
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "must have at least one directory",
 		},
 		{
@@ -801,7 +801,7 @@ func TestValidateChannels(t *testing.T) {
 			channels: map[string]ChannelConfig{
 				"bad": {Directories: []string{"/valid", ""}},
 			},
-			expectError: true,
+			expectError:   true,
 			errorContains: "directory 1 cannot be empty",
 		},
 	}

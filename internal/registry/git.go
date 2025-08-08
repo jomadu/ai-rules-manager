@@ -95,7 +95,7 @@ func (g *GitRegistry) getRulesetsAPI(ctx context.Context, patterns []string) ([]
 
 	// Get repository contents
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents", owner, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -127,11 +127,11 @@ func (g *GitRegistry) getRulesetsAPI(ctx context.Context, patterns []string) ([]
 	for _, content := range contents {
 		if content.Type == "file" && g.matchesPatterns(content.Name, patterns) {
 			ruleset := RulesetInfo{
-				Name:     strings.TrimSuffix(content.Name, filepath.Ext(content.Name)),
-				Version:  "latest",
-				Registry: g.config.Name,
-				Type:     "git",
-				Patterns: patterns,
+				Name:      strings.TrimSuffix(content.Name, filepath.Ext(content.Name)),
+				Version:   "latest",
+				Registry:  g.config.Name,
+				Type:      "git",
+				Patterns:  patterns,
 				UpdatedAt: time.Now(),
 			}
 			rulesets = append(rulesets, ruleset)
@@ -220,7 +220,7 @@ func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, version, des
 
 	// Find the file
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, name)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, version, des
 	}
 
 	// Download the file content
-	fileReq, err := http.NewRequestWithContext(ctx, "GET", content.DownloadURL, nil)
+	fileReq, err := http.NewRequestWithContext(ctx, "GET", content.DownloadURL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -316,7 +316,7 @@ func (g *GitRegistry) getVersionsAPI(ctx context.Context, name string) ([]string
 	}
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", owner, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -404,11 +404,11 @@ func (g *GitRegistry) scanDirectory(dir string, patterns []string) ([]RulesetInf
 		relPath, _ := filepath.Rel(dir, path)
 		if g.matchesPatterns(info.Name(), patterns) {
 			ruleset := RulesetInfo{
-				Name:     strings.TrimSuffix(info.Name(), filepath.Ext(info.Name())),
-				Version:  "latest",
-				Registry: g.config.Name,
-				Type:     "git",
-				Patterns: []string{relPath},
+				Name:      strings.TrimSuffix(info.Name(), filepath.Ext(info.Name())),
+				Version:   "latest",
+				Registry:  g.config.Name,
+				Type:      "git",
+				Patterns:  []string{relPath},
 				UpdatedAt: info.ModTime(),
 			}
 			rulesets = append(rulesets, ruleset)

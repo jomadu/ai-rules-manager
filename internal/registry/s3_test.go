@@ -135,10 +135,10 @@ func TestExtractRulesetName(t *testing.T) {
 
 func TestExtractVersionFromPrefix(t *testing.T) {
 	tests := []struct {
-		name           string
-		prefix         string
-		rulesetPrefix  string
-		expected       string
+		name          string
+		prefix        string
+		rulesetPrefix string
+		expected      string
 	}{
 		{
 			name:          "simple version",
