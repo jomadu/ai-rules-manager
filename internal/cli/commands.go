@@ -191,15 +191,29 @@ func newConfigCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newInstallCommand creates the install command
-func newInstallCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newInstallCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "install [ruleset-spec]",
 		Short: "Install rulesets",
 		Long:  "Install rulesets from configured registries",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("install not implemented")
+			global, _ := cmd.Flags().GetBool("global")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			channels, _ := cmd.Flags().GetString("channels")
+			patterns, _ := cmd.Flags().GetString("patterns")
+
+			if len(args) == 0 {
+				return handleInstallFromManifest(global, dryRun, channels)
+			} else {
+				return handleInstallRuleset(args[0], global, dryRun, channels, patterns)
+			}
 		},
 	}
+
+	cmd.Flags().String("channels", "", "Install to specific channels only (comma-separated)")
+	cmd.Flags().String("patterns", "", "Glob patterns for Git registry rulesets (comma-separated)")
+
+	return cmd
 }
 
 // newUninstallCommand creates the uninstall command
@@ -548,4 +562,157 @@ func getConfigValue(cfg *config.Config, key string) string {
 	}
 
 	return ""
+}
+
+// Install command handlers
+
+func handleInstallFromManifest(global, dryRun bool, channels string) error {
+	// Load configuration to check for existing manifest
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have any rulesets configured
+	if len(cfg.Rulesets) == 0 {
+		// Generate stub files if they don't exist
+		if err := ensureConfigFiles(global); err != nil {
+			return err
+		}
+		fmt.Println("No rulesets configured. Generated stub configuration files.")
+		fmt.Println("Configure registries and rulesets in .armrc and arm.json, then run 'arm install' again.")
+		return nil
+	}
+
+	if dryRun {
+		fmt.Println("Would install the following rulesets:")
+		for registry, rulesets := range cfg.Rulesets {
+			for name, spec := range rulesets {
+				fmt.Printf("  %s/%s@%s\n", registry, name, spec.Version)
+			}
+		}
+		return nil
+	}
+
+	// TODO: Implement actual installation from manifest
+	return fmt.Errorf("manifest installation not yet implemented")
+}
+
+func handleInstallRuleset(rulesetSpec string, global, dryRun bool, channels, patterns string) error {
+	// Parse ruleset specification
+	registry, name, version := parseRulesetSpec(rulesetSpec)
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have registries configured
+	if len(cfg.Registries) == 0 {
+		// Generate stub files if they don't exist
+		if err := ensureConfigFiles(global); err != nil {
+			return err
+		}
+		return fmt.Errorf("no registries configured. Add a registry with 'arm config add registry'")
+	}
+
+	// Determine target registry
+	if registry == "" {
+		if defaultRegistry, exists := cfg.Registries["default"]; exists {
+			registry = "default"
+			_ = defaultRegistry // Use the registry URL if needed
+		} else {
+			return fmt.Errorf("no default registry configured and no registry specified")
+		}
+	}
+
+	// Check if registry exists
+	if _, exists := cfg.Registries[registry]; !exists {
+		return fmt.Errorf("registry '%s' not found", registry)
+	}
+
+	// Check if it's a Git registry and patterns are required
+	if regConfig, exists := cfg.RegistryConfigs[registry]; exists {
+		if regConfig["type"] == "git" && patterns == "" {
+			return fmt.Errorf("Git registry rulesets require --patterns flag")
+		}
+	}
+
+	if dryRun {
+		fmt.Printf("Would install: %s/%s@%s\n", registry, name, version)
+		if patterns != "" {
+			fmt.Printf("  Patterns: %s\n", patterns)
+		}
+		if channels != "" {
+			fmt.Printf("  Channels: %s\n", channels)
+		}
+		return nil
+	}
+
+	// TODO: Implement actual ruleset installation
+	return fmt.Errorf("ruleset installation not yet implemented")
+}
+
+func parseRulesetSpec(spec string) (registry, name, version string) {
+	// Handle version specification (name@version)
+	if strings.Contains(spec, "@") {
+		parts := strings.SplitN(spec, "@", 2)
+		spec = parts[0]
+		version = parts[1]
+	} else {
+		version = "latest"
+	}
+
+	// Handle registry specification (registry/name)
+	if strings.Contains(spec, "/") {
+		parts := strings.SplitN(spec, "/", 2)
+		registry = parts[0]
+		name = parts[1]
+	} else {
+		name = spec
+	}
+
+	return registry, name, version
+}
+
+func ensureConfigFiles(global bool) error {
+	// Check if .armrc exists in either location
+	armrcExists := false
+	if global {
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", ".armrc")); err == nil {
+			armrcExists = true
+		}
+	} else {
+		if _, err := os.Stat(".armrc"); err == nil {
+			armrcExists = true
+		}
+		// Also check global location
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", ".armrc")); err == nil {
+			armrcExists = true
+		}
+	}
+
+	// Check if arm.json exists in either location
+	armJSONExists := false
+	if global {
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", "arm.json")); err == nil {
+			armJSONExists = true
+		}
+	} else {
+		if _, err := os.Stat("arm.json"); err == nil {
+			armJSONExists = true
+		}
+		// Also check global location
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", "arm.json")); err == nil {
+			armJSONExists = true
+		}
+	}
+
+	// Generate missing files
+	if !armrcExists || !armJSONExists {
+		return config.GenerateStubFiles(global)
+	}
+
+	return nil
 }

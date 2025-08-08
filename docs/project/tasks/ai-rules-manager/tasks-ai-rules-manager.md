@@ -60,7 +60,7 @@
   - [x] 3.6 Implement Local filesystem registry with directory scanning
 - [ ] 4.0 CLI Command Interface Implementation
   - [x] 4.1 Implement config command (set, get, list, add/remove registry/channel)
-  - [ ] 4.2 Implement install command with stub generation and pattern support
+  - [x] 4.2 Implement install command with stub generation and pattern support
   - [ ] 4.3 Implement search, info, and list commands with registry filtering
   - [ ] 4.4 Implement update, outdated, and uninstall commands
   - [ ] 4.5 Implement clean command and version/help utilities
