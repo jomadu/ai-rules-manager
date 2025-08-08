@@ -889,12 +889,14 @@ Shows command usage, options, and examples in priority order.
 ~/.arm/cache/
 ├── registries/
 │   ├── registry-name/
-│   │   ├── repository/          # Git clones
-│   │   ├── ruleset-name/
-│   │   │   └── version/
-│   │   │       └── ruleset.tar.gz
-│   │   ├── metadata.json        # Registry metadata
-│   │   └── versions.json        # Available versions cache
+│   │   ├── repository/          # Git repository clones
+│   │   ├── rulesets/
+│   │   │   └── ruleset-name/
+│   │   │       └── version/
+│   │   │           └── ruleset.tar.gz
+│   │   ├── metadata.json        # Registry metadata cache
+│   │   ├── versions.json        # Available versions cache
+│   │   └── cache-info.json      # Cache timestamps and TTL
 │   └── another-registry/
 └── temp/                        # Temporary extraction directories
 ```
@@ -907,9 +909,160 @@ Shows command usage, options, and examples in priority order.
 ## 5. Caching and Registry Resolution
 
 ### 5.1 Cache Structure
+
+**Cache Directory Layout:**
+```
+~/.arm/cache/
+├── registries/
+│   ├── registry-name/
+│   │   ├── repository/          # Git repository clones
+│   │   ├── rulesets/
+│   │   │   └── ruleset-name/
+│   │   │       └── version/
+│   │   │           └── ruleset.tar.gz
+│   │   ├── metadata.json        # Registry metadata cache
+│   │   ├── versions.json        # Available versions cache
+│   │   └── cache-info.json      # Cache timestamps and TTL
+│   └── another-registry/
+└── temp/                        # Temporary extraction directories
+```
+
+**Cache File Structure:**
+
+**versions.json:**
+```json
+{
+  "cached_at": "2024-01-15T10:30:00Z",
+  "ttl_seconds": 3600,
+  "rulesets": {
+    "my-rules": ["1.0.0", "1.1.0", "1.2.0"],
+    "python-rules": ["2.0.0", "2.1.0"]
+  }
+}
+```
+
+**metadata.json:**
+```json
+{
+  "cached_at": "2024-01-15T10:30:00Z",
+  "ttl_seconds": 3600,
+  "rulesets": {
+    "my-rules": {
+      "description": "Python coding rules",
+      "latest_version": "1.2.0"
+    }
+  }
+}
+```
+
+**cache-info.json:**
+```json
+{
+  "registry_url": "s3://bucket.amazonaws.com/",
+  "last_accessed": "2024-01-15T10:30:00Z",
+  "total_size_bytes": 1048576
+}
+```
+
 ### 5.2 Registry Resolution Logic
+
+**Ruleset Resolution:**
+- **No Registry Specified**: Use default registry only
+- **Registry Specified**: Use exact registry match (e.g., `my-git/python-rules`)
+- **No Collisions**: Each ruleset belongs to exactly one registry
+- **Resolution Failure**: Fail immediately if specified registry is unreachable
+
+**Search Resolution:**
+- **Parallel Queries**: Query all configured registries simultaneously
+- **Registry Filtering**: Support `--registries` flag with glob patterns
+- **Result Aggregation**: Combine results from all queried registries
+- **Timeout Handling**: Continue with partial results if some registries timeout
+
+**Version Resolution Process:**
+1. **Check Lock File**: Use locked version if available and not updating
+2. **Check Cache**: Use cached version list if within TTL
+3. **Network Query**: Fetch fresh version list if cache expired or missing
+4. **Apply Constraints**: Filter versions based on specification (^, ~, >=, etc.)
+5. **Select Version**: Choose highest satisfying version
+6. **Update Cache**: Store fresh version data with timestamp
+
 ### 5.3 Fallback Mechanisms
+
+**Network Failure Handling:**
+- **Fresh Cache Available**: Use cached data if within TTL (1 hour)
+- **Stale Cache Available**: Fail with "network required" error
+- **No Cache Available**: Fail with "network required" error
+- **Registry Unreachable**: Fail immediately, no fallback to other registries
+
+**Git Repository Issues:**
+- **Merge Conflicts**: Remove repository and re-clone from scratch
+- **Corrupted Repository**: Remove repository and re-clone from scratch
+- **Authentication Failures**: Fail immediately with clear error message
+- **Branch/Tag Missing**: Fail immediately with version not found error
+
+**Cache Corruption:**
+- **Invalid JSON**: Remove corrupted cache file and re-fetch
+- **Missing Files**: Treat as cache miss and re-fetch
+- **Disk Space Issues**: Clean LRU cache entries and retry
+
 ### 5.4 Cache Management
+
+**Cache TTL (Time To Live):**
+- **Default TTL**: 1 hour (3600 seconds) for all cached data
+- **Version Lists**: 1 hour TTL
+- **Registry Metadata**: 1 hour TTL
+- **Downloaded Rulesets**: Cleaned up immediately after extraction
+- **Git Repositories**: Persistent, updated with `git pull`
+
+**Cache Invalidation:**
+- **arm update**: Invalidate version caches to find latest versions
+- **arm install**: Use cached data if available and within TTL
+- **arm search**: Use cached metadata if available and within TTL
+- **Manual Invalidation**: `arm clean cache` removes all cached data
+
+**LRU Eviction:**
+- **Default Size Limit**: 1GB total cache size
+- **Configurable**: Set via `arm config set cache.maxSize 2GB`
+- **Eviction Strategy**: Remove least recently accessed registry caches
+- **Eviction Order**:
+  1. Downloaded tar.gz files (oldest first)
+  2. Git repositories (least recently accessed)
+  3. Metadata caches (least recently accessed)
+- **Protected Items**: Currently installing rulesets are never evicted
+
+**Cache Operations:**
+
+**Automatic Cleanup:**
+- **Post-Installation**: Remove downloaded tar.gz files after extraction
+- **Size Monitoring**: Check cache size after each download
+- **LRU Eviction**: Remove old entries when size limit exceeded
+
+**Manual Cleanup:**
+```bash
+arm clean cache              # Remove all cached data
+arm clean unused             # Remove unused cached rulesets
+arm clean all                # Clean cache and unused rulesets
+```
+
+**Cache Configuration:**
+```bash
+arm config set cache.maxSize 2GB        # Set cache size limit
+arm config set cache.ttl 7200           # Set TTL to 2 hours
+arm config get cache.maxSize             # View current cache limit
+```
+
+**Offline Behavior:**
+- **Fresh Cache**: Operations succeed using cached data
+- **Stale Cache**: Operations fail with "Network connectivity required" error
+- **No Cache**: Operations fail with "Network connectivity required" error
+- **Lock File Present**: Install operations use locked versions if cached
+
+**Git Repository Management:**
+- **Initial Clone**: Full repository clone to cache directory
+- **Updates**: `git pull` to update existing repository
+- **Conflict Resolution**: Remove and re-clone on any git conflicts
+- **Branch Switching**: `git checkout` to switch between branches/tags
+- **Storage**: Repositories persist until manually cleaned or LRU evicted
 
 ## 6. Error Handling and User Experience
 
