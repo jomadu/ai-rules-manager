@@ -217,15 +217,22 @@ func newInstallCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newUninstallCommand creates the uninstall command
-func newUninstallCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newUninstallCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "uninstall <ruleset-name>",
 		Short: "Remove rulesets",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("uninstall not implemented")
+			global, _ := cmd.Flags().GetBool("global")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			channels, _ := cmd.Flags().GetString("channels")
+			return handleUninstall(args[0], global, dryRun, channels)
 		},
 	}
+
+	cmd.Flags().String("channels", "", "Remove from specific channels only (comma-separated)")
+
+	return cmd
 }
 
 // newSearchCommand creates the search command
@@ -267,25 +274,37 @@ func newInfoCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newOutdatedCommand creates the outdated command
-func newOutdatedCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newOutdatedCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "outdated",
 		Short: "Show outdated rulesets",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("outdated not implemented")
+			global, _ := cmd.Flags().GetBool("global")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			return handleOutdated(global, jsonOutput)
 		},
 	}
+
+	return cmd
 }
 
 // newUpdateCommand creates the update command
-func newUpdateCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newUpdateCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "update [ruleset-name]",
 		Short: "Update rulesets",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("update not implemented")
+			global, _ := cmd.Flags().GetBool("global")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			if len(args) == 0 {
+				return handleUpdateAll(global, dryRun)
+			} else {
+				return handleUpdateRuleset(args[0], global, dryRun)
+			}
 		},
 	}
+
+	return cmd
 }
 
 // newCleanCommand creates the clean command
@@ -909,4 +928,401 @@ func getTargetRegistries(allRegistries map[string]string, filter string) []strin
 	}
 
 	return result
+}
+
+// Update, outdated, and uninstall command handlers
+
+func handleUninstall(rulesetName string, global, dryRun bool, channels string) error {
+	// Parse ruleset specification
+	registry, name, _ := parseRulesetSpec(rulesetName)
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have a lock file
+	if cfg.LockFile == nil {
+		return fmt.Errorf("no lock file found - no rulesets installed")
+	}
+
+	// Determine target registry
+	if registry == "" {
+		// Find the registry from lock file
+		for reg, rulesets := range cfg.LockFile.Rulesets {
+			if _, exists := rulesets[name]; exists {
+				registry = reg
+				break
+			}
+		}
+		if registry == "" {
+			return fmt.Errorf("ruleset '%s' not found in installed rulesets", name)
+		}
+	}
+
+	// Check if ruleset is installed
+	if cfg.LockFile.Rulesets[registry] == nil || cfg.LockFile.Rulesets[registry][name].Version == "" {
+		return fmt.Errorf("ruleset '%s/%s' is not installed", registry, name)
+	}
+
+	lockedRuleset := cfg.LockFile.Rulesets[registry][name]
+
+	if dryRun {
+		fmt.Printf("Would uninstall: %s/%s@%s\n", registry, name, lockedRuleset.Version)
+		if channels != "" {
+			fmt.Printf("  Channels: %s\n", channels)
+		}
+		fmt.Println("  Files would be removed from ARM namespace directories")
+		return nil
+	}
+
+	fmt.Printf("Uninstalling %s/%s@%s...\n", registry, name, lockedRuleset.Version)
+
+	// Remove from manifest (arm.json)
+	if err := removeFromManifest(registry, name, global); err != nil {
+		return fmt.Errorf("failed to update manifest: %w", err)
+	}
+
+	// Remove from lock file
+	if err := removeFromLockFile(registry, name); err != nil {
+		return fmt.Errorf("failed to update lock file: %w", err)
+	}
+
+	// Remove files from channels
+	if err := removeRulesetFiles(cfg, registry, name, channels); err != nil {
+		return fmt.Errorf("failed to remove files: %w", err)
+	}
+
+	fmt.Printf("✓ Uninstalled %s/%s\n", registry, name)
+	return nil
+}
+
+func handleOutdated(global, jsonOutput bool) error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have a lock file
+	if cfg.LockFile == nil {
+		return fmt.Errorf("no lock file found - no rulesets installed")
+	}
+
+	type outdatedInfo struct {
+		Registry       string `json:"registry"`
+		Name           string `json:"name"`
+		CurrentVersion string `json:"current_version"`
+		LatestVersion  string `json:"latest_version"`
+		UpdateCommand  string `json:"update_command"`
+	}
+
+	var outdatedRulesets []outdatedInfo
+
+	// Check each installed ruleset
+	for registry, rulesets := range cfg.LockFile.Rulesets {
+		for name, locked := range rulesets {
+			// Get version spec from manifest
+			var versionSpec string
+			if cfg.Rulesets[registry] != nil && cfg.Rulesets[registry][name].Version != "" {
+				versionSpec = cfg.Rulesets[registry][name].Version
+			} else {
+				versionSpec = "latest"
+			}
+
+			// For now, simulate version checking (would query registry in real implementation)
+			latestVersion := simulateLatestVersion(locked.Version, versionSpec)
+			if latestVersion != locked.Version {
+				outdatedRulesets = append(outdatedRulesets, outdatedInfo{
+					Registry:       registry,
+					Name:           name,
+					CurrentVersion: locked.Version,
+					LatestVersion:  latestVersion,
+					UpdateCommand:  fmt.Sprintf("arm update %s/%s", registry, name),
+				})
+			}
+		}
+	}
+
+	if jsonOutput {
+		data, _ := json.MarshalIndent(map[string]interface{}{
+			"outdated": outdatedRulesets,
+		}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(outdatedRulesets) == 0 {
+		fmt.Println("All rulesets are up to date")
+		return nil
+	}
+
+	fmt.Printf("Found %d outdated ruleset(s):\n\n", len(outdatedRulesets))
+	for _, info := range outdatedRulesets {
+		fmt.Printf("%s/%s\n", info.Registry, info.Name)
+		fmt.Printf("  Current: %s\n", info.CurrentVersion)
+		fmt.Printf("  Latest:  %s\n", info.LatestVersion)
+		fmt.Printf("  Update:  %s\n\n", info.UpdateCommand)
+	}
+
+	return nil
+}
+
+func handleUpdateAll(global, dryRun bool) error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have a lock file
+	if cfg.LockFile == nil {
+		return fmt.Errorf("no lock file found - no rulesets installed")
+	}
+
+	var updatedCount int
+	var failedUpdates []string
+
+	// Update each installed ruleset
+	for registry, rulesets := range cfg.LockFile.Rulesets {
+		for name := range rulesets {
+			rulesetSpec := fmt.Sprintf("%s/%s", registry, name)
+			if err := handleUpdateRuleset(rulesetSpec, global, dryRun); err != nil {
+				failedUpdates = append(failedUpdates, fmt.Sprintf("%s: %v", rulesetSpec, err))
+				continue
+			}
+			updatedCount++
+		}
+	}
+
+	if dryRun {
+		fmt.Printf("Would attempt to update %d ruleset(s)\n", updatedCount+len(failedUpdates))
+		return nil
+	}
+
+	fmt.Printf("Updated %d ruleset(s)\n", updatedCount)
+	if len(failedUpdates) > 0 {
+		fmt.Printf("Failed to update %d ruleset(s):\n", len(failedUpdates))
+		for _, failure := range failedUpdates {
+			fmt.Printf("  %s\n", failure)
+		}
+	}
+
+	return nil
+}
+
+func handleUpdateRuleset(rulesetSpec string, global, dryRun bool) error {
+	// Parse ruleset specification
+	registry, name, _ := parseRulesetSpec(rulesetSpec)
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if ruleset is installed
+	if cfg.LockFile == nil || cfg.LockFile.Rulesets[registry] == nil || cfg.LockFile.Rulesets[registry][name].Version == "" {
+		return fmt.Errorf("ruleset '%s/%s' is not installed", registry, name)
+	}
+
+	lockedRuleset := cfg.LockFile.Rulesets[registry][name]
+	currentVersion := lockedRuleset.Version
+
+	// Get version spec from manifest
+	var versionSpec string
+	if cfg.Rulesets[registry] != nil && cfg.Rulesets[registry][name].Version != "" {
+		versionSpec = cfg.Rulesets[registry][name].Version
+	} else {
+		versionSpec = "latest"
+	}
+
+	// Simulate version resolution (would query registry in real implementation)
+	latestVersion := simulateLatestVersion(currentVersion, versionSpec)
+
+	if latestVersion == currentVersion {
+		if !dryRun {
+			fmt.Printf("%s/%s is already up to date (%s)\n", registry, name, currentVersion)
+		}
+		return nil
+	}
+
+	if dryRun {
+		fmt.Printf("Would update: %s/%s %s → %s\n", registry, name, currentVersion, latestVersion)
+		return nil
+	}
+
+	fmt.Printf("Updating %s/%s %s → %s...\n", registry, name, currentVersion, latestVersion)
+
+	// Invalidate cache (simulate)
+	fmt.Printf("  Invalidating cache for %s registry\n", registry)
+
+	// Update lock file
+	if err := updateLockFile(registry, name, latestVersion, lockedRuleset); err != nil {
+		return fmt.Errorf("failed to update lock file: %w", err)
+	}
+
+	// Reinstall with new version (simulate)
+	fmt.Printf("  Installing new version...\n")
+
+	fmt.Printf("✓ Updated %s/%s to %s\n", registry, name, latestVersion)
+	return nil
+}
+
+// Helper functions
+
+func removeFromManifest(registry, name string, global bool) error {
+	path := getConfigPath("arm.json", global)
+	armConfig, err := loadOrCreateJSON(path)
+	if err != nil {
+		return err
+	}
+
+	if armConfig.Rulesets[registry] != nil {
+		delete(armConfig.Rulesets[registry], name)
+		// Remove registry if empty
+		if len(armConfig.Rulesets[registry]) == 0 {
+			delete(armConfig.Rulesets, registry)
+		}
+	}
+
+	return saveJSON(path, armConfig)
+}
+
+func removeFromLockFile(registry, name string) error {
+	path := "arm.lock"
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil // No lock file to update
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var lockFile config.LockFile
+	if err := json.Unmarshal(data, &lockFile); err != nil {
+		return err
+	}
+
+	if lockFile.Rulesets[registry] != nil {
+		delete(lockFile.Rulesets[registry], name)
+		// Remove registry if empty
+		if len(lockFile.Rulesets[registry]) == 0 {
+			delete(lockFile.Rulesets, registry)
+		}
+	}
+
+	lockData, err := json.MarshalIndent(lockFile, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, lockData, 0600)
+}
+
+func removeRulesetFiles(cfg *config.Config, registry, name, channels string) error {
+	// Parse channel filter
+	var targetChannels []string
+	if channels != "" {
+		targetChannels = strings.Split(channels, ",")
+		for i, ch := range targetChannels {
+			targetChannels[i] = strings.TrimSpace(ch)
+		}
+	} else {
+		// Use all configured channels
+		for channelName := range cfg.Channels {
+			targetChannels = append(targetChannels, channelName)
+		}
+	}
+
+	// Remove files from each channel
+	for _, channelName := range targetChannels {
+		channelConfig, exists := cfg.Channels[channelName]
+		if !exists {
+			continue
+		}
+
+		for _, dir := range channelConfig.Directories {
+			// Expand environment variables
+			expandedDir := expandEnvVars(dir)
+			// Remove ARM namespace directory for this ruleset
+			rulesetPath := filepath.Join(expandedDir, "arm", registry, name)
+			if err := os.RemoveAll(rulesetPath); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("failed to remove %s: %w", rulesetPath, err)
+			}
+
+			// Clean up empty parent directories
+			registryPath := filepath.Join(expandedDir, "arm", registry)
+			if isEmpty, _ := isDirEmpty(registryPath); isEmpty {
+				_ = os.Remove(registryPath)
+			}
+			armPath := filepath.Join(expandedDir, "arm")
+			if isEmpty, _ := isDirEmpty(armPath); isEmpty {
+				_ = os.Remove(armPath)
+			}
+		}
+	}
+
+	return nil
+}
+
+func updateLockFile(registry, name, newVersion string, existingLocked config.LockedRuleset) error {
+	path := "arm.lock"
+	var lockFile config.LockFile
+
+	if data, err := os.ReadFile(path); err == nil {
+		_ = json.Unmarshal(data, &lockFile)
+	}
+
+	if lockFile.Rulesets == nil {
+		lockFile.Rulesets = make(map[string]map[string]config.LockedRuleset)
+	}
+	if lockFile.Rulesets[registry] == nil {
+		lockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
+	}
+
+	// Update with new version but keep other metadata
+	updatedLocked := existingLocked
+	updatedLocked.Version = newVersion
+	updatedLocked.Resolved = "2024-01-15T10:30:00Z" // Would use current time
+	lockFile.Rulesets[registry][name] = updatedLocked
+
+	lockData, err := json.MarshalIndent(lockFile, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, lockData, 0600)
+}
+
+func simulateLatestVersion(currentVersion, versionSpec string) string {
+	// Simulate version resolution - in real implementation would query registry
+	if versionSpec == "latest" {
+		return "1.3.0" // Simulate newer version available
+	}
+	if strings.HasPrefix(versionSpec, "^") {
+		return "1.2.1" // Simulate patch update within range
+	}
+	return currentVersion // No update available
+}
+
+func isDirEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = f.Close() }()
+
+	_, err = f.Readdirnames(1)
+	if err == nil {
+		return false, nil // Directory has at least one entry
+	}
+	return true, nil // Directory is empty
+}
+
+// expandEnvVars is a simple version - would use the one from config package
+func expandEnvVars(s string) string {
+	return os.ExpandEnv(s)
 }

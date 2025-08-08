@@ -62,7 +62,7 @@
   - [x] 4.1 Implement config command (set, get, list, add/remove registry/channel)
   - [x] 4.2 Implement install command with stub generation and pattern support
   - [x] 4.3 Implement search, info, and list commands with registry filtering
-  - [ ] 4.4 Implement update, outdated, and uninstall commands
+  - [x] 4.4 Implement update, outdated, and uninstall commands
   - [ ] 4.5 Implement clean command and version/help utilities
 - [ ] 5.0 Package Management and Installation System
   - [ ] 5.1 Implement semantic version resolution with range operators

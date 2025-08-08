@@ -17,9 +17,9 @@ func TestNewLocalRegistry(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  tempDir,
+		Name:    "test-local",
+		Type:    "local",
+		URL:     tempDir,
 		Timeout: 30 * time.Second,
 	}
 
@@ -66,9 +66,9 @@ func TestNewLocalRegistryRelativePath(t *testing.T) {
 	}
 
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  relativeDir,
+		Name:    "test-local",
+		Type:    "local",
+		URL:     relativeDir,
 		Timeout: 30 * time.Second,
 	}
 
@@ -93,9 +93,9 @@ func TestNewLocalRegistryRelativePath(t *testing.T) {
 
 func TestNewLocalRegistryInvalidPath(t *testing.T) {
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  "/non/existent/path",
+		Name:    "test-local",
+		Type:    "local",
+		URL:     "/non/existent/path",
 		Timeout: 30 * time.Second,
 	}
 
@@ -117,9 +117,9 @@ func TestLocalRegistry_GetRulesets(t *testing.T) {
 	setupTestRegistry(t, tempDir)
 
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  tempDir,
+		Name:    "test-local",
+		Type:    "local",
+		URL:     tempDir,
 		Timeout: 30 * time.Second,
 	}
 
@@ -169,9 +169,9 @@ func TestLocalRegistry_GetRuleset(t *testing.T) {
 	setupTestRegistry(t, tempDir)
 
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  tempDir,
+		Name:    "test-local",
+		Type:    "local",
+		URL:     tempDir,
 		Timeout: 30 * time.Second,
 	}
 
@@ -225,9 +225,9 @@ func TestLocalRegistry_DownloadRuleset(t *testing.T) {
 	setupTestRegistry(t, tempDir)
 
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  tempDir,
+		Name:    "test-local",
+		Type:    "local",
+		URL:     tempDir,
 		Timeout: 30 * time.Second,
 	}
 
@@ -278,9 +278,9 @@ func TestLocalRegistry_GetVersions(t *testing.T) {
 	setupTestRegistry(t, tempDir)
 
 	config := &RegistryConfig{
-		Name: "test-local",
-		Type: "local",
-		URL:  tempDir,
+		Name:    "test-local",
+		Type:    "local",
+		URL:     tempDir,
 		Timeout: 30 * time.Second,
 	}
 
