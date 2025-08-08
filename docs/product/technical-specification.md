@@ -752,10 +752,157 @@ Shows command usage, options, and examples in priority order.
 ## 4. Package Management
 
 ### 4.1 Version Specification Format
-### 4.2 Dependency Resolution Algorithm
+
+**Supported Version Formats:**
+
+**Semantic Version Ranges:**
+- `^1.0.0` - Compatible version (>=1.0.0 <2.0.0)
+- `~1.2.0` - Patch releases only (>=1.2.0 <1.3.0)
+- `>=1.1.0` - Greater than or equal
+- `<=2.0.0` - Less than or equal
+- `>1.0.0` - Greater than
+- `<2.0.0` - Less than
+- `=1.2.3` - Exact version match
+
+**Git-Specific Versions:**
+- `latest` - HEAD of default branch (resolved and locked)
+- `main` - HEAD of named branch (resolved and locked)
+- `develop` - HEAD of named branch (resolved and locked)
+- `abc123def` - Specific commit hash
+
+**Version Resolution Priority:**
+- Highest satisfying version within range
+- Example: `^1.0.0` with available `[1.0.0, 1.2.0, 2.0.0]` resolves to `1.2.0`
+- Example: `>=1.1.0` with available `[1.0.0, 1.2.0, 2.0.0]` resolves to `2.0.0`
+
+**Pre-release Versions:**
+- Not supported in MVP (e.g., `1.0.0-rc.1`)
+
+### 4.2 Version Resolution
+
+**No Inter-Ruleset Dependencies:**
+- Rulesets cannot depend on other rulesets
+- No circular dependency resolution needed
+- Each ruleset is resolved independently
+
+**Resolution Process:**
+1. Parse version specification from `arm.json`
+2. Query registry for available versions
+3. Apply version range logic to find highest satisfying version
+4. Lock resolved version in `arm.lock`
+5. Cache resolution until explicit update command
+
 ### 4.3 Lock File Management
+
+**Lock File Structure (`arm.lock`):**
+```json
+{
+  "rulesets": {
+    "default": {
+      "my-rules": {
+        "version": "1.2.0",
+        "resolved": "2024-01-15T10:30:00Z",
+        "registry": "s3://bucket.amazonaws.com/"
+      }
+    },
+    "my-git": {
+      "python-rules": {
+        "version": "abc123def",
+        "resolved": "2024-01-15T10:30:00Z",
+        "registry": "git://github.com/user/repo"
+      }
+    }
+  }
+}
+```
+
+**Lock File Behavior:**
+- **Updates**: Modified on any `install`, `update`, or `uninstall` command
+- **Conflict Resolution**: `arm.json` changes require explicit `arm install` or error with manual resolution
+- **Registry Grouping**: Mirrors installation directory structure to avoid naming collisions
+- **Metadata**: Includes resolution timestamp and registry source for debugging
+- **No Checksums**: Simplified for MVP, relies on registry integrity
+
 ### 4.4 Package Installation Process
+
+**Parallel Processing:**
+- Install multiple rulesets concurrently based on registry `concurrency` settings
+- Apply `rateLimit` per registry instance to respect API limits
+- Queue additional rulesets when concurrency limit reached
+
+**Installation Flow:**
+1. **Version Resolution**: Resolve version specs to concrete versions
+2. **Download**: Fetch ruleset from registry (tar.gz for packaged, git clone for Git)
+3. **Extract**: Extract files according to patterns (Git) or tar contents (packaged)
+4. **Install**: Copy files to channel directories
+5. **Update Lock**: Record successful installation in `arm.lock`
+6. **Cleanup**: Remove previous version (keep 1 previous version for rollback)
+
+**Failure Handling:**
+- **Per-Ruleset Rollback**: Failed installations don't affect successful ones
+- **Continue on Failure**: Process remaining rulesets even if some fail
+- **Lock File Accuracy**: Only record successfully installed rulesets
+- **Partial Cleanup**: Clean up failed installation artifacts
+
+**Progress Indication:**
+- **Aggregate Progress**: Show overall percentage complete
+- **Current Operation**: Display current step (downloading, extracting, installing)
+- **No Persistence**: Progress resets on command interruption (Ctrl+C)
+
+**File Conflict Resolution:**
+- **Same Name, Different Rulesets**: Error and require manual resolution
+- **Existing Non-ARM Files**: Overwrite without warning
+- **ARM-Managed Files**: Replace with new version
+
 ### 4.5 File System Layout
+
+**Installation Directory Structure:**
+```
+.cursor/rules/
+├── registry-name/
+│   └── ruleset-name/
+│       ├── current-version/
+│       │   ├── file1.md
+│       │   └── file2.mdc
+│       └── previous-version/
+│           ├── file1.md
+│           └── file2.mdc
+└── another-registry/
+    └── another-ruleset/
+        └── version/
+            └── files...
+```
+
+**Version Management:**
+- **Current Version**: Active version used by channels
+- **Previous Version**: Kept for rollback capability until next successful installation
+- **Version Cleanup**: Remove previous version only after new version successfully installs
+- **Directory Names**: Use exact version strings (e.g., `1.2.0`, `abc123def`, `main`)
+
+**Channel Deployment:**
+- Files are copied (not symlinked) from version directories to channel directories
+- Each channel maintains its own copy of ruleset files
+- Channel directories specified in `arm.json` channels configuration
+
+**Cache Directory Structure:**
+```
+~/.arm/cache/
+├── registries/
+│   ├── registry-name/
+│   │   ├── repository/          # Git clones
+│   │   ├── ruleset-name/
+│   │   │   └── version/
+│   │   │       └── ruleset.tar.gz
+│   │   ├── metadata.json        # Registry metadata
+│   │   └── versions.json        # Available versions cache
+│   └── another-registry/
+└── temp/                        # Temporary extraction directories
+```
+
+**Permissions:**
+- **Configuration Files**: 600 (user read/write only)
+- **Ruleset Files**: 644 (user read/write, group/other read)
+- **Directories**: 755 (standard directory permissions)
 
 ## 5. Caching and Registry Resolution
 
