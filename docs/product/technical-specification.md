@@ -49,12 +49,12 @@ rateLimit=10/minute   # from global
 ### 1.3 Registry Configuration
 
 **Supported URL Schemes:**
-- `git://github.com/user/repo`
-- `git://github.com/org/repo`
+- `https://github.com/user/repo` (Git repository with API support)
+- `https://gitlab.example.com/user/repo` (Git repository with API support)
 - `s3://bucket.region.amazonaws.com/`
-- `gitlab://gitlab.example.com/project/123`
-- `gitlab://gitlab.example.com/group/123`
-- `https://example.com/registry`
+- `gitlab://gitlab.example.com/project/123` (GitLab package registry)
+- `gitlab://gitlab.example.com/group/123` (GitLab package registry)
+- `https://example.com/registry` (Generic HTTP registry)
 - `file:///path/to/local/registry`
 
 **Registry Configuration Structure:**
@@ -133,6 +133,7 @@ rateLimit = 1000/second
 [cache]
 path = ~/.arm/cache
 maxSize = 1GB
+ttl = 3600
 ```
 
 ### 1.4 Channel Configuration
@@ -178,7 +179,7 @@ maxSize = 1GB
 # default = git://github.com/user/registry
 
 # Named registries
-# my-git-registry = git://github.com/user/repo
+# my-git-registry = https://github.com/user/repo
 # my-s3-registry = s3://bucket.region.amazonaws.com/
 # my-gitlab-registry = gitlab://gitlab.example.com/project/123
 # my-http-registry = https://example.com/registry
@@ -241,9 +242,9 @@ maxSize = 1GB
 ### 2.1 Git Repository Registries
 
 **URL Format:**
-- `git://github.com/user/repo`
-- `git://github.com/org/repo`
-- `git://gitlab.example.com/user/repo`
+- `https://github.com/user/repo`
+- `https://github.com/org/repo`
+- `https://gitlab.example.com/user/repo`
 
 **Operation Modes:**
 
@@ -277,7 +278,7 @@ maxSize = 1GB
 **Configuration Example:**
 ```ini
 [registries]
-my-git-registry = git://github.com/user/repo
+my-git-registry = https://github.com/user/repo
 
 [registries.my-git-registry]
 authToken = $GITHUB_TOKEN  # optional, for API mode
@@ -837,7 +838,7 @@ Shows command usage, options, and examples in priority order.
       "python-rules": {
         "version": "abc123def",
         "resolved": "2024-01-15T10:30:00Z",
-        "registry": "git://github.com/user/repo"
+        "registry": "https://github.com/user/repo"
       }
     }
   }
@@ -1389,20 +1390,23 @@ $ arm install my-rules --json
 ├── arm/                        # ARM-managed rulesets
 │   ├── registry-name/
 │   │   └── ruleset-name/
-│   │       ├── file1.md
-│   │       ├── file2.mdc
-│   │       └── subdir/
-│   │           └── file3.txt
+│   │       └── 1.2.0/          # Version directory (actual version string)
+│   │           ├── file1.md
+│   │           ├── file2.mdc
+│   │           └── subdir/
+│   │               └── file3.txt
 │   └── another-registry/
 │       └── another-ruleset/
-│           └── rules.md
+│           └── 2.1.0/          # Version directory (actual version string)
+│               └── rules.md
 └── user-file.md                # User-managed files
 ```
 
 **Directory Creation:**
-- **Automatic Creation**: ARM creates `arm/` parent directory and registry/ruleset subdirectories automatically
+- **Automatic Creation**: ARM creates `arm/` parent directory and registry/ruleset/version subdirectories automatically
 - **Path Structure**: `arm/registry/ruleset/version/` structure for clear separation from user files
-- **Nested Directories**: Preserve subdirectory structure from source rulesets
+- **Version Directories**: Use actual version strings (e.g., `1.2.0`, `abc123def`, `main`) as directory names
+- **Nested Directories**: Preserve subdirectory structure from source rulesets within version directories
 - **User Separation**: All ARM-managed content lives under `arm/` folder, leaving root directory available for user files
 - **Backward Compatibility**: Existing installations remain in their current locations; only new installations use the `arm/` structure
 
@@ -1455,13 +1459,15 @@ Installed 3 files, skipped 3 unsupported files
 **Namespace Examples:**
 ```
 # Multiple rulesets with same filename - no conflict
-.cursor/rules/
+.cursor/rules/arm/
 ├── registry-a/
 │   └── python-rules/
-│       └── main.md              # From registry-a/python-rules
+│       └── 1.0.0/
+│           └── main.md      # From registry-a/python-rules
 └── registry-b/
     └── python-rules/
-        └── main.md              # From registry-b/python-rules (different content)
+        └── 2.1.0/
+            └── main.md      # From registry-b/python-rules (different content)
 ```
 
 ### 7.3 Conflict Resolution
