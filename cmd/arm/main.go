@@ -6,13 +6,14 @@ import (
 
 	"github.com/max-dunn/ai-rules-manager/internal/cli"
 	"github.com/max-dunn/ai-rules-manager/internal/config"
+	"github.com/max-dunn/ai-rules-manager/internal/version"
 )
 
 // Build information injected by ldflags
 var (
-	version   = "dev"
-	commit    = "unknown"
-	buildTime = "unknown"
+	buildVersion   = "dev"
+	buildCommit    = "unknown"
+	buildTimestamp = "unknown"
 )
 
 func main() {
@@ -23,6 +24,11 @@ func main() {
 }
 
 func run() error {
+	// Set version information in version package
+	version.Version = buildVersion
+	version.Commit = buildCommit
+	version.BuildTime = buildTimestamp
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -31,9 +37,9 @@ func run() error {
 
 	// Create root command with version info
 	versionInfo := &cli.VersionInfo{
-		Version:   version,
-		Commit:    commit,
-		BuildTime: buildTime,
+		Version:   buildVersion,
+		Commit:    buildCommit,
+		BuildTime: buildTimestamp,
 	}
 	rootCmd := cli.NewRootCommand(cfg, versionInfo)
 

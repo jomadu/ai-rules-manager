@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -862,5 +863,213 @@ func TestValidateConfig(t *testing.T) {
 		t.Error("Expected invalid config to fail validation")
 	} else if !strings.Contains(err.Error(), "unknown registry type") {
 		t.Errorf("Expected registry type error, got: %v", err)
+	}
+}
+
+func TestGenerateStubFiles(t *testing.T) {
+	// Test local stub generation
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(originalWd)
+
+	// Generate local stubs
+	err := GenerateStubFiles(false)
+	if err != nil {
+		t.Fatalf("Failed to generate local stub files: %v", err)
+	}
+
+	// Check that .armrc was created
+	if _, err := os.Stat(".armrc"); os.IsNotExist(err) {
+		t.Error("Expected .armrc stub file to be created")
+	}
+
+	// Check that arm.json was created
+	if _, err := os.Stat("arm.json"); os.IsNotExist(err) {
+		t.Error("Expected arm.json stub file to be created")
+	}
+
+	// Verify .armrc content
+	armrcContent, err := os.ReadFile(".armrc")
+	if err != nil {
+		t.Fatalf("Failed to read .armrc: %v", err)
+	}
+	armrcStr := string(armrcContent)
+	if !strings.Contains(armrcStr, "[registries]") {
+		t.Error("Expected .armrc to contain [registries] section")
+	}
+	if !strings.Contains(armrcStr, "type = git") {
+		t.Error("Expected .armrc to contain git type example")
+	}
+	if !strings.Contains(armrcStr, "$GITHUB_TOKEN") {
+		t.Error("Expected .armrc to contain environment variable example")
+	}
+
+	// Verify arm.json content
+	jsonContent, err := os.ReadFile("arm.json")
+	if err != nil {
+		t.Fatalf("Failed to read arm.json: %v", err)
+	}
+	jsonStr := string(jsonContent)
+	if !strings.Contains(jsonStr, `"engines"`) {
+		t.Error("Expected arm.json to contain engines section")
+	}
+	if !strings.Contains(jsonStr, `"arm": "^`) {
+		t.Error("Expected arm.json to contain ARM version with ^ prefix")
+	}
+	if !strings.Contains(jsonStr, `"channels"`) {
+		t.Error("Expected arm.json to contain channels section")
+	}
+	if !strings.Contains(jsonStr, `"rulesets"`) {
+		t.Error("Expected arm.json to contain rulesets section")
+	}
+
+	// Test that files are not overwritten
+	originalContent := string(armrcContent)
+	err = GenerateStubFiles(false)
+	if err != nil {
+		t.Fatalf("Failed to run GenerateStubFiles again: %v", err)
+	}
+	newContent, _ := os.ReadFile(".armrc")
+	if string(newContent) != originalContent {
+		t.Error("Expected existing .armrc file to not be overwritten")
+	}
+}
+
+func TestGenerateGlobalStubFiles(t *testing.T) {
+	// Test global stub generation
+	tmpDir := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	// Generate global stubs
+	err := GenerateStubFiles(true)
+	if err != nil {
+		t.Fatalf("Failed to generate global stub files: %v", err)
+	}
+
+	// Check that .arm directory was created
+	armDir := filepath.Join(tmpDir, ".arm")
+	if _, err := os.Stat(armDir); os.IsNotExist(err) {
+		t.Error("Expected .arm directory to be created")
+	}
+
+	// Check that global .armrc was created
+	globalARMRC := filepath.Join(armDir, ".armrc")
+	if _, err := os.Stat(globalARMRC); os.IsNotExist(err) {
+		t.Error("Expected global .armrc stub file to be created")
+	}
+
+	// Check that global arm.json was created
+	globalJSON := filepath.Join(armDir, "arm.json")
+	if _, err := os.Stat(globalJSON); os.IsNotExist(err) {
+		t.Error("Expected global arm.json stub file to be created")
+	}
+}
+
+func TestGenerateARMRCStub(t *testing.T) {
+	tmpDir := t.TempDir()
+	stubPath := filepath.Join(tmpDir, "test.armrc")
+
+	err := generateARMRCStub(stubPath)
+	if err != nil {
+		t.Fatalf("Failed to generate .armrc stub: %v", err)
+	}
+
+	// Check file permissions
+	info, err := os.Stat(stubPath)
+	if err != nil {
+		t.Fatalf("Failed to stat stub file: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("Expected file permissions 0600, got %o", info.Mode().Perm())
+	}
+
+	// Check content structure
+	content, err := os.ReadFile(stubPath)
+	if err != nil {
+		t.Fatalf("Failed to read stub file: %v", err)
+	}
+
+	contentStr := string(content)
+	requiredSections := []string{
+		"[registries]",
+		"[registries.my-git-registry]",
+		"[registries.my-s3-registry]",
+		"[registries.my-gitlab-registry]",
+		"[git]",
+		"[https]",
+		"[s3]",
+		"[gitlab]",
+		"[local]",
+		"[network]",
+		"[cache]",
+	}
+
+	for _, section := range requiredSections {
+		if !strings.Contains(contentStr, section) {
+			t.Errorf("Expected stub to contain section %s", section)
+		}
+	}
+
+	// Check for environment variable examples
+	envVarExamples := []string{
+		"$GITHUB_TOKEN",
+		"$GITLAB_TOKEN",
+	}
+
+	for _, envVar := range envVarExamples {
+		if !strings.Contains(contentStr, envVar) {
+			t.Errorf("Expected stub to contain environment variable example %s", envVar)
+		}
+	}
+}
+
+func TestGenerateARMJSONStub(t *testing.T) {
+	tmpDir := t.TempDir()
+	stubPath := filepath.Join(tmpDir, "test.json")
+
+	err := generateARMJSONStub(stubPath)
+	if err != nil {
+		t.Fatalf("Failed to generate arm.json stub: %v", err)
+	}
+
+	// Check file permissions
+	info, err := os.Stat(stubPath)
+	if err != nil {
+		t.Fatalf("Failed to stat stub file: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("Expected file permissions 0600, got %o", info.Mode().Perm())
+	}
+
+	// Check that it's valid JSON
+	content, err := os.ReadFile(stubPath)
+	if err != nil {
+		t.Fatalf("Failed to read stub file: %v", err)
+	}
+
+	var armConfig ARMConfig
+	if err := json.Unmarshal(content, &armConfig); err != nil {
+		t.Errorf("Generated JSON is not valid: %v", err)
+	}
+
+	// Check required sections
+	if armConfig.Engines == nil {
+		t.Error("Expected engines section to be present")
+	}
+	if armConfig.Channels == nil {
+		t.Error("Expected channels section to be present")
+	}
+	if armConfig.Rulesets == nil {
+		t.Error("Expected rulesets section to be present")
+	}
+
+	// Check ARM version
+	if armVersion, exists := armConfig.Engines["arm"]; !exists {
+		t.Error("Expected ARM version to be present")
+	} else if !strings.HasPrefix(armVersion, "^") {
+		t.Errorf("Expected ARM version to start with ^, got %s", armVersion)
 	}
 }
