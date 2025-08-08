@@ -65,27 +65,42 @@ my-git-registry = git://github.com/user/repo
 my-s3-registry = s3://my-bucket.us-east-1.amazonaws.com/
 my-gitlab-registry = gitlab://gitlab.example.com/project/123
 
-# Git registry configuration
+# Type-based defaults
+[git]
+concurrency = 1
+rateLimit = 10/minute
+
+[s3]
+concurrency = 10
+rateLimit = 100/hour
+
+[gitlab]
+concurrency = 2
+rateLimit = 60/hour
+
+[http]
+concurrency = 5
+rateLimit = 30/minute
+
+# Registry-specific overrides (optional)
 [registries.my-git-registry]
 authToken = $GITHUB_TOKEN
 apiType = github
 apiVersion = 2022-11-28
-concurrency = 2
-rateLimit = 10
+concurrency = 5           # Override git default
+rateLimit = 20/minute     # Override git default
 
 # S3 registry configuration (uses AWS credentials chain)
 [registries.my-s3-registry]
 profile = my-aws-profile  # optional, uses default profile if omitted
 prefix = /registries/path # optional
-concurrency = 10
-rateLimit = 100
+# Uses s3 defaults: concurrency=10, rateLimit=100/hour
 
 # GitLab registry configuration
 [registries.my-gitlab-registry]
 authToken = $GITLAB_TOKEN
 apiVersion = 4
-concurrency = 2
-rateLimit = 60
+# Uses gitlab defaults: concurrency=2, rateLimit=60/hour
 ```
 
 **Validation Rules:**
@@ -96,19 +111,28 @@ rateLimit = 60
 **Built-in Defaults:**
 ```ini
 [git]
-concurrency=1
-rateLimit=10
+concurrency = 1
+rateLimit = 10/minute
 
 [s3]
-concurrency=10
-rateLimit=100
+concurrency = 10
+rateLimit = 100/hour
 
 [gitlab]
-concurrency=2
-rateLimit=60
+concurrency = 2
+rateLimit = 60/hour
+
+[http]
+concurrency = 5
+rateLimit = 30/minute
+
+[local]
+concurrency = 20
+rateLimit = 1000/second
 
 [cache]
-path=~/.arm/cache
+path = ~/.arm/cache
+maxSize = 1GB
 ```
 
 ### 1.4 Channel Configuration
@@ -159,42 +183,45 @@ path=~/.arm/cache
 # my-http-registry = http://example.com/registry
 # my-local-registry = file:///path/to/local/registry
 
-# Registry-specific configuration
+# Type-based defaults (optional - ARM has built-in defaults)
+# [git]
+# concurrency = 1
+# rateLimit = 10/minute
+
+# [s3]
+# concurrency = 10
+# rateLimit = 100/hour
+
+# [gitlab]
+# concurrency = 2
+# rateLimit = 60/hour
+
+# [http]
+# concurrency = 5
+# rateLimit = 30/minute
+
+# Registry-specific overrides (optional)
 # [registries.my-git-registry]
 # authToken = $GITHUB_TOKEN
 # apiType = github
 # apiVersion = 2022-11-28
-# concurrency = 2
-# rateLimit = 10
+# concurrency = 5           # Override git default
+# rateLimit = 20/minute     # Override git default
 
 # [registries.my-s3-registry]
 # profile = my-aws-profile  # optional, uses default AWS profile if omitted
 # prefix = /registries/path # optional prefix within bucket
-# concurrency = 10
-# rateLimit = 100
+# Uses s3 defaults unless overridden here
 
 # [registries.my-gitlab-registry]
 # authToken = $GITLAB_TOKEN
 # apiVersion = 4
-# concurrency = 2
-# rateLimit = 60
-
-# Defaults for registry types
-# [git]
-# concurrency=1
-# rateLimit=10
-
-# [s3]
-# concurrency=10
-# rateLimit=100
-
-# [gitlab]
-# concurrency=2
-# rateLimit=60
+# Uses gitlab defaults unless overridden here
 
 # Cache configuration
 # [cache]
-# path=~/.arm/cache
+# path = ~/.arm/cache
+# maxSize = 1GB
 ```
 
 **arm.json Stub:**
@@ -1544,7 +1571,320 @@ Suggestion: Choose a writable location or remount filesystem with write access
 
 ## 8. Authentication and Security
 
-### 8.1 Authentication Methods by Registry Type Registry Type
+### 8.1 Authentication Methods by Registry Type
+
+**Git Registry Authentication:**
+- **Credential Delegation**: Use existing user Git credentials (SSH keys, tokens)
+- **No ARM-Specific Config**: ARM relies on system Git configuration
+- **SSH Key Support**: Automatic use of SSH keys configured in ~/.ssh/
+- **HTTPS Token Support**: Use tokens configured in Git credential manager
+- **Authentication Flow**: Git operations use standard Git authentication mechanisms
+
+**Git Authentication Examples:**
+```bash
+# ARM uses existing Git credentials automatically
+$ git config --global credential.helper store
+$ git clone https://github.com/user/repo  # Configure credentials
+$ arm install git-registry/my-rules       # Uses same credentials
+```
+
+**S3 Registry Authentication:**
+- **AWS Credential Chain**: Use standard AWS credential resolution order
+- **Credential Sources**: AWS CLI, environment variables, IAM roles, instance profiles
+- **No Explicit Keys**: ARM does not store AWS access keys directly
+- **Region Detection**: Automatic region detection from bucket URL or AWS config
+
+**AWS Credential Chain Order:**
+1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+2. AWS credentials file (~/.aws/credentials)
+3. AWS config file (~/.aws/config)
+4. IAM roles for EC2 instances
+5. IAM roles for ECS tasks
+6. IAM roles for Lambda functions
+
+**S3 Authentication Examples:**
+```bash
+# ARM uses AWS credential chain automatically
+$ aws configure  # Set up AWS credentials
+$ arm install my-s3-rules  # Uses AWS credentials
+```
+
+**GitLab Registry Authentication:**
+- **Personal Access Tokens**: Store tokens in .armrc configuration
+- **Token Permissions**: Requires 'read_api' and 'read_repository' scopes
+- **Environment Variable Expansion**: Support ${GITLAB_TOKEN} in configuration
+- **Per-Registry Tokens**: Different tokens for different GitLab instances
+
+**GitLab Configuration:**
+```ini
+# .armrc configuration
+[registry.my-gitlab]
+type = gitlab
+url = https://gitlab.example.com/
+token = ${GITLAB_TOKEN}  # Environment variable expansion
+```
+
+**HTTP Registry Authentication:**
+- **Bearer Tokens**: Support Authorization: Bearer <token> headers
+- **Token Storage**: Store tokens in .armrc configuration files
+- **Environment Variable Expansion**: Support ${API_TOKEN} syntax
+- **Per-Registry Authentication**: Independent authentication per HTTP registry
+
+**HTTP Authentication Configuration:**
+```ini
+# .armrc configuration
+[registry.my-http]
+type = http
+url = https://api.example.com/rulesets/
+token = ${API_TOKEN}  # Environment variable expansion
+```
+
+**Local Registry Authentication:**
+- **File System Permissions**: Rely on standard file system access controls
+- **No Authentication**: Local registries require no additional authentication
+- **Path Validation**: Ensure ARM has read access to specified directories
+
+### 8.2 Credential Storage and Management
+
+**Storage Location:**
+- **Configuration Files**: Store credentials in .armrc files
+- **File System Security**: Rely on 600 permissions for credential protection
+- **No Encryption**: Credentials stored in plain text (secured by file permissions)
+- **Environment Variables**: Support expansion of environment variables in config
+
+**Environment Variable Expansion:**
+- **Supported Syntax**: Both `${VAR}` and `$VAR` formats
+- **Full Expansion**: Expand all environment variables, not just credential-related
+- **Expansion Timing**: Variables expanded at runtime, not config load time
+- **Missing Variables**: Treat missing environment variables as empty strings
+
+**Environment Variable Examples:**
+```ini
+# .armrc with environment variable expansion
+[registry.gitlab-prod]
+type = gitlab
+url = https://gitlab.company.com/
+token = ${GITLAB_PROD_TOKEN}
+
+[registry.gitlab-dev]
+type = gitlab
+url = https://gitlab-dev.company.com/
+token = $GITLAB_DEV_TOKEN
+
+[registry.http-api]
+type = http
+url = https://api.${ENVIRONMENT}.company.com/
+token = ${API_TOKEN_PREFIX}_${ENVIRONMENT}
+```
+
+**Credential Security:**
+- **File Permissions**: .armrc files must have 600 permissions (user read/write only)
+- **Permission Enforcement**: ARM validates and corrects file permissions on access
+- **No Network Transmission**: Credentials never logged or transmitted in plain text
+- **Memory Handling**: Clear credentials from memory after use
+
+**Permission Validation:**
+```bash
+# ARM automatically fixes insecure permissions
+$ ls -la ~/.armrc
+-rw-rw-rw- 1 user group 256 Jan 15 10:30 .armrc
+
+$ arm install my-rules
+Warning: Fixed insecure permissions on ~/.armrc (was 666, now 600)
+```
+
+### 8.3 Transport Security
+
+**HTTPS Enforcement:**
+- **Required by Default**: All registry connections must use HTTPS
+- **HTTP Rejection**: ARM rejects HTTP URLs with clear error messages
+- **Development Override**: `--insecure` flag allows HTTP for testing
+- **Global Flag**: `--insecure` applies to all registries in the command
+
+**HTTPS Enforcement Examples:**
+```bash
+# HTTP URLs rejected by default
+$ arm config add-registry test http http://insecure.example.com/
+Error [CONFIG]: HTTP URLs not allowed for security
+Details: Registry URLs must use HTTPS protocol
+Suggestion: Use https://insecure.example.com/ or add --insecure flag for testing
+
+# Override for development/testing
+$ arm install test-rules --insecure
+Warning: Using insecure HTTP connections (--insecure flag)
+```
+
+**Certificate Validation:**
+- **Strict by Default**: Validate SSL certificates against trusted CAs
+- **Self-Signed Rejection**: Reject self-signed certificates by default
+- **Development Override**: `--insecure` flag allows self-signed certificates
+- **Certificate Errors**: Clear error messages for certificate validation failures
+
+**Certificate Validation Examples:**
+```bash
+# Self-signed certificate rejected
+$ arm install my-rules
+Error [NETWORK]: SSL certificate verification failed
+Details: Self-signed certificate for 'registry.example.com'
+Suggestion: Use --insecure flag for testing or install proper SSL certificate
+
+# Override for development
+$ arm install my-rules --insecure
+Warning: Skipping SSL certificate verification (--insecure flag)
+```
+
+**TLS Security:**
+- **Minimum TLS Version**: Require TLS 1.2 or higher
+- **Cipher Suite Validation**: Use secure cipher suites only
+- **Certificate Pinning**: Not implemented in MVP (rely on CA validation)
+- **HSTS Support**: Honor HTTP Strict Transport Security headers
+
+### 8.4 Rate Limiting and Resource Controls
+
+**Rate Limiting Configuration:**
+```ini
+# .armrc rate limiting settings
+[registries]
+my-api = http://api.example.com/
+gitlab-instance = gitlab://gitlab.company.com/project/123
+
+# Type-based defaults
+[http]
+concurrency = 5
+rateLimit = 30/minute
+
+[gitlab]
+concurrency = 2
+rateLimit = 60/hour
+
+# Registry-specific overrides
+[registries.my-api]
+token = ${API_TOKEN}
+rateLimit = 10/minute          # Override http default
+concurrency = 2                # Override http default
+
+[registries.gitlab-instance]
+token = ${GITLAB_TOKEN}
+rateLimit = 100/hour           # Override gitlab default
+concurrency = 5                # Override gitlab default
+```
+
+**Rate Limit Formats:**
+- **Per Second**: `30/second`, `30/s`
+- **Per Minute**: `100/minute`, `100/min`, `100/m`
+- **Per Hour**: `1000/hour`, `1000/hr`, `1000/h`
+- **Per Day**: `10000/day`, `10000/d`
+
+**Rate Limit Behavior:**
+- **Queue Requests**: When rate limit hit, queue additional requests
+- **Wait and Retry**: Automatically wait for rate limit window to reset
+- **Exponential Backoff**: Use exponential backoff for repeated rate limit hits
+- **Progress Indication**: Show "Rate limited, waiting..." in progress output
+
+**Rate Limiting Examples:**
+```bash
+# Rate limit hit during installation
+$ arm install multiple-rulesets --verbose
+[DEBUG] Installing ruleset 1/5...
+[DEBUG] Installing ruleset 2/5...
+[DEBUG] Rate limit reached for registry 'my-api' (10/minute)
+[INFO] Rate limited, waiting 45 seconds...
+[DEBUG] Installing ruleset 3/5...
+```
+
+**Download Size Limits:**
+- **Default Limit**: 100MB per ruleset download
+- **Configurable**: Set via `maxDownloadSize` in registry configuration
+- **Size Check**: Validate Content-Length header before download
+- **Streaming Validation**: Monitor download size during transfer
+
+**Download Size Configuration:**
+```ini
+# .armrc download size limits
+[registries]
+large-rulesets = s3://large-bucket/
+small-api = http://api.example.com/
+
+# Type-based defaults
+[s3]
+maxDownloadSize = 100MB        # Default for all S3 registries
+
+[http]
+maxDownloadSize = 100MB        # Default for all HTTP registries
+
+# Registry-specific overrides
+[registries.large-rulesets]
+maxDownloadSize = 500MB        # Allow larger downloads
+
+[registries.small-api]
+maxDownloadSize = 10MB         # Restrict download size
+```
+
+**Resource Control Examples:**
+```bash
+# Download size exceeded
+$ arm install huge-ruleset
+Error [REGISTRY]: Download size limit exceeded
+Details: Ruleset size 150MB exceeds limit of 100MB
+Suggestion: Increase maxDownloadSize in registry configuration or contact registry owner
+
+# Size validation during download
+$ arm install large-ruleset --verbose
+[DEBUG] Downloading large-ruleset@1.0.0 (45MB)...
+[DEBUG] Download progress: 45MB/45MB (100%)
+✓ Downloaded large-ruleset@1.0.0
+```
+
+### 8.5 Security Error Handling
+
+**Authentication Errors:**
+```bash
+# Git authentication failure
+Error [AUTH]: Git authentication failed for 'github.com/user/repo'
+Details: Permission denied (publickey)
+Suggestion: Check SSH key configuration or use HTTPS with token
+
+# S3 authentication failure
+Error [AUTH]: AWS authentication failed for S3 bucket
+Details: The AWS Access Key Id you provided does not exist
+Suggestion: Check AWS credentials with 'aws sts get-caller-identity'
+
+# GitLab token invalid
+Error [AUTH]: GitLab authentication failed
+Details: HTTP 401 - Invalid token
+Suggestion: Check token permissions (requires 'read_api' and 'read_repository')
+
+# HTTP bearer token invalid
+Error [AUTH]: HTTP authentication failed
+Details: HTTP 401 - Unauthorized
+Suggestion: Check bearer token in registry configuration
+```
+
+**Security Configuration Errors:**
+```bash
+# Insecure file permissions
+Error [CONFIG]: Insecure permissions on configuration file
+Details: ~/.armrc has permissions 644 (should be 600)
+Suggestion: Run 'chmod 600 ~/.armrc' to fix permissions
+
+# Missing environment variable
+Error [CONFIG]: Environment variable not found
+Details: Variable 'GITLAB_TOKEN' referenced in .armrc but not set
+Suggestion: Set environment variable or update configuration
+```
+
+**Network Security Errors:**
+```bash
+# HTTP URL rejected
+Error [NETWORK]: Insecure protocol not allowed
+Details: HTTP URLs are not permitted for security
+Suggestion: Use HTTPS URL or add --insecure flag for testing
+
+# Certificate validation failure
+Error [NETWORK]: SSL certificate verification failed
+Details: Certificate has expired for 'registry.example.com'
+Suggestion: Contact registry administrator or use --insecure flag for testing
+``` Registry Type
 ### 8.2 Credential Management
 ### 8.3 Environment Variable Support
 ### 8.4 Security Considerations
