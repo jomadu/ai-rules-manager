@@ -1,18 +1,30 @@
 package main
 
 import (
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/go-git/go-git/v5"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"fmt"
+	"os"
+
+	"github.com/max-dunn/ai-rules-manager/internal/cli"
+	"github.com/max-dunn/ai-rules-manager/internal/config"
 )
 
 func main() {
-	// Placeholder main function - will be implemented in later tasks
-	_ = cobra.Command{}
-	_ = viper.New()
-	_ = config.LoadDefaultConfig
-	_ = s3.New
-	_ = git.PlainClone
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Create root command
+	rootCmd := cli.NewRootCommand(cfg)
+
+	// Execute command
+	return rootCmd.Execute()
 }

@@ -1,4 +1,13 @@
 package config
 
-// Configuration management (INI and JSON parsing, validation)
-// Will be implemented in task 2.0
+// Config represents the ARM configuration
+type Config struct {
+	// Placeholder for configuration fields
+	// Will be fully implemented in task 2.0
+}
+
+// Load loads the ARM configuration from files
+func Load() (*Config, error) {
+	// Placeholder implementation - will be fully implemented in task 2.0
+	return &Config{}, nil
+}
