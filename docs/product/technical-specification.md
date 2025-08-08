@@ -887,18 +887,20 @@ Shows command usage, options, and examples in priority order.
 **Installation Directory Structure:**
 ```
 .cursor/rules/
-├── registry-name/
-│   └── ruleset-name/
-│       ├── current-version/
-│       │   ├── file1.md
-│       │   └── file2.mdc
-│       └── previous-version/
-│           ├── file1.md
-│           └── file2.mdc
-└── another-registry/
-    └── another-ruleset/
-        └── version/
-            └── files...
+├── arm/                        # ARM-managed rulesets
+│   ├── registry-name/
+│   │   └── ruleset-name/
+│   │       ├── current-version/
+│   │       │   ├── file1.md
+│   │       │   └── file2.mdc
+│   │       └── previous-version/
+│   │           ├── file1.md
+│   │           └── file2.mdc
+│   └── another-registry/
+│       └── another-ruleset/
+│           └── version/
+│               └── files...
+└── user-file.md                # User-managed files
 ```
 
 **Version Management:**
@@ -908,9 +910,10 @@ Shows command usage, options, and examples in priority order.
 - **Directory Names**: Use exact version strings (e.g., `1.2.0`, `abc123def`, `main`)
 
 **Channel Deployment:**
-- Files are copied (not symlinked) from version directories to channel directories
-- Each channel maintains its own copy of ruleset files
+- Files are copied (not symlinked) from version directories to channel directories under `arm/` folder
+- Each channel maintains its own copy of ruleset files in `{channel-dir}/arm/registry/ruleset/version/` structure
 - Channel directories specified in `arm.json` channels configuration
+- ARM automatically creates `arm/` subdirectory within each configured channel directory
 
 **Cache Directory Structure:**
 ```
@@ -1384,21 +1387,25 @@ $ arm install my-rules --json
 **Channel Directory Layout:**
 ```
 .cursor/rules/
-├── registry-name/
-│   └── ruleset-name/
-│       ├── file1.md
-│       ├── file2.mdc
-│       └── subdir/
-│           └── file3.txt
-└── another-registry/
-    └── another-ruleset/
-        └── rules.md
+├── arm/                        # ARM-managed rulesets
+│   ├── registry-name/
+│   │   └── ruleset-name/
+│   │       ├── file1.md
+│   │       ├── file2.mdc
+│   │       └── subdir/
+│   │           └── file3.txt
+│   └── another-registry/
+│       └── another-ruleset/
+│           └── rules.md
+└── user-file.md                # User-managed files
 ```
 
 **Directory Creation:**
-- **Automatic Creation**: ARM creates registry and ruleset directories automatically
-- **Path Structure**: Registry/ruleset structure for namespacing
+- **Automatic Creation**: ARM creates `arm/` parent directory and registry/ruleset subdirectories automatically
+- **Path Structure**: `arm/registry/ruleset/version/` structure for clear separation from user files
 - **Nested Directories**: Preserve subdirectory structure from source rulesets
+- **User Separation**: All ARM-managed content lives under `arm/` folder, leaving root directory available for user files
+- **Backward Compatibility**: Existing installations remain in their current locations; only new installations use the `arm/` structure
 
 **Installation Directory Mapping:**
 ```
@@ -1410,7 +1417,7 @@ ruleset.tar.gz:
     └── security.txt
 
 # Installed to directory
-.cursor/rules/my-registry/python-rules/
+.cursor/rules/arm/my-registry/python-rules/1.2.0/
 ├── python-rules.md
 ├── javascript-rules.mdc
 └── advanced/
