@@ -601,7 +601,7 @@ arm config <subcommand> [options]
 **Set Configuration Value:**
 ```bash
 arm config set <key> <value> [--global]
-arm config set registries.default git://github.com/user/repo
+arm config set registries.default github.com/user/repo
 arm config set git.concurrency 5
 ```
 
@@ -619,8 +619,15 @@ arm config list [--global]
 Shows merged configuration with source indicators:
 ```
 [registries]
-default = git://github.com/user/repo (local)
-my-registry = s3://bucket.amazonaws.com/ (global)
+default = github.com/user/repo (local)
+my-registry = my-bucket (global)
+
+[registries.default]
+type = git (local)
+
+[registries.my-registry]
+type = s3 (global)
+region = us-east-1 (global)
 
 [git]
 concurrency = 5 (local)
@@ -629,10 +636,12 @@ rateLimit = 10 (global)
 
 **Add Registry:**
 ```bash
-arm config add registry <name> <url> [options] [--global]
-arm config add registry my-git git://github.com/user/repo --authToken=$TOKEN --apiType=github
-arm config add registry my-s3 s3://bucket.amazonaws.com/ --profile=myprofile --prefix=/rules
-arm config add registry my-gitlab gitlab://gitlab.com/project/123 --authToken=$GITLAB_TOKEN
+arm config add registry <name> <value> --type=<type> [options] [--global]
+arm config add registry my-git https://github.com/user/repo --type=git --authToken=$TOKEN --apiType=github
+arm config add registry my-s3 my-bucket --type=s3 --region=us-east-1 --profile=myprofile --prefix=/rules
+arm config add registry my-gitlab https://gitlab.com/projects/123 --type=gitlab --authToken=$GITLAB_TOKEN
+arm config add registry my-https https://example.com/registry --type=https --authToken=$TOKEN
+arm config add registry my-local /path/to/registry --type=local
 ```
 
 **Remove Registry:**
