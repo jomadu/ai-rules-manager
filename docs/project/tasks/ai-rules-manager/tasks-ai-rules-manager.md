@@ -65,7 +65,7 @@
   - [x] 4.4 Implement update, outdated, and uninstall commands
   - [x] 4.5 Implement clean command and version/help utilities
 - [ ] 5.0 Package Management and Installation System
-  - [ ] 5.1 Implement semantic version resolution with range operators
+  - [x] 5.1 Implement semantic version resolution with range operators
   - [ ] 5.2 Create caching system with TTL and LRU eviction
   - [ ] 5.3 Build file installer with ARM namespace directory structure
   - [ ] 5.4 Implement lock file management and dependency resolution
