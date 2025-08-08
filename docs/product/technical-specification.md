@@ -1711,8 +1711,10 @@ Suggestion: Choose a writable location or remount filesystem with write access
 ```bash
 # ARM uses existing Git credentials automatically
 $ git config --global credential.helper store
-$ git clone https://github.com/user/repo  # Configure credentials
-$ arm install git-registry/my-rules       # Uses same credentials
+$ git config --global user.name "Your Name"
+$ git config --global user.email "your.email@example.com"
+# ARM will use these credentials automatically - no manual cloning required
+$ arm install git-registry/my-rules       # Uses configured Git credentials
 ```
 
 **S3 Registry Authentication:**
@@ -1862,28 +1864,29 @@ Warning: Skipping SSL certificate verification (--insecure flag)
 ```ini
 # .armrc rate limiting settings
 [registries]
-my-api = http://api.example.com/
-gitlab-instance = gitlab://gitlab.company.com/project/123
+my-api = https://api.example.com/
+gitlab-instance = https://gitlab.company.com/projects/123
+
+[registries.my-api]
+type = https
+authToken = $API_TOKEN
+rateLimit = 10/minute          # Override https default
+concurrency = 2                # Override https default
+
+[registries.gitlab-instance]
+type = gitlab
+authToken = $GITLAB_TOKEN
+rateLimit = 100/hour           # Override gitlab default
+concurrency = 5                # Override gitlab default
 
 # Type-based defaults
-[http]
+[https]
 concurrency = 5
 rateLimit = 30/minute
 
 [gitlab]
 concurrency = 2
 rateLimit = 60/hour
-
-# Registry-specific overrides
-[registries.my-api]
-authToken = $API_TOKEN
-rateLimit = 10/minute          # Override http default
-concurrency = 2                # Override http default
-
-[registries.gitlab-instance]
-authToken = $GITLAB_TOKEN
-rateLimit = 100/hour           # Override gitlab default
-concurrency = 5                # Override gitlab default
 ```
 
 **Rate Limit Formats:**
@@ -1919,22 +1922,24 @@ $ arm install multiple-rulesets --verbose
 ```ini
 # .armrc download size limits
 [registries]
-large-rulesets = s3://large-bucket/
-small-api = http://api.example.com/
+large-rulesets = large-bucket
+small-api = https://api.example.com/
+
+[registries.large-rulesets]
+type = s3
+region = us-east-1
+maxDownloadSize = 500MB        # Allow larger downloads
+
+[registries.small-api]
+type = https
+maxDownloadSize = 10MB         # Restrict download size
 
 # Type-based defaults
 [s3]
 maxDownloadSize = 100MB        # Default for all S3 registries
 
-[http]
-maxDownloadSize = 100MB        # Default for all HTTP registries
-
-# Registry-specific overrides
-[registries.large-rulesets]
-maxDownloadSize = 500MB        # Allow larger downloads
-
-[registries.small-api]
-maxDownloadSize = 10MB         # Restrict download size
+[https]
+maxDownloadSize = 100MB        # Default for all HTTPS registries
 ```
 
 **Resource Control Examples:**
@@ -2002,6 +2007,3 @@ Error [NETWORK]: SSL certificate verification failed
 Details: Certificate has expired for 'registry.example.com'
 Suggestion: Contact registry administrator or use --insecure flag for testing
 ``` Registry Type
-### 8.2 Credential Management
-### 8.3 Environment Variable Support
-### 8.4 Security Considerations
