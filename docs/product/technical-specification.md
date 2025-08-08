@@ -19,7 +19,7 @@
 # Global ~/.arm/.armrc
 [git]
 concurrency=1
-rateLimit=10
+rateLimit=10/minute
 
 # Local ./.armrc
 [git]
@@ -27,8 +27,8 @@ concurrency=5
 
 # Effective configuration
 [git]
-concurrency=5    # from local
-rateLimit=10     # from global
+concurrency=5         # from local
+rateLimit=10/minute   # from global
 ```
 
 ### 1.2 Configuration File Formats
@@ -54,7 +54,7 @@ rateLimit=10     # from global
 - `s3://bucket.region.amazonaws.com/`
 - `gitlab://gitlab.example.com/project/123`
 - `gitlab://gitlab.example.com/group/123`
-- `http://example.com/registry`
+- `https://example.com/registry`
 - `file:///path/to/local/registry`
 
 **Registry Configuration Structure:**
@@ -153,7 +153,8 @@ maxSize = 1GB
 
 **Directory Handling:**
 - Multiple directories per channel supported
-- Literal directory paths only (no environment variable expansion)
+- Tilde expansion supported (`~/.aws/amazonq/rules`)
+- No environment variable expansion (`$HOME` not supported)
 - ARM creates directories if they don't exist
 - Validates directory write permissions during configuration
 
@@ -180,7 +181,7 @@ maxSize = 1GB
 # my-git-registry = git://github.com/user/repo
 # my-s3-registry = s3://bucket.region.amazonaws.com/
 # my-gitlab-registry = gitlab://gitlab.example.com/project/123
-# my-http-registry = http://example.com/registry
+# my-http-registry = https://example.com/registry
 # my-local-registry = file:///path/to/local/registry
 
 # Type-based defaults (optional - ARM has built-in defaults)
@@ -270,7 +271,7 @@ maxSize = 1GB
 - Uses standard glob syntax: `*`, `**`, `?`, `[abc]`, `{a,b,c}`
 - Example patterns:
   - `"rules/*.md"` → All .md files in rules directory
-  - `"**/*.cursorrules"` → All .cursorrules files recursively
+  - `"**/*.mdc"` → All .mdc files recursively
   - `".cursor/rules/01-*.md"` → Specific numbered rule files
 
 **Configuration Example:**
@@ -283,7 +284,7 @@ authToken = $GITHUB_TOKEN  # optional, for API mode
 apiType = github           # optional, enables API mode
 apiVersion = 2022-11-28    # optional, API version
 concurrency = 2
-rateLimit = 10
+rateLimit = 10/minute
 ```
 
 ### 2.2 AWS S3 Registries
@@ -330,7 +331,7 @@ profile = my-aws-profile  # optional, uses default profile if omitted
 region = us-west-2        # optional, overrides region from URL or credential chain
 prefix = /registries/path # optional prefix within bucket
 concurrency = 10
-rateLimit = 100
+rateLimit = 100/hour
 ```
 
 ### 2.3 GitLab Package Registries
@@ -376,12 +377,12 @@ rateLimit = 60
 ### 2.4 Generic HTTP Registries
 
 **URL Format:**
-- `http://example.com/registry`
+- `https://example.com/registry`
 - `https://my-registry.example.com/rulesets`
 
 **Directory Structure:**
 ```
-http://example.com/registry/
+https://example.com/registry/
 ├── manifest.json          # contains all rulesets and versions
 ├── ruleset1/
 │   ├── 1.0.0/
@@ -414,7 +415,7 @@ http://example.com/registry/
 **Configuration Example:**
 ```ini
 [registries]
-my-http-registry = http://example.com/registry
+my-http-registry = https://example.com/registry
 
 [registries.my-http-registry]
 authToken = $HTTP_REGISTRY_TOKEN  # optional, for bearer auth
@@ -1383,34 +1384,20 @@ $ arm install my-rules --json
 **Channel Directory Layout:**
 ```
 .cursor/rules/
-├── channel1/                    # Channel directory
-│   ├── registry-name/
-│   │   └── ruleset-name/
-│   │       ├── file1.md
-│   │       ├── file2.mdc
-│   │       └── subdir/
-│   │           └── file3.txt
-│   └── another-registry/
-│       └── another-ruleset/
-│           └── rules.md
-├── channel2/                    # Another channel
-│   ├── registry-name/
-│   │   └── ruleset-name/
-│   │       ├── file1.md         # Independent copy
-│   │       └── file2.mdc
-│   └── different-registry/
-│       └── different-ruleset/
-│           └── config.md
-└── default/                     # Default channel
-    └── registry-name/
-        └── ruleset-name/
-            └── main.md
+├── registry-name/
+│   └── ruleset-name/
+│       ├── file1.md
+│       ├── file2.mdc
+│       └── subdir/
+│           └── file3.txt
+└── another-registry/
+    └── another-ruleset/
+        └── rules.md
 ```
 
 **Directory Creation:**
-- **Automatic Creation**: ARM creates channel directories and parent paths automatically
-- **Path Structure**: Mirrors registry/ruleset structure within each channel
-- **Independent Channels**: Each channel maintains separate copies of all files
+- **Automatic Creation**: ARM creates registry and ruleset directories automatically
+- **Path Structure**: Registry/ruleset structure for namespacing
 - **Nested Directories**: Preserve subdirectory structure from source rulesets
 
 **Installation Directory Mapping:**
@@ -1422,8 +1409,8 @@ ruleset.tar.gz:
 └── advanced/
     └── security.txt
 
-# Installed to channel
-.cursor/rules/channel1/my-registry/python-rules/
+# Installed to directory
+.cursor/rules/my-registry/python-rules/
 ├── python-rules.md
 ├── javascript-rules.mdc
 └── advanced/
@@ -1462,7 +1449,7 @@ Installed 3 files, skipped 3 unsupported files
 **Namespace Examples:**
 ```
 # Multiple rulesets with same filename - no conflict
-.cursor/rules/channel1/
+.cursor/rules/
 ├── registry-a/
 │   └── python-rules/
 │       └── main.md              # From registry-a/python-rules
@@ -1486,33 +1473,33 @@ Installed 3 files, skipped 3 unsupported files
 # Installing to multiple channels creates independent copies
 $ arm install my-rules --channels channel1,channel2
 
-# Results in:
-.cursor/rules/channel1/default/my-rules/file.md
-.cursor/rules/channel2/default/my-rules/file.md
+# Results in files copied to each channel's directories:
+# Channel 1: /path/to/channel1/default/my-rules/file.md
+# Channel 2: /path/to/channel2/default/my-rules/file.md
 # ^ Independent files, can diverge over time
 ```
 
 **Existing Non-ARM Files:**
 ```bash
-# ARM overwrites existing files in channel directories
-$ ls .cursor/rules/channel1/default/my-rules/
+# ARM overwrites existing files in deployment directories
+$ ls /path/to/channel/default/my-rules/
 manual-file.md  # User-created file
 
 $ arm install my-rules
 # If my-rules contains manual-file.md, it will be overwritten
-# No warning given - ARM assumes ownership of channel directories
+# No warning given - ARM assumes ownership of deployment directories
 ```
 
 **ARM-Managed File Updates:**
 ```bash
 # Updating rulesets replaces existing ARM-managed files
 $ arm update my-rules
-# All files in .cursor/rules/*/default/my-rules/ are replaced
+# All deployed files are replaced with new version
 # Previous version kept in installation directory until next update
 ```
 
 **Directory Conflicts:**
-- **Channel Directory Exists**: ARM uses existing directory, creates subdirectories as needed
+- **Deployment Directory Exists**: ARM uses existing directory, creates subdirectories as needed
 - **Registry Directory Exists**: ARM uses existing directory, adds ruleset subdirectories
 - **Ruleset Directory Exists**: ARM replaces contents during installation/update
 
@@ -1528,7 +1515,7 @@ $ arm update my-rules
 ```bash
 # During installation, ARM sets standard permissions
 $ arm install my-rules
-$ ls -la .cursor/rules/channel1/default/my-rules/
+$ ls -la .cursor/rules/default/my-rules/
 drwxr-xr-x  3 user group   96 Jan 15 10:30 .
 drwxr-xr-x  3 user group   96 Jan 15 10:30 ..
 -rw-r--r--  1 user group 1024 Jan 15 10:30 rules.md
@@ -1559,7 +1546,7 @@ drwxr-xr-x  2 user group   64 Jan 15 10:30 advanced/
 **Permission Error Handling:**
 ```bash
 # Permission denied during installation
-Error [FILESYSTEM]: Cannot create directory '.cursor/rules/channel1/'
+Error [FILESYSTEM]: Cannot create directory '.cursor/rules/default/'
 Details: Permission denied (errno 13)
 Suggestion: Check directory permissions or run with appropriate privileges
 
@@ -1618,10 +1605,8 @@ $ arm install my-s3-rules  # Uses AWS credentials
 **GitLab Configuration:**
 ```ini
 # .armrc configuration
-[registry.my-gitlab]
-type = gitlab
-url = https://gitlab.example.com/
-token = ${GITLAB_TOKEN}  # Environment variable expansion
+[registries.my-gitlab]
+authToken = $GITLAB_TOKEN
 ```
 
 **HTTP Registry Authentication:**
@@ -1633,10 +1618,8 @@ token = ${GITLAB_TOKEN}  # Environment variable expansion
 **HTTP Authentication Configuration:**
 ```ini
 # .armrc configuration
-[registry.my-http]
-type = http
-url = https://api.example.com/rulesets/
-token = ${API_TOKEN}  # Environment variable expansion
+[registries.my-http]
+authToken = $API_TOKEN
 ```
 
 **Local Registry Authentication:**
@@ -1661,20 +1644,14 @@ token = ${API_TOKEN}  # Environment variable expansion
 **Environment Variable Examples:**
 ```ini
 # .armrc with environment variable expansion
-[registry.gitlab-prod]
-type = gitlab
-url = https://gitlab.company.com/
-token = ${GITLAB_PROD_TOKEN}
+[registries.gitlab-prod]
+authToken = $GITLAB_PROD_TOKEN
 
-[registry.gitlab-dev]
-type = gitlab
-url = https://gitlab-dev.company.com/
-token = $GITLAB_DEV_TOKEN
+[registries.gitlab-dev]
+authToken = $GITLAB_DEV_TOKEN
 
-[registry.http-api]
-type = http
-url = https://api.${ENVIRONMENT}.company.com/
-token = ${API_TOKEN_PREFIX}_${ENVIRONMENT}
+[registries.http-api]
+authToken = $API_TOKEN_PREFIX_$ENVIRONMENT
 ```
 
 **Credential Security:**
@@ -1759,12 +1736,12 @@ rateLimit = 60/hour
 
 # Registry-specific overrides
 [registries.my-api]
-token = ${API_TOKEN}
+authToken = $API_TOKEN
 rateLimit = 10/minute          # Override http default
 concurrency = 2                # Override http default
 
 [registries.gitlab-instance]
-token = ${GITLAB_TOKEN}
+authToken = $GITLAB_TOKEN
 rateLimit = 100/hour           # Override gitlab default
 concurrency = 5                # Override gitlab default
 ```
