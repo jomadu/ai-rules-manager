@@ -364,3 +364,201 @@ type = git
 		t.Fatalf("Expected no error with specific registry, got %v", err)
 	}
 }
+
+func TestHandleSearch(t *testing.T) {
+	// Create temp directory
+	tempDir, err := os.MkdirTemp("", "search-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
+
+	// Create basic configuration
+	armrcContent := `[registries]
+default = https://github.com/user/repo
+my-git = https://github.com/other/repo
+
+[registries.default]
+type = git
+
+[registries.my-git]
+type = git
+`
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create .armrc: %v", err)
+	}
+
+	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create arm.json: %v", err)
+	}
+
+	// Test search with no registry filter
+	err = handleSearch("python", "", false, 10)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Test search with specific registry
+	err = handleSearch("python", "default", false, 10)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Test search with glob pattern
+	err = handleSearch("python", "my-*", false, 10)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestHandleInfo(t *testing.T) {
+	// Create temp directory
+	tempDir, err := os.MkdirTemp("", "info-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
+
+	// Create basic configuration
+	armrcContent := `[registries]
+default = https://github.com/user/repo
+
+[registries.default]
+type = git
+`
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create .armrc: %v", err)
+	}
+
+	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create arm.json: %v", err)
+	}
+
+	// Test info with default registry
+	err = handleInfo("my-rules", false, false)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Test info with specific registry and version
+	err = handleInfo("default/my-rules@1.0.0", false, true)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Test info with JSON output
+	err = handleInfo("my-rules", true, false)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestHandleList(t *testing.T) {
+	// Create temp directory
+	tempDir, err := os.MkdirTemp("", "list-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
+
+	// Create configuration with rulesets
+	armrcContent := `[registries]
+default = https://github.com/user/repo
+
+[registries.default]
+type = git
+`
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create .armrc: %v", err)
+	}
+
+	armJSONContent := `{
+  "engines": {"arm": "^1.0.0"},
+  "channels": {},
+  "rulesets": {
+    "default": {
+      "my-rules": {"version": "^1.0.0", "patterns": ["*.md"]},
+      "python-rules": {"version": "~2.1.0"}
+    }
+  }
+}`
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create arm.json: %v", err)
+	}
+
+	// Test list with rulesets
+	err = handleList(false, false, false, "")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Test list with JSON output
+	err = handleList(false, false, true, "cursor")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestGetTargetRegistries(t *testing.T) {
+	allRegistries := map[string]string{
+		"default":   "https://github.com/user/repo",
+		"my-git":    "https://github.com/other/repo",
+		"my-s3":     "my-bucket",
+		"test-repo": "https://test.com/repo",
+	}
+
+	tests := []struct {
+		filter   string
+		expected []string
+	}{
+		{"", []string{"default", "my-git", "my-s3", "test-repo"}},
+		{"default", []string{"default"}},
+		{"default,my-git", []string{"default", "my-git"}},
+		{"my-*", []string{"my-git", "my-s3"}},
+		{"*-repo", []string{"test-repo"}},
+		{"nonexistent", []string{}},
+	}
+
+	for _, test := range tests {
+		result := getTargetRegistries(allRegistries, test.filter)
+		if len(result) != len(test.expected) {
+			t.Errorf("getTargetRegistries(%s) returned %d items, expected %d", test.filter, len(result), len(test.expected))
+			continue
+		}
+
+		// Convert to map for easier comparison
+		resultMap := make(map[string]bool)
+		for _, r := range result {
+			resultMap[r] = true
+		}
+
+		for _, expected := range test.expected {
+			if !resultMap[expected] {
+				t.Errorf("getTargetRegistries(%s) missing expected result: %s", test.filter, expected)
+			}
+		}
+	}
+}

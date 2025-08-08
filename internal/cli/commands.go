@@ -229,27 +229,41 @@ func newUninstallCommand(_ *config.Config) *cobra.Command {
 }
 
 // newSearchCommand creates the search command
-func newSearchCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newSearchCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search for rulesets",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("search not implemented")
+			registries, _ := cmd.Flags().GetString("registries")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			limit, _ := cmd.Flags().GetInt("limit")
+			return handleSearch(args[0], registries, jsonOutput, limit)
 		},
 	}
+
+	cmd.Flags().String("registries", "", "Search specific registries (comma-separated or glob patterns)")
+	cmd.Flags().Int("limit", 50, "Limit number of results")
+
+	return cmd
 }
 
 // newInfoCommand creates the info command
-func newInfoCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newInfoCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "info <ruleset-spec>",
 		Short: "Show ruleset information",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("info not implemented")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			versions, _ := cmd.Flags().GetBool("versions")
+			return handleInfo(args[0], jsonOutput, versions)
 		},
 	}
+
+	cmd.Flags().Bool("versions", false, "Show all available versions")
+
+	return cmd
 }
 
 // newOutdatedCommand creates the outdated command
@@ -286,14 +300,23 @@ func newCleanCommand(_ *config.Config) *cobra.Command {
 }
 
 // newListCommand creates the list command
-func newListCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newListCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List installed rulesets",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("list not implemented")
+			global, _ := cmd.Flags().GetBool("global")
+			local, _ := cmd.Flags().GetBool("local")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			channels, _ := cmd.Flags().GetString("channels")
+			return handleList(global, local, jsonOutput, channels)
 		},
 	}
+
+	cmd.Flags().Bool("local", false, "List local installations only")
+	cmd.Flags().String("channels", "", "Filter by specific channels (comma-separated)")
+
+	return cmd
 }
 
 // newVersionCommand creates the version command
@@ -715,4 +738,175 @@ func ensureConfigFiles(global bool) error {
 	}
 
 	return nil
+}
+
+// Search, info, and list command handlers
+
+func handleSearch(query, registries string, jsonOutput bool, limit int) error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have registries configured
+	if len(cfg.Registries) == 0 {
+		return fmt.Errorf("no registries configured. Add a registry with 'arm config add registry'")
+	}
+
+	// Determine which registries to search
+	targetRegistries := getTargetRegistries(cfg.Registries, registries)
+	if len(targetRegistries) == 0 {
+		return fmt.Errorf("no matching registries found")
+	}
+
+	if jsonOutput {
+		fmt.Printf(`{"query":"%s","registries":%v,"limit":%d,"results":[]}`, query, targetRegistries, limit)
+		return nil
+	}
+
+	fmt.Printf("Searching for '%s' in registries: %s\n", query, strings.Join(targetRegistries, ", "))
+	fmt.Printf("Limit: %d results\n\n", limit)
+	fmt.Println("No results found (search functionality not yet implemented)")
+
+	return nil
+}
+
+func handleInfo(rulesetSpec string, jsonOutput, versions bool) error {
+	// Parse ruleset specification
+	registry, name, version := parseRulesetSpec(rulesetSpec)
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Determine target registry
+	if registry == "" {
+		if _, exists := cfg.Registries["default"]; exists {
+			registry = "default"
+		} else {
+			return fmt.Errorf("no default registry configured and no registry specified")
+		}
+	}
+
+	// Check if registry exists
+	if _, exists := cfg.Registries[registry]; !exists {
+		return fmt.Errorf("registry '%s' not found", registry)
+	}
+
+	if jsonOutput {
+		fmt.Printf(`{"registry":"%s","name":"%s","version":"%s","versions_requested":%t}`, registry, name, version, versions)
+		return nil
+	}
+
+	fmt.Printf("Ruleset: %s/%s@%s\n", registry, name, version)
+	fmt.Printf("Registry: %s (%s)\n", registry, cfg.Registries[registry])
+	if regConfig, exists := cfg.RegistryConfigs[registry]; exists {
+		fmt.Printf("Type: %s\n", regConfig["type"])
+	}
+
+	if versions {
+		fmt.Println("\nAvailable versions: (not yet implemented)")
+	}
+
+	fmt.Println("\nDetailed information: (not yet implemented)")
+
+	return nil
+}
+
+func handleList(global, local, jsonOutput bool, channels string) error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Determine scope
+	scope := "both"
+	if global && !local {
+		scope = "global"
+	} else if local && !global {
+		scope = "local"
+	}
+
+	// Parse channel filter
+	var channelFilter []string
+	if channels != "" {
+		channelFilter = strings.Split(channels, ",")
+		for i, ch := range channelFilter {
+			channelFilter[i] = strings.TrimSpace(ch)
+		}
+	}
+
+	if jsonOutput {
+		fmt.Printf(`{"scope":"%s","channels":%v,"rulesets":[]}`, scope, channelFilter)
+		return nil
+	}
+
+	fmt.Printf("Installed rulesets (scope: %s):\n", scope)
+	if len(channelFilter) > 0 {
+		fmt.Printf("Channels: %s\n", strings.Join(channelFilter, ", "))
+	}
+	fmt.Println()
+
+	// Check if we have any rulesets configured
+	if len(cfg.Rulesets) == 0 {
+		fmt.Println("No rulesets installed")
+		fmt.Println("Install rulesets with 'arm install <ruleset-name>'")
+		return nil
+	}
+
+	// List configured rulesets (from manifest)
+	fmt.Println("Configured rulesets:")
+	for registry, rulesets := range cfg.Rulesets {
+		for name, spec := range rulesets {
+			fmt.Printf("  %s/%s@%s\n", registry, name, spec.Version)
+			if len(spec.Patterns) > 0 {
+				fmt.Printf("    Patterns: %s\n", strings.Join(spec.Patterns, ", "))
+			}
+		}
+	}
+
+	fmt.Println("\nActual installation status: (not yet implemented)")
+
+	return nil
+}
+
+func getTargetRegistries(allRegistries map[string]string, filter string) []string {
+	if filter == "" {
+		// Return all registry names
+		var names []string
+		for name := range allRegistries {
+			names = append(names, name)
+		}
+		return names
+	}
+
+	// Parse comma-separated list
+	filters := strings.Split(filter, ",")
+	var result []string
+
+	for _, f := range filters {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+
+		// Check for exact match first
+		if _, exists := allRegistries[f]; exists {
+			result = append(result, f)
+			continue
+		}
+
+		// Check for glob pattern match
+		for name := range allRegistries {
+			if matched, _ := filepath.Match(f, name); matched {
+				result = append(result, name)
+			}
+		}
+	}
+
+	return result
 }
