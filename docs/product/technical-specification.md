@@ -522,8 +522,8 @@ arm config remove registry my-git
 
 **Add Channel:**
 ```bash
-arm config add channel <name> --directory dir1 --directory dir2 [--global]
-arm config add channel cursor --directory .cursor/rules --directory .custom/cursor
+arm config add channel <name> --directories dir1,dir2 [--global]
+arm config add channel cursor --directories .cursor/rules,.custom/cursor
 ```
 
 **Remove Channel:**
@@ -585,10 +585,29 @@ arm install my-registry/my-rules@1.2.3
 - No `.armrc` anywhere, `arm.json` in `./` → Generate `.armrc` in target scope
 - No files anywhere → Generate both files in target scope
 
+**Git Registry Pattern Handling:**
+```bash
+# Install new Git ruleset (requires patterns)
+arm install awesome-cursorrules/rules-new-python --patterns "rules-new/python-*.mdc"
+
+# Install with multiple patterns
+arm install cursor-rules/base-devops --patterns ".cursor/rules/01-base-devops.mdc,docs/*.md"
+
+# Override patterns for existing ruleset
+arm install cursor-rules/base-agentic --patterns "different/*.mdc"
+```
+
+**Pattern Requirements:**
+- **Git registries**: `--patterns` flag required for all Git rulesets (updates manifest with new patterns)
+- **Non-Git registries**: Patterns not applicable (S3, GitLab, HTTP, Local use pre-packaged files)
+- **Error handling**: Installing Git ruleset without `--patterns` flag results in error
+- **Manifest updates**: Git rulesets automatically added/updated in local `arm.json` with specified patterns
+
 **Options:**
 - `--global` - Install to global configuration
 - `--dry-run` - Show what would be installed
-- `--channel channel1 --channel channel2` - Install to specific channels only (default: all channels)
+- `--channels channel1,channel2` - Install to specific channels only (default: all channels)
+- `--patterns pattern1,pattern2` - Glob patterns for Git registry rulesets (comma-separated)
 
 ### 3.4 Uninstall Command
 
@@ -602,7 +621,7 @@ arm uninstall my-registry/my-rules
 **Options:**
 - `--global` - Uninstall from global configuration
 - `--dry-run` - Show what would be removed
-- `--channel channel1 --channel channel2` - Remove from specific channels only (default: all channels)
+- `--channels channel1,channel2` - Remove from specific channels only (default: all channels)
 
 ### 3.5 Search Command
 
@@ -614,13 +633,13 @@ arm search <query> [options]
 **Registry Filtering:**
 ```bash
 arm search "python rules"                    # Search all registries
-arm search "python" --registry my-git        # Search specific registry
-arm search "python" --registry my-git --registry my-s3  # Multiple registries
-arm search "python" --registry "my-*"        # Glob pattern support
+arm search "python" --registries my-git      # Search specific registry
+arm search "python" --registries my-git,my-s3  # Multiple registries
+arm search "python" --registries "my-*,yours-*"  # Glob pattern support
 ```
 
 **Options:**
-- `--registry <name>` - Search specific registry (repeatable)
+- `--registries <names>` - Search specific registries (comma-separated)
 - `--json` - JSON output format
 - `--limit <n>` - Limit number of results
 
@@ -709,7 +728,7 @@ arm list [options]
 - `--global` - List global installations only
 - `--local` - List local installations only
 - `--json` - JSON output format
-- `--channel channel1 --channel channel2` - Filter by specific channels (default: show all channels)
+- `--channels channel1,channel2` - Filter by specific channels (default: show all channels)
 
 ### 3.11 Version and Help Commands
 
