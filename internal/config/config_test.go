@@ -338,3 +338,273 @@ func TestExpandEnvVarsInJSON(t *testing.T) {
 		t.Errorf("Environment variable expansion failed\nGot: %s\nExpected: %s", expanded, expected)
 	}
 }
+
+func TestMergeConfigs(t *testing.T) {
+	// Create global config
+	global := &Config{
+		Registries: map[string]string{
+			"default": "github.com/global/repo",
+			"shared":  "shared-registry",
+		},
+		RegistryConfigs: map[string]map[string]string{
+			"default": {
+				"type":      "git",
+				"authToken": "global-token",
+			},
+			"shared": {
+				"type":        "s3",
+				"region":      "us-west-1",
+				"concurrency": "5",
+			},
+		},
+		TypeDefaults: map[string]map[string]string{
+			"git": {
+				"concurrency": "1",
+				"rateLimit":   "10/minute",
+			},
+		},
+		NetworkConfig: map[string]string{
+			"timeout": "30",
+			"retries": "3",
+		},
+		Engines: map[string]string{
+			"arm": "^1.0.0",
+		},
+		Channels: map[string]ChannelConfig{
+			"cursor": {
+				Directories: []string{"/global/cursor"},
+			},
+		},
+		Rulesets: map[string]map[string]RulesetSpec{
+			"default": {
+				"global-rules": {Version: "1.0.0"},
+				"shared-rules": {Version: "1.0.0"},
+			},
+		},
+	}
+
+	// Create local config
+	local := &Config{
+		Registries: map[string]string{
+			"default": "github.com/local/repo", // Override global
+			"local":   "local-registry",        // New key
+		},
+		RegistryConfigs: map[string]map[string]string{
+			"default": {
+				"authToken": "local-token", // Override global
+				"apiType":   "github",      // New key
+			},
+			"local": {
+				"type": "local", // New registry config
+			},
+		},
+		TypeDefaults: map[string]map[string]string{
+			"git": {
+				"concurrency": "2", // Override global
+			},
+			"s3": {
+				"region": "us-east-1", // New type
+			},
+		},
+		NetworkConfig: map[string]string{
+			"timeout": "60", // Override global
+		},
+		Engines: map[string]string{
+			"arm": "^1.2.0", // Override global
+		},
+		Channels: map[string]ChannelConfig{
+			"cursor": {
+				Directories: []string{"/local/cursor"}, // Override global
+			},
+			"q": {
+				Directories: []string{"/local/q"}, // New channel
+			},
+		},
+		Rulesets: map[string]map[string]RulesetSpec{
+			"default": {
+				"shared-rules": {Version: "2.0.0"}, // Override global
+				"local-rules":  {Version: "1.0.0"}, // New ruleset
+			},
+			"local": {
+				"local-only": {Version: "1.0.0"}, // New registry
+			},
+		},
+	}
+
+	// Merge configurations
+	merged := mergeConfigs(global, local)
+
+	// Test registries merge
+	if merged.Registries["default"] != "github.com/local/repo" {
+		t.Errorf("Expected local override for default registry, got %q", merged.Registries["default"])
+	}
+	if merged.Registries["shared"] != "shared-registry" {
+		t.Errorf("Expected global value for shared registry, got %q", merged.Registries["shared"])
+	}
+	if merged.Registries["local"] != "local-registry" {
+		t.Errorf("Expected local value for local registry, got %q", merged.Registries["local"])
+	}
+
+	// Test nested registry configs merge
+	if merged.RegistryConfigs["default"]["type"] != "git" {
+		t.Errorf("Expected global type to be preserved, got %q", merged.RegistryConfigs["default"]["type"])
+	}
+	if merged.RegistryConfigs["default"]["authToken"] != "local-token" {
+		t.Errorf("Expected local override for authToken, got %q", merged.RegistryConfigs["default"]["authToken"])
+	}
+	if merged.RegistryConfigs["default"]["apiType"] != "github" {
+		t.Errorf("Expected local apiType to be added, got %q", merged.RegistryConfigs["default"]["apiType"])
+	}
+	if merged.RegistryConfigs["shared"]["concurrency"] != "5" {
+		t.Errorf("Expected global shared config to be preserved, got %q", merged.RegistryConfigs["shared"]["concurrency"])
+	}
+
+	// Test type defaults merge
+	if merged.TypeDefaults["git"]["concurrency"] != "2" {
+		t.Errorf("Expected local override for git concurrency, got %q", merged.TypeDefaults["git"]["concurrency"])
+	}
+	if merged.TypeDefaults["git"]["rateLimit"] != "10/minute" {
+		t.Errorf("Expected global rateLimit to be preserved, got %q", merged.TypeDefaults["git"]["rateLimit"])
+	}
+	if merged.TypeDefaults["s3"]["region"] != "us-east-1" {
+		t.Errorf("Expected local s3 config to be added, got %q", merged.TypeDefaults["s3"]["region"])
+	}
+
+	// Test network config merge
+	if merged.NetworkConfig["timeout"] != "60" {
+		t.Errorf("Expected local override for timeout, got %q", merged.NetworkConfig["timeout"])
+	}
+	if merged.NetworkConfig["retries"] != "3" {
+		t.Errorf("Expected global retries to be preserved, got %q", merged.NetworkConfig["retries"])
+	}
+
+	// Test engines merge
+	if merged.Engines["arm"] != "^1.2.0" {
+		t.Errorf("Expected local override for arm version, got %q", merged.Engines["arm"])
+	}
+
+	// Test channels merge
+	if len(merged.Channels["cursor"].Directories) != 1 || merged.Channels["cursor"].Directories[0] != "/local/cursor" {
+		t.Errorf("Expected local override for cursor channel, got %v", merged.Channels["cursor"].Directories)
+	}
+	if len(merged.Channels["q"].Directories) != 1 || merged.Channels["q"].Directories[0] != "/local/q" {
+		t.Errorf("Expected local q channel to be added, got %v", merged.Channels["q"].Directories)
+	}
+
+	// Test rulesets merge
+	if merged.Rulesets["default"]["global-rules"].Version != "1.0.0" {
+		t.Errorf("Expected global-rules to be preserved, got %q", merged.Rulesets["default"]["global-rules"].Version)
+	}
+	if merged.Rulesets["default"]["shared-rules"].Version != "2.0.0" {
+		t.Errorf("Expected local override for shared-rules, got %q", merged.Rulesets["default"]["shared-rules"].Version)
+	}
+	if merged.Rulesets["default"]["local-rules"].Version != "1.0.0" {
+		t.Errorf("Expected local-rules to be added, got %q", merged.Rulesets["default"]["local-rules"].Version)
+	}
+	if merged.Rulesets["local"]["local-only"].Version != "1.0.0" {
+		t.Errorf("Expected local registry to be added, got %q", merged.Rulesets["local"]["local-only"].Version)
+	}
+}
+
+func TestHierarchicalLoad(t *testing.T) {
+	// Create temporary directories
+	tmpDir := t.TempDir()
+	globalDir := filepath.Join(tmpDir, ".arm")
+	if err := os.MkdirAll(globalDir, 0755); err != nil {
+		t.Fatalf("Failed to create global dir: %v", err)
+	}
+
+	// Create global .armrc
+	globalINI := `[registries]
+default = github.com/global/repo
+shared = shared-registry
+
+[registries.default]
+type = git
+authToken = global-token
+
+[git]
+concurrency = 1
+rateLimit = 10/minute`
+
+	if err := os.WriteFile(filepath.Join(globalDir, ".armrc"), []byte(globalINI), 0600); err != nil {
+		t.Fatalf("Failed to create global .armrc: %v", err)
+	}
+
+	// Create global arm.json
+	globalJSON := `{
+  "engines": {"arm": "^1.0.0"},
+  "channels": {"cursor": {"directories": ["/global/cursor"]}},
+  "rulesets": {"default": {"global-rules": {"version": "1.0.0"}}}
+}`
+
+	if err := os.WriteFile(filepath.Join(globalDir, "arm.json"), []byte(globalJSON), 0600); err != nil {
+		t.Fatalf("Failed to create global arm.json: %v", err)
+	}
+
+	// Create local .armrc
+	localINI := `[registries]
+default = github.com/local/repo
+local = local-registry
+
+[registries.default]
+authToken = local-token
+apiType = github
+
+[git]
+concurrency = 2`
+
+	if err := os.WriteFile(filepath.Join(tmpDir, ".armrc"), []byte(localINI), 0600); err != nil {
+		t.Fatalf("Failed to create local .armrc: %v", err)
+	}
+
+	// Create local arm.json
+	localJSON := `{
+  "engines": {"arm": "^1.2.0"},
+  "channels": {"cursor": {"directories": ["/local/cursor"]}, "q": {"directories": ["/local/q"]}},
+  "rulesets": {"default": {"local-rules": {"version": "1.0.0"}}}
+}`
+
+	if err := os.WriteFile(filepath.Join(tmpDir, "arm.json"), []byte(localJSON), 0600); err != nil {
+		t.Fatalf("Failed to create local arm.json: %v", err)
+	}
+
+	// Set HOME to tmpDir for testing
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	// Change to tmpDir for local file loading
+	originalWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(originalWd)
+
+	// Load configuration
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Failed to load hierarchical config: %v", err)
+	}
+
+	// Test merged results
+	if cfg.Registries["default"] != "github.com/local/repo" {
+		t.Errorf("Expected local override for default registry, got %q", cfg.Registries["default"])
+	}
+	if cfg.Registries["shared"] != "shared-registry" {
+		t.Errorf("Expected global shared registry, got %q", cfg.Registries["shared"])
+	}
+	if cfg.RegistryConfigs["default"]["type"] != "git" {
+		t.Errorf("Expected global type preserved, got %q", cfg.RegistryConfigs["default"]["type"])
+	}
+	if cfg.RegistryConfigs["default"]["authToken"] != "local-token" {
+		t.Errorf("Expected local authToken override, got %q", cfg.RegistryConfigs["default"]["authToken"])
+	}
+	if cfg.TypeDefaults["git"]["concurrency"] != "2" {
+		t.Errorf("Expected local git concurrency override, got %q", cfg.TypeDefaults["git"]["concurrency"])
+	}
+	if cfg.TypeDefaults["git"]["rateLimit"] != "10/minute" {
+		t.Errorf("Expected global git rateLimit preserved, got %q", cfg.TypeDefaults["git"]["rateLimit"])
+	}
+	if cfg.Engines["arm"] != "^1.2.0" {
+		t.Errorf("Expected local arm version override, got %q", cfg.Engines["arm"])
+	}
+}

@@ -58,8 +58,32 @@ type LockedRuleset struct {
 	Region   string `json:"region,omitempty"`
 }
 
-// Load loads the ARM configuration from files
+// Load loads the ARM configuration from files with hierarchical merging
 func Load() (*Config, error) {
+	// Load global configuration first
+	globalCfg, err := loadConfigFromPaths(
+		filepath.Join(os.Getenv("HOME"), ".arm", ".armrc"),
+		filepath.Join(os.Getenv("HOME"), ".arm", "arm.json"),
+		"arm.lock", // Lock file is always local
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load global config: %w", err)
+	}
+
+	// Load local configuration
+	localCfg, err := loadConfigFromPaths(".armrc", "arm.json", "arm.lock")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load local config: %w", err)
+	}
+
+	// Merge configurations (local overrides global at key level)
+	mergedCfg := mergeConfigs(globalCfg, localCfg)
+
+	return mergedCfg, nil
+}
+
+// loadConfigFromPaths loads configuration from specified file paths
+func loadConfigFromPaths(iniPath, jsonPath, lockPath string) (*Config, error) {
 	cfg := &Config{
 		Registries: make(map[string]string),
 		RegistryConfigs: make(map[string]map[string]string),
@@ -71,21 +95,21 @@ func Load() (*Config, error) {
 		Engines: make(map[string]string),
 	}
 
-	// Load global config
-	globalPath := filepath.Join(os.Getenv("HOME"), ".arm", ".armrc")
-	if err := cfg.loadINIFile(globalPath, false); err != nil {
-		return nil, fmt.Errorf("failed to load global config: %w", err)
+	// Load INI file
+	if err := cfg.loadINIFile(iniPath, false); err != nil {
+		return nil, fmt.Errorf("failed to load INI file %s: %w", iniPath, err)
 	}
 
-	// Load local config (overrides global)
-	localPath := ".armrc"
-	if err := cfg.loadINIFile(localPath, false); err != nil {
-		return nil, fmt.Errorf("failed to load local config: %w", err)
+	// Load JSON file
+	if err := cfg.loadARMJSON(jsonPath, false); err != nil {
+		return nil, fmt.Errorf("failed to load JSON file %s: %w", jsonPath, err)
 	}
 
-	// Load JSON configuration files
-	if err := cfg.loadJSONFiles(); err != nil {
-		return nil, fmt.Errorf("failed to load JSON config: %w", err)
+	// Load lock file (only for local config)
+	if lockPath == "arm.lock" {
+		if err := cfg.loadLockFile(lockPath); err != nil {
+			return nil, fmt.Errorf("failed to load lock file %s: %w", lockPath, err)
+		}
 	}
 
 	return cfg, nil
@@ -201,27 +225,109 @@ func (c *Config) processCacheConfig(section *ini.Section) error {
 	return nil
 }
 
-// loadJSONFiles loads arm.json and arm.lock files
-func (c *Config) loadJSONFiles() error {
-	// Load global arm.json
-	globalJSONPath := filepath.Join(os.Getenv("HOME"), ".arm", "arm.json")
-	if err := c.loadARMJSON(globalJSONPath, false); err != nil {
-		return fmt.Errorf("failed to load global arm.json: %w", err)
+// mergeConfigs merges two configurations with local taking precedence at key level
+func mergeConfigs(global, local *Config) *Config {
+	merged := &Config{
+		Registries: make(map[string]string),
+		RegistryConfigs: make(map[string]map[string]string),
+		TypeDefaults: make(map[string]map[string]string),
+		NetworkConfig: make(map[string]string),
+		CacheConfig: make(map[string]string),
+		Channels: make(map[string]ChannelConfig),
+		Rulesets: make(map[string]map[string]RulesetSpec),
+		Engines: make(map[string]string),
 	}
 
-	// Load local arm.json (overrides global)
-	localJSONPath := "arm.json"
-	if err := c.loadARMJSON(localJSONPath, false); err != nil {
-		return fmt.Errorf("failed to load local arm.json: %w", err)
-	}
+	// Merge registries (key-level merge)
+	mergeStringMaps(merged.Registries, global.Registries, local.Registries)
 
-	// Load lock file
-	lockPath := "arm.lock"
-	if err := c.loadLockFile(lockPath); err != nil {
-		return fmt.Errorf("failed to load lock file: %w", err)
-	}
+	// Merge registry configs (nested map merge)
+	mergeNestedStringMaps(merged.RegistryConfigs, global.RegistryConfigs, local.RegistryConfigs)
 
-	return nil
+	// Merge type defaults (nested map merge)
+	mergeNestedStringMaps(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults)
+
+	// Merge network and cache configs (key-level merge)
+	mergeStringMaps(merged.NetworkConfig, global.NetworkConfig, local.NetworkConfig)
+	mergeStringMaps(merged.CacheConfig, global.CacheConfig, local.CacheConfig)
+
+	// Merge engines (key-level merge)
+	mergeStringMaps(merged.Engines, global.Engines, local.Engines)
+
+	// Merge channels (key-level merge)
+	mergeChannelMaps(merged.Channels, global.Channels, local.Channels)
+
+	// Merge rulesets (nested map merge)
+	mergeRulesetMaps(merged.Rulesets, global.Rulesets, local.Rulesets)
+
+	// Lock file is always from local (no merging needed)
+	merged.LockFile = local.LockFile
+
+	return merged
+}
+
+// mergeStringMaps merges string maps with local taking precedence
+func mergeStringMaps(dest, global, local map[string]string) {
+	// Copy global values first
+	for k, v := range global {
+		dest[k] = v
+	}
+	// Override with local values
+	for k, v := range local {
+		dest[k] = v
+	}
+}
+
+// mergeNestedStringMaps merges nested string maps with local taking precedence
+func mergeNestedStringMaps(dest, global, local map[string]map[string]string) {
+	// Copy global values first
+	for k, v := range global {
+		dest[k] = make(map[string]string)
+		for kk, vv := range v {
+			dest[k][kk] = vv
+		}
+	}
+	// Merge with local values (key-level merge within each nested map)
+	for k, v := range local {
+		if dest[k] == nil {
+			dest[k] = make(map[string]string)
+		}
+		for kk, vv := range v {
+			dest[k][kk] = vv
+		}
+	}
+}
+
+// mergeChannelMaps merges channel maps with local taking precedence
+func mergeChannelMaps(dest, global, local map[string]ChannelConfig) {
+	// Copy global values first
+	for k, v := range global {
+		dest[k] = v
+	}
+	// Override with local values
+	for k, v := range local {
+		dest[k] = v
+	}
+}
+
+// mergeRulesetMaps merges ruleset maps with local taking precedence
+func mergeRulesetMaps(dest, global, local map[string]map[string]RulesetSpec) {
+	// Copy global values first
+	for k, v := range global {
+		dest[k] = make(map[string]RulesetSpec)
+		for kk, vv := range v {
+			dest[k][kk] = vv
+		}
+	}
+	// Merge with local values (key-level merge within each registry)
+	for k, v := range local {
+		if dest[k] == nil {
+			dest[k] = make(map[string]RulesetSpec)
+		}
+		for kk, vv := range v {
+			dest[k][kk] = vv
+		}
+	}
 }
 
 // loadARMJSON loads and parses an arm.json file
