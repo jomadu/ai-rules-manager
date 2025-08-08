@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -516,12 +517,16 @@ func TestHierarchicalLoad(t *testing.T) {
 
 	// Create global .armrc
 	globalINI := `[registries]
-default = github.com/global/repo
+default = https://github.com/global/repo
 shared = shared-registry
 
 [registries.default]
 type = git
 authToken = global-token
+
+[registries.shared]
+type = s3
+region = us-west-1
 
 [git]
 concurrency = 1
@@ -544,12 +549,15 @@ rateLimit = 10/minute`
 
 	// Create local .armrc
 	localINI := `[registries]
-default = github.com/local/repo
-local = local-registry
+default = https://github.com/local/repo
+local = /path/to/local
 
 [registries.default]
 authToken = local-token
 apiType = github
+
+[registries.local]
+type = local
 
 [git]
 concurrency = 2`
@@ -586,7 +594,7 @@ concurrency = 2`
 	}
 
 	// Test merged results
-	if cfg.Registries["default"] != "github.com/local/repo" {
+	if cfg.Registries["default"] != "https://github.com/local/repo" {
 		t.Errorf("Expected local override for default registry, got %q", cfg.Registries["default"])
 	}
 	if cfg.Registries["shared"] != "shared-registry" {
@@ -606,5 +614,253 @@ concurrency = 2`
 	}
 	if cfg.Engines["arm"] != "^1.2.0" {
 		t.Errorf("Expected local arm version override, got %q", cfg.Engines["arm"])
+	}
+}
+
+func TestValidateRegistry(t *testing.T) {
+	tests := []struct {
+		name        string
+		registryName string
+		url         string
+		config      map[string]string
+		expectError bool
+		errorContains string
+	}{
+		{
+			name:        "valid git registry",
+			registryName: "my-git",
+			url:         "https://github.com/user/repo",
+			config:      map[string]string{"type": "git"},
+			expectError: false,
+		},
+		{
+			name:        "valid s3 registry",
+			registryName: "my-s3",
+			url:         "my-bucket",
+			config:      map[string]string{"type": "s3", "region": "us-east-1"},
+			expectError: false,
+		},
+		{
+			name:        "missing config section",
+			registryName: "missing",
+			url:         "test",
+			config:      nil,
+			expectError: true,
+			errorContains: "missing configuration section",
+		},
+		{
+			name:        "missing type field",
+			registryName: "no-type",
+			url:         "test",
+			config:      map[string]string{},
+			expectError: true,
+			errorContains: "missing required field 'type'",
+		},
+		{
+			name:        "invalid registry type",
+			registryName: "invalid",
+			url:         "test",
+			config:      map[string]string{"type": "ftp"},
+			expectError: true,
+			errorContains: "unknown registry type 'ftp'",
+		},
+		{
+			name:        "s3 missing region",
+			registryName: "s3-no-region",
+			url:         "my-bucket",
+			config:      map[string]string{"type": "s3"},
+			expectError: true,
+			errorContains: "missing required field 'region'",
+		},
+		{
+			name:        "git missing url",
+			registryName: "git-no-url",
+			url:         "",
+			config:      map[string]string{"type": "git"},
+			expectError: true,
+			errorContains: "missing registry URL",
+		},
+		{
+			name:        "git non-https url",
+			registryName: "git-http",
+			url:         "http://github.com/user/repo",
+			config:      map[string]string{"type": "git"},
+			expectError: true,
+			errorContains: "must use HTTPS protocol",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRegistry(tt.registryName, tt.url, tt.config)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain %q, got %q", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateEngines(t *testing.T) {
+	tests := []struct {
+		name        string
+		engines     map[string]string
+		expectError bool
+		errorContains string
+	}{
+		{
+			name:        "empty engines",
+			engines:     map[string]string{},
+			expectError: false,
+		},
+		{
+			name:        "valid arm version",
+			engines:     map[string]string{"arm": "^1.2.3"},
+			expectError: false,
+		},
+		{
+			name:        "valid arm version with tilde",
+			engines:     map[string]string{"arm": "~1.2.3"},
+			expectError: false,
+		},
+		{
+			name:        "valid arm version exact",
+			engines:     map[string]string{"arm": "1.2.3"},
+			expectError: false,
+		},
+		{
+			name:        "empty arm version",
+			engines:     map[string]string{"arm": ""},
+			expectError: true,
+			errorContains: "cannot be empty",
+		},
+		{
+			name:        "invalid arm version format",
+			engines:     map[string]string{"arm": "invalid"},
+			expectError: true,
+			errorContains: "invalid ARM engine version format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateEngines(tt.engines)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain %q, got %q", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateChannels(t *testing.T) {
+	tests := []struct {
+		name        string
+		channels    map[string]ChannelConfig
+		expectError bool
+		errorContains string
+	}{
+		{
+			name:        "empty channels",
+			channels:    map[string]ChannelConfig{},
+			expectError: false,
+		},
+		{
+			name: "valid channels",
+			channels: map[string]ChannelConfig{
+				"cursor": {Directories: []string{"/path/to/cursor"}},
+				"q":      {Directories: []string{"/path/to/q", "/another/path"}},
+			},
+			expectError: false,
+		},
+		{
+			name: "channel with no directories",
+			channels: map[string]ChannelConfig{
+				"empty": {Directories: []string{}},
+			},
+			expectError: true,
+			errorContains: "must have at least one directory",
+		},
+		{
+			name: "channel with empty directory",
+			channels: map[string]ChannelConfig{
+				"bad": {Directories: []string{"/valid", ""}},
+			},
+			expectError: true,
+			errorContains: "directory 1 cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateChannels(tt.channels)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain %q, got %q", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateConfig(t *testing.T) {
+	// Test valid configuration
+	validCfg := &Config{
+		Registries: map[string]string{
+			"my-git": "https://github.com/user/repo",
+			"my-s3":  "my-bucket",
+		},
+		RegistryConfigs: map[string]map[string]string{
+			"my-git": {"type": "git"},
+			"my-s3":  {"type": "s3", "region": "us-east-1"},
+		},
+		Engines: map[string]string{
+			"arm": "^1.2.3",
+		},
+		Channels: map[string]ChannelConfig{
+			"cursor": {Directories: []string{"/path/to/cursor"}},
+		},
+	}
+
+	err := validateConfig(validCfg)
+	if err != nil {
+		t.Errorf("Expected valid config to pass validation, got: %v", err)
+	}
+
+	// Test invalid configuration
+	invalidCfg := &Config{
+		Registries: map[string]string{
+			"bad-registry": "https://github.com/user/repo",
+		},
+		RegistryConfigs: map[string]map[string]string{
+			"bad-registry": {"type": "invalid-type"},
+		},
+	}
+
+	err = validateConfig(invalidCfg)
+	if err == nil {
+		t.Error("Expected invalid config to fail validation")
+	} else if !strings.Contains(err.Error(), "unknown registry type") {
+		t.Errorf("Expected registry type error, got: %v", err)
 	}
 }

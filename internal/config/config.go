@@ -79,6 +79,11 @@ func Load() (*Config, error) {
 	// Merge configurations (local overrides global at key level)
 	mergedCfg := mergeConfigs(globalCfg, localCfg)
 
+	// Validate merged configuration
+	if err := validateConfig(mergedCfg); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
 	return mergedCfg, nil
 }
 
@@ -394,6 +399,126 @@ func (c *Config) loadLockFile(path string) error {
 // expandEnvVarsInJSON expands environment variables in JSON string content
 func expandEnvVarsInJSON(jsonContent string) string {
 	return expandEnvVars(jsonContent)
+}
+
+// validateConfig validates the merged configuration
+func validateConfig(cfg *Config) error {
+	// Validate registries
+	for name, url := range cfg.Registries {
+		if err := validateRegistry(name, url, cfg.RegistryConfigs[name]); err != nil {
+			return fmt.Errorf("registry '%s': %w", name, err)
+		}
+	}
+
+	// Validate engines
+	if err := validateEngines(cfg.Engines); err != nil {
+		return fmt.Errorf("engines: %w", err)
+	}
+
+	// Validate channels
+	if err := validateChannels(cfg.Channels); err != nil {
+		return fmt.Errorf("channels: %w", err)
+	}
+
+	return nil
+}
+
+// validateRegistry validates a single registry configuration
+func validateRegistry(name, url string, config map[string]string) error {
+	if config == nil {
+		return fmt.Errorf("missing configuration section [registries.%s]", name)
+	}
+
+	registryType, exists := config["type"]
+	if !exists {
+		return fmt.Errorf("missing required field 'type'")
+	}
+
+	// Validate registry type
+	validTypes := []string{"git", "https", "s3", "gitlab", "local"}
+	if !contains(validTypes, registryType) {
+		return fmt.Errorf("unknown registry type '%s'. Supported types: %s", registryType, strings.Join(validTypes, ", "))
+	}
+
+	// Type-specific validation
+	switch registryType {
+	case "s3":
+		if _, exists := config["region"]; !exists {
+			return fmt.Errorf("missing required field 'region' for S3 registry")
+		}
+	case "git":
+		if url == "" {
+			return fmt.Errorf("missing registry URL for Git registry")
+		}
+		if !strings.HasPrefix(url, "https://") {
+			return fmt.Errorf("Git registry URL must use HTTPS protocol")
+		}
+	case "https":
+		if url == "" {
+			return fmt.Errorf("missing registry URL for HTTPS registry")
+		}
+		if !strings.HasPrefix(url, "https://") {
+			return fmt.Errorf("HTTPS registry URL must use HTTPS protocol")
+		}
+	case "gitlab":
+		if url == "" {
+			return fmt.Errorf("missing registry URL for GitLab registry")
+		}
+		if !strings.HasPrefix(url, "https://") {
+			return fmt.Errorf("GitLab registry URL must use HTTPS protocol")
+		}
+	case "local":
+		if url == "" {
+			return fmt.Errorf("missing registry path for Local registry")
+		}
+	}
+
+	return nil
+}
+
+// validateEngines validates the engines configuration
+func validateEngines(engines map[string]string) error {
+	if len(engines) == 0 {
+		return nil // Engines are optional
+	}
+
+	// Validate ARM engine version if present
+	if armVersion, exists := engines["arm"]; exists {
+		if armVersion == "" {
+			return fmt.Errorf("ARM engine version cannot be empty")
+		}
+		// Basic semver pattern validation
+		if !regexp.MustCompile(`^[\^~>=<]?\d+\.\d+\.\d+`).MatchString(armVersion) {
+			return fmt.Errorf("invalid ARM engine version format: %s", armVersion)
+		}
+	}
+
+	return nil
+}
+
+// validateChannels validates the channels configuration
+func validateChannels(channels map[string]ChannelConfig) error {
+	for name, config := range channels {
+		if len(config.Directories) == 0 {
+			return fmt.Errorf("channel '%s' must have at least one directory", name)
+		}
+		for i, dir := range config.Directories {
+			if dir == "" {
+				return fmt.Errorf("channel '%s' directory %d cannot be empty", name, i)
+			}
+		}
+	}
+	return nil
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 // expandEnvVars expands environment variables in the format $VAR and ${VAR}
