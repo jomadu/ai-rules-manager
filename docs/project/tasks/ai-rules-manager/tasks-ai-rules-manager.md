@@ -58,12 +58,12 @@
   - [x] 3.4 Implement GitLab registry with package API integration
   - [x] 3.5 Implement HTTPS registry with manifest.json discovery
   - [x] 3.6 Implement Local filesystem registry with directory scanning
-- [ ] 4.0 CLI Command Interface Implementation
+- [x] 4.0 CLI Command Interface Implementation
   - [x] 4.1 Implement config command (set, get, list, add/remove registry/channel)
   - [x] 4.2 Implement install command with stub generation and pattern support
   - [x] 4.3 Implement search, info, and list commands with registry filtering
   - [x] 4.4 Implement update, outdated, and uninstall commands
-  - [ ] 4.5 Implement clean command and version/help utilities
+  - [x] 4.5 Implement clean command and version/help utilities
 - [ ] 5.0 Package Management and Installation System
   - [ ] 5.1 Implement semantic version resolution with range operators
   - [ ] 5.2 Create caching system with TTL and LRU eviction

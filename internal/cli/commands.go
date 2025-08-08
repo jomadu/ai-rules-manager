@@ -308,14 +308,28 @@ func newUpdateCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newCleanCommand creates the clean command
-func newCleanCommand(_ *config.Config) *cobra.Command {
-	return &cobra.Command{
+func newCleanCommand(cfg *config.Config) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "clean [target]",
 		Short: "Clean cache and unused rulesets",
+		Long:  "Clean cache and unused rulesets. Targets: cache, unused, all",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("clean not implemented")
+			global, _ := cmd.Flags().GetBool("global")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			force, _ := cmd.Flags().GetBool("force")
+			
+			target := "all"
+			if len(args) > 0 {
+				target = args[0]
+			}
+			
+			return handleClean(target, global, dryRun, force)
 		},
 	}
+
+	cmd.Flags().Bool("force", false, "Skip confirmation prompts")
+
+	return cmd
 }
 
 // newListCommand creates the list command
@@ -1320,6 +1334,216 @@ func isDirEmpty(path string) (bool, error) {
 		return false, nil // Directory has at least one entry
 	}
 	return true, nil // Directory is empty
+}
+
+// Clean command handler
+
+func handleClean(target string, global, dryRun, force bool) error {
+	// Validate target
+	validTargets := []string{"cache", "unused", "all"}
+	if !contains(validTargets, target) {
+		return fmt.Errorf("invalid target '%s'. Valid targets: %s", target, strings.Join(validTargets, ", "))
+	}
+
+	if dryRun {
+		fmt.Printf("Would clean target: %s\n", target)
+		switch target {
+		case "cache":
+			fmt.Println("  - Remove all cached registry data")
+			fmt.Println("  - Remove downloaded tar.gz files")
+			fmt.Println("  - Remove Git repository clones")
+		case "unused":
+			fmt.Println("  - Remove rulesets not in any manifest")
+			fmt.Println("  - Clean up empty ARM directories")
+		case "all":
+			fmt.Println("  - Remove all cached registry data")
+			fmt.Println("  - Remove downloaded tar.gz files")
+			fmt.Println("  - Remove Git repository clones")
+			fmt.Println("  - Remove rulesets not in any manifest")
+			fmt.Println("  - Clean up empty ARM directories")
+		}
+		return nil
+	}
+
+	// Confirm destructive operation unless force flag is set
+	if !force {
+		fmt.Printf("This will clean target '%s'. Continue? (y/N): ", target)
+		var response string
+		fmt.Scanln(&response)
+		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+			fmt.Println("Operation cancelled")
+			return nil
+		}
+	}
+
+	var cleaned int
+	var errors []string
+
+	// Execute cleaning based on target
+	switch target {
+	case "cache":
+		if count, err := cleanCache(); err != nil {
+			errors = append(errors, fmt.Sprintf("cache: %v", err))
+		} else {
+			cleaned += count
+		}
+	case "unused":
+		if count, err := cleanUnused(global); err != nil {
+			errors = append(errors, fmt.Sprintf("unused: %v", err))
+		} else {
+			cleaned += count
+		}
+	case "all":
+		if count, err := cleanCache(); err != nil {
+			errors = append(errors, fmt.Sprintf("cache: %v", err))
+		} else {
+			cleaned += count
+		}
+		if count, err := cleanUnused(global); err != nil {
+			errors = append(errors, fmt.Sprintf("unused: %v", err))
+		} else {
+			cleaned += count
+		}
+	}
+
+	// Report results
+	if len(errors) > 0 {
+		fmt.Printf("Cleaned %d items with %d errors:\n", cleaned, len(errors))
+		for _, err := range errors {
+			fmt.Printf("  %s\n", err)
+		}
+		return fmt.Errorf("cleaning completed with errors")
+	}
+
+	fmt.Printf("✓ Cleaned %d items\n", cleaned)
+	return nil
+}
+
+func cleanCache() (int, error) {
+	// Get cache path from config or use default
+	cachePath := filepath.Join(os.Getenv("HOME"), ".arm", "cache")
+	
+	// Load config to get custom cache path if set
+	if cfg, err := config.Load(); err == nil {
+		if customPath, exists := cfg.CacheConfig["path"]; exists && customPath != "" {
+			cachePath = expandEnvVars(customPath)
+		}
+	}
+
+	// Check if cache directory exists
+	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+		return 0, nil // No cache to clean
+	}
+
+	// Count items before removal
+	count := 0
+	filepath.Walk(cachePath, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			count++
+		}
+		return nil
+	})
+
+	// Remove entire cache directory
+	if err := os.RemoveAll(cachePath); err != nil {
+		return 0, fmt.Errorf("failed to remove cache directory: %w", err)
+	}
+
+	fmt.Printf("  Removed cache directory: %s\n", cachePath)
+	return count, nil
+}
+
+func cleanUnused(global bool) (int, error) {
+	// Load configuration to get installed rulesets
+	cfg, err := config.Load()
+	if err != nil {
+		return 0, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Get all configured rulesets from manifest
+	configuredRulesets := make(map[string]map[string]bool)
+	for registry, rulesets := range cfg.Rulesets {
+		if configuredRulesets[registry] == nil {
+			configuredRulesets[registry] = make(map[string]bool)
+		}
+		for name := range rulesets {
+			configuredRulesets[registry][name] = true
+		}
+	}
+
+	count := 0
+	// Clean unused rulesets from each channel
+	for channelName, channelConfig := range cfg.Channels {
+		for _, dir := range channelConfig.Directories {
+			expandedDir := expandEnvVars(dir)
+			armPath := filepath.Join(expandedDir, "arm")
+			
+			// Check if ARM directory exists
+			if _, err := os.Stat(armPath); os.IsNotExist(err) {
+				continue
+			}
+			
+			// Walk through registry directories
+			registries, err := os.ReadDir(armPath)
+			if err != nil {
+				continue
+			}
+			
+			for _, registryDir := range registries {
+				if !registryDir.IsDir() {
+					continue
+				}
+				
+				registryName := registryDir.Name()
+				registryPath := filepath.Join(armPath, registryName)
+				
+				// Walk through ruleset directories
+				rulesets, err := os.ReadDir(registryPath)
+				if err != nil {
+					continue
+				}
+				
+				for _, rulesetDir := range rulesets {
+					if !rulesetDir.IsDir() {
+						continue
+					}
+					
+					rulesetName := rulesetDir.Name()
+					
+					// Check if this ruleset is configured
+					if configuredRulesets[registryName] == nil || !configuredRulesets[registryName][rulesetName] {
+						// This is an unused ruleset, remove it
+						rulesetPath := filepath.Join(registryPath, rulesetName)
+						if err := os.RemoveAll(rulesetPath); err == nil {
+							fmt.Printf("  Removed unused ruleset: %s/%s from %s\n", registryName, rulesetName, channelName)
+							count++
+						}
+					}
+				}
+				
+				// Clean up empty registry directory
+				if isEmpty, _ := isDirEmpty(registryPath); isEmpty {
+					_ = os.Remove(registryPath)
+				}
+			}
+			
+			// Clean up empty ARM directory
+			if isEmpty, _ := isDirEmpty(armPath); isEmpty {
+				_ = os.Remove(armPath)
+			}
+		}
+	}
+
+	return count, nil
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 // expandEnvVars is a simple version - would use the one from config package
