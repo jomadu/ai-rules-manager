@@ -4,6 +4,8 @@
 
 - `cmd/arm/main.go` - Main entry point for the ARM CLI application
 - `cmd/arm/main_test.go` - Unit tests for main CLI entry point
+- `go.mod` - Go module definition with dependencies
+- `go.sum` - Go module checksums
 - `internal/config/config.go` - Configuration management (INI and JSON parsing, validation)
 - `internal/config/config_test.go` - Unit tests for configuration management
 - `internal/registry/registry.go` - Registry interface and common functionality
@@ -33,14 +35,14 @@
 
 - Unit tests should be placed alongside the code files they are testing in the same directory
 - Use `go test ./...` to run all tests, or `go test ./internal/config` to run specific package tests
-- The project uses Go 1.22+ as specified in .golangci.yml
+- The project uses Go 1.23+ as specified in .golangci.yml
 - Follow the existing Makefile targets for building, testing, and linting
 
 ## Tasks
 
 - [ ] 1.0 Core Infrastructure Setup
-  - [ ] 1.1 Initialize Go module with required dependencies (cobra, viper, aws-sdk-go-v2, go-git)
-  - [ ] 1.2 Create internal package structure (config, registry, cli, cache, version, install)
+  - [x] 1.1 Initialize Go module with required dependencies (cobra, viper, aws-sdk-go-v2, go-git)
+  - [x] 1.2 Create internal package structure (config, registry, cli, cache, version, install)
   - [ ] 1.3 Set up main.go entry point with basic CLI framework
   - [ ] 1.4 Configure build system and update Makefile for ARM binary
 - [ ] 2.0 Configuration System Implementation
