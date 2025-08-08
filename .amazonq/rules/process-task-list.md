@@ -38,11 +38,12 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
 When working with task lists, the AI must:
 
-1. Regularly update the task list file after finishing any significant work.
-2. Follow the completion protocol:
+1. **Consider additional context**: Before starting any sub-task, review all files and subdirectories in the same directory as the PRD (e.g., technical specifications, example workflows, design documents) to ensure implementation aligns with all available context.
+2. Regularly update the task list file after finishing any significant work.
+3. Follow the completion protocol:
    - Mark each finished **sub‑task** `[x]`.
    - Mark the **parent task** `[x]` once **all** its subtasks are `[x]`.
-3. Add newly discovered tasks.
-4. Keep "Relevant Files" accurate and up to date.
-5. Before starting work, check which sub‑task is next.
-6. After implementing a sub‑task, update the file and then pause for user approval.
+4. Add newly discovered tasks.
+5. Keep "Relevant Files" accurate and up to date.
+6. Before starting work, check which sub‑task is next.
+7. After implementing a sub‑task, update the file and then pause for user approval.
