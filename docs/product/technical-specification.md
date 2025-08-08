@@ -1193,12 +1193,12 @@ $ arm install my-rules --verbose
 # Syntax Error
 Error [CONFIG]: Invalid INI syntax in ~/.armrc
 Details: Line 12: Expected '=' after key 'url'
-Suggestion: Check INI file syntax or run 'arm config validate'
+Suggestion: Check INI file syntax
 
 # Missing Required Field
 Error [CONFIG]: Missing required field in registry 'my-s3'
 Details: Field 'url' is required for S3 registries
-Suggestion: Add 'url = s3://your-bucket/' to [registry.my-s3] section
+Suggestion: Add 'url = s3://your-bucket/' to [registries.my-s3] section
 
 # Invalid Registry Type
 Error [CONFIG]: Unknown registry type 'ftp' in registry 'my-ftp'
@@ -1304,10 +1304,10 @@ Error [VALIDATION]: Missing required argument <ruleset-name>
 Usage: arm install <ruleset-name> [options]
 Example: arm install my-rules
 
-$ arm config add-registry
+$ arm config add registry
 Error [VALIDATION]: Missing required arguments
-Usage: arm config add-registry <name> <type> <url>
-Example: arm config add-registry my-git git https://github.com/user/repo
+Usage: arm config add registry <name> <url> [options]
+Example: arm config add registry my-git git://github.com/user/repo
 ```
 
 **Helpful Context:**
@@ -1316,8 +1316,8 @@ Example: arm config add-registry my-git git https://github.com/user/repo
 $ arm search python
 Error [CONFIG]: No registries configured
 Suggestion: Add a registry first:
-  arm config add-registry default s3 s3://your-bucket/
-  arm config add-registry my-git git https://github.com/user/repo
+  arm config add registry default s3://your-bucket/
+  arm config add registry my-git git://github.com/user/repo
 
 # No rulesets installed
 $ arm list
@@ -1355,8 +1355,7 @@ Run 'arm update my-rules' to update specific ruleset
 $ arm install my-rules
 Error [CONFIG]: No configuration found
 Suggestion: Initialize ARM configuration:
-  arm config init
-  arm config add-registry default s3 s3://your-bucket/
+  arm config add registry default s3://your-bucket/
 
 # Missing patterns for Git registry
 $ arm install git-registry/my-rules
@@ -1688,7 +1687,7 @@ Warning: Fixed insecure permissions on ~/.armrc (was 666, now 600)
 **HTTPS Enforcement Examples:**
 ```bash
 # HTTP URLs rejected by default
-$ arm config add-registry test http http://insecure.example.com/
+$ arm config add registry test http://insecure.example.com/
 Error [CONFIG]: HTTP URLs not allowed for security
 Details: Registry URLs must use HTTPS protocol
 Suggestion: Use https://insecure.example.com/ or add --insecure flag for testing
