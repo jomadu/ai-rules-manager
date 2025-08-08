@@ -116,10 +116,10 @@ func (s *S3Registry) GetRuleset(ctx context.Context, name, version string) (*Rul
 		return nil, err
 	}
 
-	for _, ruleset := range rulesets {
-		if ruleset.Name == name {
-			ruleset.Version = version
-			return &ruleset, nil
+	for i := range rulesets {
+		if rulesets[i].Name == name {
+			rulesets[i].Version = version
+			return &rulesets[i], nil
 		}
 	}
 
@@ -141,10 +141,10 @@ func (s *S3Registry) DownloadRuleset(ctx context.Context, name, version, destDir
 	if err != nil {
 		return fmt.Errorf("failed to download S3 object %s: %w", key, err)
 	}
-	defer result.Body.Close()
+	defer func() { _ = result.Body.Close() }()
 
 	// Create destination directory
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
 
@@ -154,7 +154,7 @@ func (s *S3Registry) DownloadRuleset(ctx context.Context, name, version, destDir
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	// Copy tarball content
 	_, err = io.Copy(destFile, result.Body)

@@ -154,7 +154,7 @@ func (l *LocalRegistry) DownloadRuleset(ctx context.Context, name, version, dest
 	}
 
 	// Create destination directory
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
 
@@ -163,7 +163,7 @@ func (l *LocalRegistry) DownloadRuleset(ctx context.Context, name, version, dest
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() { _ = sourceFile.Close() }()
 
 	// Create destination file
 	destPath := filepath.Join(destDir, "ruleset.tar.gz")
@@ -171,7 +171,7 @@ func (l *LocalRegistry) DownloadRuleset(ctx context.Context, name, version, dest
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	// Copy content
 	_, err = io.Copy(destFile, sourceFile)

@@ -57,7 +57,7 @@ func (g *GitRegistry) GetRuleset(ctx context.Context, name, version string) (*Ru
 // DownloadRuleset downloads a ruleset to the specified directory
 func (g *GitRegistry) DownloadRuleset(ctx context.Context, name, version, destDir string) error {
 	if g.auth.APIType == "github" {
-		return g.downloadRulesetAPI(ctx, name, version, destDir)
+		return g.downloadRulesetAPI(ctx, name, destDir)
 	}
 	return g.downloadRulesetClone(ctx, name, version, destDir)
 }
@@ -65,7 +65,7 @@ func (g *GitRegistry) DownloadRuleset(ctx context.Context, name, version, destDi
 // GetVersions returns available versions for a ruleset
 func (g *GitRegistry) GetVersions(ctx context.Context, name string) ([]string, error) {
 	if g.auth.APIType == "github" {
-		return g.getVersionsAPI(ctx, name)
+		return g.getVersionsAPI(ctx)
 	}
 	return g.getVersionsClone(ctx, name)
 }
@@ -111,7 +111,7 @@ func (g *GitRegistry) getRulesetsAPI(ctx context.Context, patterns []string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API error: %s", resp.Status)
@@ -148,7 +148,7 @@ func (g *GitRegistry) getRulesetsClone(ctx context.Context, patterns []string) (
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Clone repository
 	cloneOptions := &git.CloneOptions{
@@ -184,10 +184,10 @@ func (g *GitRegistry) getRulesetAPI(ctx context.Context, name, version string) (
 		return nil, err
 	}
 
-	for _, ruleset := range rulesets {
-		if ruleset.Name == name {
-			ruleset.Version = version
-			return &ruleset, nil
+	for i := range rulesets {
+		if rulesets[i].Name == name {
+			rulesets[i].Version = version
+			return &rulesets[i], nil
 		}
 	}
 
@@ -201,10 +201,10 @@ func (g *GitRegistry) getRulesetClone(ctx context.Context, name, version string)
 		return nil, err
 	}
 
-	for _, ruleset := range rulesets {
-		if ruleset.Name == name {
-			ruleset.Version = version
-			return &ruleset, nil
+	for i := range rulesets {
+		if rulesets[i].Name == name {
+			rulesets[i].Version = version
+			return &rulesets[i], nil
 		}
 	}
 
@@ -212,7 +212,7 @@ func (g *GitRegistry) getRulesetClone(ctx context.Context, name, version string)
 }
 
 // downloadRulesetAPI downloads a ruleset using GitHub API
-func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, version, destDir string) error {
+func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, destDir string) error {
 	owner, repo, err := g.parseGitHubURL()
 	if err != nil {
 		return err
@@ -233,7 +233,7 @@ func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, version, des
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("GitHub API error: %s", resp.Status)
@@ -254,10 +254,10 @@ func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, version, des
 	if err != nil {
 		return err
 	}
-	defer fileResp.Body.Close()
+	defer func() { _ = fileResp.Body.Close() }()
 
 	// Create destination file
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
 
@@ -266,7 +266,7 @@ func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, version, des
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	_, err = io.Copy(destFile, fileResp.Body)
 	return err
@@ -279,7 +279,7 @@ func (g *GitRegistry) downloadRulesetClone(ctx context.Context, name, version, d
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Clone repository
 	cloneOptions := &git.CloneOptions{
@@ -309,7 +309,7 @@ func (g *GitRegistry) downloadRulesetClone(ctx context.Context, name, version, d
 }
 
 // getVersionsAPI gets versions using GitHub API
-func (g *GitRegistry) getVersionsAPI(ctx context.Context, name string) ([]string, error) {
+func (g *GitRegistry) getVersionsAPI(ctx context.Context) ([]string, error) {
 	owner, repo, err := g.parseGitHubURL()
 	if err != nil {
 		return nil, err
@@ -329,7 +329,7 @@ func (g *GitRegistry) getVersionsAPI(ctx context.Context, name string) ([]string
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API error: %s", resp.Status)
@@ -422,7 +422,7 @@ func (g *GitRegistry) scanDirectory(dir string, patterns []string) ([]RulesetInf
 
 // copyRulesetFiles copies files matching the ruleset name
 func (g *GitRegistry) copyRulesetFiles(srcDir, name, destDir string) error {
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
 
@@ -442,7 +442,7 @@ func (g *GitRegistry) copyRulesetFiles(srcDir, name, destDir string) error {
 			destPath := filepath.Join(destDir, relPath)
 
 			// Create destination directory
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 				return err
 			}
 
@@ -451,13 +451,13 @@ func (g *GitRegistry) copyRulesetFiles(srcDir, name, destDir string) error {
 			if err != nil {
 				return err
 			}
-			defer srcFile.Close()
+			defer func() { _ = srcFile.Close() }()
 
 			destFile, err := os.Create(destPath)
 			if err != nil {
 				return err
 			}
-			defer destFile.Close()
+			defer func() { _ = destFile.Close() }()
 
 			_, err = io.Copy(destFile, srcFile)
 			if err != nil {

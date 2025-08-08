@@ -14,7 +14,7 @@ func TestNewLocalRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	config := &RegistryConfig{
 		Name:    "test-local",
@@ -48,20 +48,20 @@ func TestNewLocalRegistryRelativePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory to test relative paths
 	originalWd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	defer os.Chdir(originalWd)
+	defer func() { _ = os.Chdir(originalWd) }()
 
-	os.Chdir(tempDir)
+	_ = os.Chdir(tempDir)
 
 	// Create a subdirectory to use as relative path
 	relativeDir := "registry"
-	if err := os.Mkdir(relativeDir, 0755); err != nil {
+	if err := os.Mkdir(relativeDir, 0o755); err != nil {
 		t.Fatalf("Failed to create relative dir: %v", err)
 	}
 
@@ -111,7 +111,7 @@ func TestLocalRegistry_GetRulesets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test registry structure
 	setupTestRegistry(t, tempDir)
@@ -163,7 +163,7 @@ func TestLocalRegistry_GetRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test registry structure
 	setupTestRegistry(t, tempDir)
@@ -219,7 +219,7 @@ func TestLocalRegistry_DownloadRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test registry structure
 	setupTestRegistry(t, tempDir)
@@ -241,7 +241,7 @@ func TestLocalRegistry_DownloadRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create dest dir: %v", err)
 	}
-	defer os.RemoveAll(destDir)
+	defer func() { _ = os.RemoveAll(destDir) }()
 
 	// Test download
 	err = registry.DownloadRuleset(context.Background(), "python-rules", "1.0.0", destDir)
@@ -272,7 +272,7 @@ func TestLocalRegistry_GetVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test registry structure
 	setupTestRegistry(t, tempDir)
@@ -323,42 +323,42 @@ func TestLocalRegistry_GetVersions(t *testing.T) {
 func setupTestRegistry(t *testing.T, baseDir string) {
 	// Create python-rules with multiple versions
 	pythonDir := filepath.Join(baseDir, "python-rules")
-	if err := os.MkdirAll(pythonDir, 0755); err != nil {
+	if err := os.MkdirAll(pythonDir, 0o755); err != nil {
 		t.Fatalf("Failed to create python-rules dir: %v", err)
 	}
 
 	versions := []string{"1.0.0", "1.1.0", "1.2.0"}
 	for _, version := range versions {
 		versionDir := filepath.Join(pythonDir, version)
-		if err := os.MkdirAll(versionDir, 0755); err != nil {
+		if err := os.MkdirAll(versionDir, 0o755); err != nil {
 			t.Fatalf("Failed to create version dir: %v", err)
 		}
 
 		rulesetFile := filepath.Join(versionDir, "ruleset.tar.gz")
-		if err := os.WriteFile(rulesetFile, []byte("fake python rules content"), 0644); err != nil {
+		if err := os.WriteFile(rulesetFile, []byte("fake python rules content"), 0o644); err != nil {
 			t.Fatalf("Failed to create ruleset file: %v", err)
 		}
 	}
 
 	// Create js-rules with single version
 	jsDir := filepath.Join(baseDir, "js-rules")
-	if err := os.MkdirAll(jsDir, 0755); err != nil {
+	if err := os.MkdirAll(jsDir, 0o755); err != nil {
 		t.Fatalf("Failed to create js-rules dir: %v", err)
 	}
 
 	jsVersionDir := filepath.Join(jsDir, "2.0.0")
-	if err := os.MkdirAll(jsVersionDir, 0755); err != nil {
+	if err := os.MkdirAll(jsVersionDir, 0o755); err != nil {
 		t.Fatalf("Failed to create js version dir: %v", err)
 	}
 
 	jsRulesetFile := filepath.Join(jsVersionDir, "ruleset.tar.gz")
-	if err := os.WriteFile(jsRulesetFile, []byte("fake js rules content"), 0644); err != nil {
+	if err := os.WriteFile(jsRulesetFile, []byte("fake js rules content"), 0o644); err != nil {
 		t.Fatalf("Failed to create js ruleset file: %v", err)
 	}
 
 	// Create a directory without ruleset.tar.gz (should be ignored)
 	emptyDir := filepath.Join(baseDir, "empty-rules", "1.0.0")
-	if err := os.MkdirAll(emptyDir, 0755); err != nil {
+	if err := os.MkdirAll(emptyDir, 0o755); err != nil {
 		t.Fatalf("Failed to create empty dir: %v", err)
 	}
 }

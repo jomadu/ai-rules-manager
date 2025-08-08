@@ -136,14 +136,14 @@ func (h *HTTPSRegistry) DownloadRuleset(ctx context.Context, name, version, dest
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTPS registry error: %s", resp.Status)
 	}
 
 	// Create destination directory
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (h *HTTPSRegistry) DownloadRuleset(ctx context.Context, name, version, dest
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	// Copy content
 	_, err = io.Copy(destFile, resp.Body)
@@ -217,7 +217,7 @@ func (h *HTTPSRegistry) getManifest(ctx context.Context) (*HTTPSManifest, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch manifest: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("manifest fetch error: %s", resp.Status)

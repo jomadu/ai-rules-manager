@@ -15,12 +15,12 @@ func TestHandleConfigSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Test setting a configuration value
 	err = handleConfigSet("git.concurrency", "5", false)
@@ -48,12 +48,12 @@ func TestHandleAddRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Test adding a Git registry
 	err = handleAddRegistry("my-git", "https://github.com/user/repo", "git", false, map[string]string{
@@ -96,12 +96,12 @@ func TestHandleAddChannel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Test adding a channel
 	err = handleAddChannel("cursor", ".cursor/rules,custom/cursor", false)
@@ -132,12 +132,12 @@ func TestHandleRemoveRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// First add a registry
 	err = handleAddRegistry("test-registry", "https://example.com", "https", false, map[string]string{})
@@ -168,12 +168,12 @@ func TestHandleRemoveChannel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// First add a channel
 	err = handleAddChannel("test-channel", "test/dir", false)
@@ -293,12 +293,12 @@ func TestHandleInstallFromManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Test with no configuration (should generate stubs)
 	err = handleInstallFromManifest(false, true, "")
@@ -321,12 +321,12 @@ func TestHandleInstallRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Create basic configuration
 	armrcContent := `[registries]
@@ -335,13 +335,13 @@ default = https://github.com/user/repo
 [registries.default]
 type = git
 `
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create .armrc: %v", err)
 	}
 
 	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
-	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create arm.json: %v", err)
 	}
@@ -371,12 +371,12 @@ func TestHandleSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Create basic configuration
 	armrcContent := `[registries]
@@ -389,13 +389,13 @@ type = git
 [registries.my-git]
 type = git
 `
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create .armrc: %v", err)
 	}
 
 	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
-	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create arm.json: %v", err)
 	}
@@ -425,12 +425,12 @@ func TestHandleInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Create basic configuration
 	armrcContent := `[registries]
@@ -439,13 +439,13 @@ default = https://github.com/user/repo
 [registries.default]
 type = git
 `
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create .armrc: %v", err)
 	}
 
 	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
-	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create arm.json: %v", err)
 	}
@@ -475,12 +475,12 @@ func TestHandleList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Change to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Create configuration with rulesets
 	armrcContent := `[registries]
@@ -489,7 +489,7 @@ default = https://github.com/user/repo
 [registries.default]
 type = git
 `
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0600)
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create .armrc: %v", err)
 	}
@@ -504,7 +504,7 @@ type = git
     }
   }
 }`
-	err = os.WriteFile("arm.json", []byte(armJSONContent), 0600)
+	err = os.WriteFile("arm.json", []byte(armJSONContent), 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create arm.json: %v", err)
 	}

@@ -47,10 +47,10 @@ func TestAuthProviderEnvironmentVariables(t *testing.T) {
 	provider := NewDefaultAuthProvider()
 
 	// Set environment variables
-	os.Setenv("TEST_TOKEN", "env-token")
-	os.Setenv("TEST_REGION", "us-west-2")
-	defer os.Unsetenv("TEST_TOKEN")
-	defer os.Unsetenv("TEST_REGION")
+	_ = os.Setenv("TEST_TOKEN", "env-token")
+	_ = os.Setenv("TEST_REGION", "us-west-2")
+	defer func() { _ = os.Unsetenv("TEST_TOKEN") }()
+	defer func() { _ = os.Unsetenv("TEST_REGION") }()
 
 	// Set auth config with environment variables
 	authConfig := &AuthConfig{
@@ -114,8 +114,8 @@ func TestExpandEnvVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envVar != "" {
-				os.Setenv(tt.envVar, tt.envValue)
-				defer os.Unsetenv(tt.envVar)
+				_ = os.Setenv(tt.envVar, tt.envValue)
+				defer func() { _ = os.Unsetenv(tt.envVar) }()
 			}
 
 			result := expandEnvVars(tt.input)

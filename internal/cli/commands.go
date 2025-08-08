@@ -55,7 +55,7 @@ different AI tools like Cursor and Amazon Q Developer.`,
 }
 
 // newConfigCommand creates the config command
-func newConfigCommand(cfg *config.Config) *cobra.Command {
+func newConfigCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage ARM configuration",
@@ -135,7 +135,7 @@ func newConfigCommand(cfg *config.Config) *cobra.Command {
 	addRegistryCmd.Flags().String("prefix", "", "Path prefix")
 	addRegistryCmd.Flags().String("apiType", "", "API type (for Git registries)")
 	addRegistryCmd.Flags().String("apiVersion", "", "API version")
-	addRegistryCmd.MarkFlagRequired("type")
+	_ = addRegistryCmd.MarkFlagRequired("type")
 	addCmd.AddCommand(addRegistryCmd)
 
 	// Add channel subcommand
@@ -150,7 +150,7 @@ func newConfigCommand(cfg *config.Config) *cobra.Command {
 		},
 	}
 	addChannelCmd.Flags().String("directories", "", "Comma-separated list of directories (required)")
-	addChannelCmd.MarkFlagRequired("directories")
+	_ = addChannelCmd.MarkFlagRequired("directories")
 	addCmd.AddCommand(addChannelCmd)
 
 	cmd.AddCommand(addCmd)
@@ -191,7 +191,7 @@ func newConfigCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newInstallCommand creates the install command
-func newInstallCommand(cfg *config.Config) *cobra.Command {
+func newInstallCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install [ruleset-spec]",
 		Short: "Install rulesets",
@@ -217,7 +217,7 @@ func newInstallCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newUninstallCommand creates the uninstall command
-func newUninstallCommand(cfg *config.Config) *cobra.Command {
+func newUninstallCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall <ruleset-name>",
 		Short: "Remove rulesets",
@@ -236,7 +236,7 @@ func newUninstallCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newSearchCommand creates the search command
-func newSearchCommand(cfg *config.Config) *cobra.Command {
+func newSearchCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search for rulesets",
@@ -256,7 +256,7 @@ func newSearchCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newInfoCommand creates the info command
-func newInfoCommand(cfg *config.Config) *cobra.Command {
+func newInfoCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info <ruleset-spec>",
 		Short: "Show ruleset information",
@@ -274,7 +274,7 @@ func newInfoCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newOutdatedCommand creates the outdated command
-func newOutdatedCommand(cfg *config.Config) *cobra.Command {
+func newOutdatedCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "outdated",
 		Short: "Show outdated rulesets",
@@ -289,7 +289,7 @@ func newOutdatedCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newUpdateCommand creates the update command
-func newUpdateCommand(cfg *config.Config) *cobra.Command {
+func newUpdateCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [ruleset-name]",
 		Short: "Update rulesets",
@@ -308,7 +308,7 @@ func newUpdateCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newCleanCommand creates the clean command
-func newCleanCommand(cfg *config.Config) *cobra.Command {
+func newCleanCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean [target]",
 		Short: "Clean cache and unused rulesets",
@@ -333,7 +333,7 @@ func newCleanCommand(cfg *config.Config) *cobra.Command {
 }
 
 // newListCommand creates the list command
-func newListCommand(cfg *config.Config) *cobra.Command {
+func newListCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List installed rulesets",
@@ -386,7 +386,7 @@ func handleConfigSet(key, value string, global bool) error {
 	return cfg.SaveTo(path)
 }
 
-func handleConfigGet(key string, global bool) error {
+func handleConfigGet(key string, _ bool) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -401,7 +401,7 @@ func handleConfigGet(key string, global bool) error {
 	return nil
 }
 
-func handleConfigList(global bool) error {
+func handleConfigList(_ bool) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -536,7 +536,7 @@ func getConfigPath(filename string, global bool) string {
 func loadOrCreateINI(path string) (*ini.File, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create parent directory if needed
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return nil, err
 		}
 		return ini.Empty(), nil
@@ -547,7 +547,7 @@ func loadOrCreateINI(path string) (*ini.File, error) {
 func loadOrCreateJSON(path string) (*config.ARMConfig, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create parent directory if needed
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return nil, err
 		}
 		return &config.ARMConfig{
@@ -586,7 +586,7 @@ func saveJSON(path string, armConfig *config.ARMConfig) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0600)
+	return os.WriteFile(path, data, 0o600)
 }
 
 func getConfigValue(cfg *config.Config, key string) string {
@@ -622,7 +622,7 @@ func getConfigValue(cfg *config.Config, key string) string {
 
 // Install command handlers
 
-func handleInstallFromManifest(global, dryRun bool, channels string) error {
+func handleInstallFromManifest(global, dryRun bool, _ string) error {
 	// Load configuration to check for existing manifest
 	cfg, err := config.Load()
 	if err != nil {
@@ -1012,7 +1012,7 @@ func handleUninstall(rulesetName string, global, dryRun bool, channels string) e
 	return nil
 }
 
-func handleOutdated(global, jsonOutput bool) error {
+func handleOutdated(_, jsonOutput bool) error {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -1126,7 +1126,7 @@ func handleUpdateAll(global, dryRun bool) error {
 	return nil
 }
 
-func handleUpdateRuleset(rulesetSpec string, global, dryRun bool) error {
+func handleUpdateRuleset(rulesetSpec string, _, dryRun bool) error {
 	// Parse ruleset specification
 	registry, name, _ := parseRulesetSpec(rulesetSpec)
 
@@ -1173,7 +1173,7 @@ func handleUpdateRuleset(rulesetSpec string, global, dryRun bool) error {
 	fmt.Printf("  Invalidating cache for %s registry\n", registry)
 
 	// Update lock file
-	if err := updateLockFile(registry, name, latestVersion, lockedRuleset); err != nil {
+	if err := updateLockFile(registry, name, latestVersion, &lockedRuleset); err != nil {
 		return fmt.Errorf("failed to update lock file: %w", err)
 	}
 
@@ -1233,7 +1233,7 @@ func removeFromLockFile(registry, name string) error {
 		return err
 	}
 
-	return os.WriteFile(path, lockData, 0600)
+	return os.WriteFile(path, lockData, 0o600)
 }
 
 func removeRulesetFiles(cfg *config.Config, registry, name, channels string) error {
@@ -1282,7 +1282,7 @@ func removeRulesetFiles(cfg *config.Config, registry, name, channels string) err
 	return nil
 }
 
-func updateLockFile(registry, name, newVersion string, existingLocked config.LockedRuleset) error {
+func updateLockFile(registry, name, newVersion string, existingLocked *config.LockedRuleset) error {
 	path := "arm.lock"
 	var lockFile config.LockFile
 
@@ -1301,14 +1301,14 @@ func updateLockFile(registry, name, newVersion string, existingLocked config.Loc
 	updatedLocked := existingLocked
 	updatedLocked.Version = newVersion
 	updatedLocked.Resolved = "2024-01-15T10:30:00Z" // Would use current time
-	lockFile.Rulesets[registry][name] = updatedLocked
+	lockFile.Rulesets[registry][name] = *updatedLocked
 
 	lockData, err := json.MarshalIndent(lockFile, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, lockData, 0600)
+	return os.WriteFile(path, lockData, 0o600)
 }
 
 func simulateLatestVersion(currentVersion, versionSpec string) string {
@@ -1369,7 +1369,7 @@ func handleClean(target string, global, dryRun, force bool) error {
 	if !force {
 		fmt.Printf("This will clean target '%s'. Continue? (y/N): ", target)
 		var response string
-		fmt.Scanln(&response)
+		_, _ = fmt.Scanln(&response)
 		if !strings.EqualFold(response, "y") && !strings.EqualFold(response, "yes") {
 			fmt.Println("Operation cancelled")
 			return nil
@@ -1437,7 +1437,7 @@ func cleanCache() (int, error) {
 
 	// Count items before removal
 	count := 0
-	filepath.Walk(cachePath, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(cachePath, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() {
 			count++
 		}
@@ -1453,7 +1453,7 @@ func cleanCache() (int, error) {
 	return count, nil
 }
 
-func cleanUnused(global bool) (int, error) {
+func cleanUnused(_ bool) (int, error) {
 	// Load configuration to get installed rulesets
 	cfg, err := config.Load()
 	if err != nil {

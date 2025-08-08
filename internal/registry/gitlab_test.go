@@ -127,7 +127,7 @@ func TestGitLabGetRulesets(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/packages") {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`[
+			_, _ = w.Write([]byte(`[
 				{
 					"id": 1,
 					"name": "python-rules",
@@ -208,7 +208,7 @@ func TestGitLabGetVersions(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/packages") && strings.Contains(r.URL.RawQuery, "package_name=python-rules") {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`[
+			_, _ = w.Write([]byte(`[
 				{
 					"id": 1,
 					"name": "python-rules",

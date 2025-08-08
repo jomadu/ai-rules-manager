@@ -59,7 +59,7 @@ func (g *GitLabRegistry) GetRulesets(ctx context.Context, patterns []string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitLab API error: %s", resp.Status)
@@ -88,12 +88,10 @@ func (g *GitLabRegistry) GetRulesets(ctx context.Context, patterns []string) ([]
 					},
 				}
 				rulesetMap[pkg.Name] = ruleset
-			} else {
+			} else if pkg.UpdatedAt.After(ruleset.UpdatedAt) {
 				// Update to latest version if this package is newer
-				if pkg.UpdatedAt.After(ruleset.UpdatedAt) {
-					ruleset.Version = pkg.Version
-					ruleset.UpdatedAt = pkg.UpdatedAt
-				}
+				ruleset.Version = pkg.Version
+				ruleset.UpdatedAt = pkg.UpdatedAt
 			}
 		}
 	}
@@ -114,12 +112,12 @@ func (g *GitLabRegistry) GetRuleset(ctx context.Context, name, version string) (
 		return nil, err
 	}
 
-	for _, ruleset := range rulesets {
-		if ruleset.Name == name {
+	for i := range rulesets {
+		if rulesets[i].Name == name {
 			if version != "latest" {
-				ruleset.Version = version
+				rulesets[i].Version = version
 			}
-			return &ruleset, nil
+			return &rulesets[i], nil
 		}
 	}
 
@@ -145,14 +143,14 @@ func (g *GitLabRegistry) DownloadRuleset(ctx context.Context, name, version, des
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("GitLab API error: %s", resp.Status)
 	}
 
 	// Create destination directory
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
 
@@ -162,7 +160,7 @@ func (g *GitLabRegistry) DownloadRuleset(ctx context.Context, name, version, des
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	// Copy content
 	_, err = io.Copy(destFile, resp.Body)
@@ -186,7 +184,7 @@ func (g *GitLabRegistry) GetVersions(ctx context.Context, name string) ([]string
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitLab API error: %s", resp.Status)

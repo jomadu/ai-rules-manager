@@ -22,10 +22,10 @@ type Cache struct {
 
 // CacheItem represents a cached item with TTL
 type CacheItem struct {
-	key       string
-	path      string
-	size      int64
-	cachedAt  time.Time
+	key        string
+	path       string
+	size       int64
+	cachedAt   time.Time
 	accessedAt time.Time
 }
 
@@ -38,16 +38,16 @@ type CacheInfo struct {
 
 // VersionCache represents cached version data
 type VersionCache struct {
-	CachedAt    time.Time            `json:"cached_at"`
-	TTLSeconds  int                  `json:"ttl_seconds"`
-	Rulesets    map[string][]string  `json:"rulesets"`
+	CachedAt   time.Time           `json:"cached_at"`
+	TTLSeconds int                 `json:"ttl_seconds"`
+	Rulesets   map[string][]string `json:"rulesets"`
 }
 
 // MetadataCache represents cached metadata
 type MetadataCache struct {
-	CachedAt    time.Time                    `json:"cached_at"`
-	TTLSeconds  int                          `json:"ttl_seconds"`
-	Rulesets    map[string]map[string]string `json:"rulesets"`
+	CachedAt   time.Time                    `json:"cached_at"`
+	TTLSeconds int                          `json:"ttl_seconds"`
+	Rulesets   map[string]map[string]string `json:"rulesets"`
 }
 
 // New creates a new cache instance

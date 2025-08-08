@@ -519,7 +519,7 @@ func GenerateStubFiles(global bool) error {
 	if global {
 		homeDir := os.Getenv("HOME")
 		armDir := filepath.Join(homeDir, ".arm")
-		if err := os.MkdirAll(armDir, 0755); err != nil {
+		if err := os.MkdirAll(armDir, 0o755); err != nil {
 			return fmt.Errorf("failed to create .arm directory: %w", err)
 		}
 		armrcPath = filepath.Join(armDir, ".armrc")
@@ -624,7 +624,7 @@ func generateARMRCStub(path string) error {
 # ttl = 3600
 `
 
-	return os.WriteFile(path, []byte(stubContent), 0600)
+	return os.WriteFile(path, []byte(stubContent), 0o600)
 }
 
 // generateARMJSONStub generates a stub arm.json file
@@ -641,16 +641,14 @@ func generateARMJSONStub(path string) error {
 }
 `, armVersion)
 
-	return os.WriteFile(path, []byte(stubContent), 0600)
+	return os.WriteFile(path, []byte(stubContent), 0o600)
 }
 
 // getCurrentARMVersion returns the current ARM version
 func getCurrentARMVersion() string {
 	currentVersion := version.GetVersion()
 	// Clean up version string (remove 'v' prefix and git info if present)
-	if strings.HasPrefix(currentVersion, "v") {
-		currentVersion = currentVersion[1:]
-	}
+	currentVersion = strings.TrimPrefix(currentVersion, "v")
 	// Remove git commit info (e.g., "1.2.0-26-g2869e3f-dirty" -> "1.2.0")
 	if idx := strings.Index(currentVersion, "-"); idx != -1 {
 		currentVersion = currentVersion[:idx]
