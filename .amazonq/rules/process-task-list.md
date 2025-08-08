@@ -6,22 +6,22 @@ Guidelines for managing task lists in markdown files to track progress on comple
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y"
 - **Completion protocol:**
   1. Start the sub-task by asking the user clarifying questions about the sub-task, and how they'd like it implemented. provide options, tradeoffs, and your recommendation.
-  2. When you finish a **sub‑task**, immediately mark it as completed by changing `[ ]` to `[x]`.
-  3. If **all** subtasks underneath a parent task are now `[x]`, follow this sequence:
-    - **First**: Run the full test suite (`pytest`, `npm test`, `bin/rails test`, etc.)
-    - **Only if all tests pass**: Stage changes (`git add .`)
+  2. When you finish a **sub‑task**, follow this sequence:
+    - **First**: Mark it as completed by changing `[ ]` to `[x]`
+    - **Run tests**: Run relevant tests for the subtask (`pytest path/to/test`, `npm test -- path/to/test`, etc.)
+    - **Only if tests pass**: Stage changes (`git add .`)
     - **Clean up**: Remove any temporary files and temporary code before committing
     - **Commit**: Use a descriptive commit message that:
       - Uses conventional commit format (`feat:`, `fix:`, `refactor:`, etc.)
-      - Summarizes what was accomplished in the parent task
+      - Summarizes what was accomplished in the subtask
       - Lists key changes and additions
-      - References the task number and PRD context
+      - References the subtask number and PRD context
       - **Formats the message as a single-line command using `-m` flags**, e.g.:
 
         ```
-        git commit -m "feat: add payment validation logic" -m "- Validates card type and expiry" -m "- Adds unit tests for edge cases" -m "Related to T123 in PRD"
+        git commit -m "feat: implement user validation" -m "- Add email format validation" -m "- Include unit tests" -m "Subtask 1.2 from PRD"
         ```
-  4. Once all the subtasks are marked completed and changes have been committed, mark the **parent task** as completed.
+  3. Once all the subtasks are marked completed, mark the **parent task** as completed.
 - Stop after each sub‑task and wait for the user's go‑ahead.
 
 ## Task List Maintenance
