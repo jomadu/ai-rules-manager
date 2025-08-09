@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/max-dunn/ai-rules-manager/internal/config"
@@ -16,6 +17,7 @@ import (
 type Installer struct {
 	config   *config.Config
 	lockPath string
+	lockMu   sync.Mutex
 }
 
 // InstallRequest represents a ruleset installation request
@@ -309,6 +311,9 @@ func expandPath(path string) string {
 
 // updateLockFile updates the lock file with a new ruleset entry
 func (i *Installer) updateLockFile(registry, ruleset, version string) error {
+	i.lockMu.Lock()
+	defer i.lockMu.Unlock()
+
 	lockFile, err := i.loadLockFile()
 	if err != nil {
 		return err
@@ -342,6 +347,9 @@ func (i *Installer) updateLockFile(registry, ruleset, version string) error {
 
 // removeLockEntry removes a ruleset entry from the lock file
 func (i *Installer) removeLockEntry(registry, ruleset string) error {
+	i.lockMu.Lock()
+	defer i.lockMu.Unlock()
+
 	lockFile, err := i.loadLockFile()
 	if err != nil {
 		return err
@@ -392,6 +400,9 @@ func (i *Installer) saveLockFile(lockFile *config.LockFile) error {
 		return fmt.Errorf("failed to write temp lock file: %w", err)
 	}
 
+	// Remove existing lock file if it exists (for Windows compatibility)
+	_ = os.Remove(i.lockPath)
+
 	if err := os.Rename(tempPath, i.lockPath); err != nil {
 		return fmt.Errorf("failed to rename lock file: %w", err)
 	}
@@ -401,6 +412,9 @@ func (i *Installer) saveLockFile(lockFile *config.LockFile) error {
 
 // SyncLockFile regenerates lock file from arm.json configuration
 func (i *Installer) SyncLockFile() error {
+	i.lockMu.Lock()
+	defer i.lockMu.Unlock()
+
 	// Create new lock file from current config
 	lockFile := &config.LockFile{
 		Rulesets: make(map[string]map[string]config.LockedRuleset),
