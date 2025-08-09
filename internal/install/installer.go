@@ -1,18 +1,21 @@
 package install
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/max-dunn/ai-rules-manager/internal/config"
 )
 
 // Installer manages ruleset installation and file operations
 type Installer struct {
-	config *config.Config
+	config   *config.Config
+	lockPath string
 }
 
 // InstallRequest represents a ruleset installation request
@@ -37,7 +40,8 @@ type InstallResult struct {
 // New creates a new installer instance
 func New(cfg *config.Config) *Installer {
 	return &Installer{
-		config: cfg,
+		config:   cfg,
+		lockPath: "arm.lock",
 	}
 }
 
@@ -88,6 +92,11 @@ func (i *Installer) Install(req *InstallRequest) (*InstallResult, error) {
 		}
 
 		installedChannels = append(installedChannels, channelName)
+	}
+
+	// Update lock file
+	if err := i.updateLockFile(req.Registry, req.Ruleset, req.Version); err != nil {
+		return nil, fmt.Errorf("failed to update lock file: %w", err)
 	}
 
 	return &InstallResult{
@@ -208,6 +217,11 @@ func (i *Installer) Uninstall(registry, ruleset string, channels []string) error
 		}
 	}
 
+	// Update lock file
+	if err := i.removeLockEntry(registry, ruleset); err != nil {
+		return fmt.Errorf("failed to update lock file: %w", err)
+	}
+
 	return nil
 }
 
@@ -272,6 +286,11 @@ func (i *Installer) ListInstalled(channels []string) (map[string]map[string][]st
 	return result, nil
 }
 
+// GetLockFile returns the current lock file content
+func (i *Installer) GetLockFile() (*config.LockFile, error) {
+	return i.loadLockFile()
+}
+
 // expandPath expands environment variables and tilde in file paths
 func expandPath(path string) string {
 	// Handle tilde expansion
@@ -286,4 +305,131 @@ func expandPath(path string) string {
 	path = os.ExpandEnv(path)
 
 	return path
+}
+
+// updateLockFile updates the lock file with a new ruleset entry
+func (i *Installer) updateLockFile(registry, ruleset, version string) error {
+	lockFile, err := i.loadLockFile()
+	if err != nil {
+		return err
+	}
+
+	// Initialize registry map if needed
+	if lockFile.Rulesets[registry] == nil {
+		lockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
+	}
+
+	// Get registry config for metadata
+	registryConfig := i.config.RegistryConfigs[registry]
+	registryType := ""
+	region := ""
+	if registryConfig != nil {
+		registryType = registryConfig["type"]
+		region = registryConfig["region"]
+	}
+
+	// Update entry
+	lockFile.Rulesets[registry][ruleset] = config.LockedRuleset{
+		Version:  version,
+		Resolved: time.Now().Format(time.RFC3339),
+		Registry: i.config.Registries[registry],
+		Type:     registryType,
+		Region:   region,
+	}
+
+	return i.saveLockFile(lockFile)
+}
+
+// removeLockEntry removes a ruleset entry from the lock file
+func (i *Installer) removeLockEntry(registry, ruleset string) error {
+	lockFile, err := i.loadLockFile()
+	if err != nil {
+		return err
+	}
+
+	// Remove entry if it exists
+	if lockFile.Rulesets[registry] != nil {
+		delete(lockFile.Rulesets[registry], ruleset)
+		// Remove empty registry
+		if len(lockFile.Rulesets[registry]) == 0 {
+			delete(lockFile.Rulesets, registry)
+		}
+	}
+
+	return i.saveLockFile(lockFile)
+}
+
+// loadLockFile loads the lock file, creating empty one if missing/corrupted
+func (i *Installer) loadLockFile() (*config.LockFile, error) {
+	// Try to load existing lock file
+	if data, err := os.ReadFile(i.lockPath); err == nil {
+		var lockFile config.LockFile
+		if err := json.Unmarshal(data, &lockFile); err == nil {
+			// Ensure rulesets map is initialized
+			if lockFile.Rulesets == nil {
+				lockFile.Rulesets = make(map[string]map[string]config.LockedRuleset)
+			}
+			return &lockFile, nil
+		}
+	}
+
+	// Create new lock file if missing or corrupted
+	return &config.LockFile{
+		Rulesets: make(map[string]map[string]config.LockedRuleset),
+	}, nil
+}
+
+// saveLockFile atomically saves the lock file
+func (i *Installer) saveLockFile(lockFile *config.LockFile) error {
+	data, err := json.MarshalIndent(lockFile, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal lock file: %w", err)
+	}
+
+	// Atomic write: write to temp file then rename
+	tempPath := i.lockPath + ".tmp"
+	if err := os.WriteFile(tempPath, data, 0o644); err != nil {
+		return fmt.Errorf("failed to write temp lock file: %w", err)
+	}
+
+	if err := os.Rename(tempPath, i.lockPath); err != nil {
+		return fmt.Errorf("failed to rename lock file: %w", err)
+	}
+
+	return nil
+}
+
+// SyncLockFile regenerates lock file from arm.json configuration
+func (i *Installer) SyncLockFile() error {
+	// Create new lock file from current config
+	lockFile := &config.LockFile{
+		Rulesets: make(map[string]map[string]config.LockedRuleset),
+	}
+
+	// Process all rulesets from config
+	for registry, rulesets := range i.config.Rulesets {
+		lockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
+
+		for ruleset, spec := range rulesets {
+			// Get registry config for metadata
+			registryConfig := i.config.RegistryConfigs[registry]
+			registryType := ""
+			region := ""
+			if registryConfig != nil {
+				registryType = registryConfig["type"]
+				region = registryConfig["region"]
+			}
+
+			// Create lock entry with version spec (will be resolved during install)
+			lockFile.Rulesets[registry][ruleset] = config.LockedRuleset{
+				Version:  spec.Version,
+				Resolved: time.Now().Format(time.RFC3339),
+				Registry: i.config.Registries[registry],
+				Type:     registryType,
+				Region:   region,
+			}
+		}
+	}
+
+	return i.saveLockFile(lockFile)
 }
