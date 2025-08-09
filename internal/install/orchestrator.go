@@ -75,13 +75,14 @@ func (o *InstallOrchestrator) InstallMultiple(ctx context.Context, req *MultiIns
 	var wg sync.WaitGroup
 	completed := 0
 	total := len(req.Requests)
+	var progressMu sync.Mutex
 
 	// Process each registry group in parallel
 	for registry, requests := range registryGroups {
 		wg.Add(1)
 		go func(reg string, reqs []InstallRequest) {
 			defer wg.Done()
-			o.processRegistryGroup(reg, reqs, resultChan, errorChan, req.Progress, &completed, total)
+			o.processRegistryGroup(reg, reqs, resultChan, errorChan, req.Progress, &completed, total, &progressMu)
 		}(registry, requests)
 	}
 
@@ -191,7 +192,7 @@ func (o *InstallOrchestrator) parseRateLimit(rateLimit string) (int, time.Durati
 
 // processRegistryGroup processes requests for a single registry with concurrency control
 func (o *InstallOrchestrator) processRegistryGroup(registry string, requests []InstallRequest,
-	resultChan chan<- InstallResult, errorChan chan<- InstallError, progress ProgressCallback, completed *int, total int) {
+	resultChan chan<- InstallResult, errorChan chan<- InstallError, progress ProgressCallback, completed *int, total int, progressMu *sync.Mutex) {
 
 	// Get concurrency limit for this registry
 	concurrency := o.getConcurrency(registry)
@@ -199,7 +200,6 @@ func (o *InstallOrchestrator) processRegistryGroup(registry string, requests []I
 	// Create semaphore for concurrency control
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
-	var progressMu sync.Mutex
 
 	for _, req := range requests {
 		wg.Add(1)
@@ -214,11 +214,11 @@ func (o *InstallOrchestrator) processRegistryGroup(registry string, requests []I
 			o.waitForRateLimit(registry)
 
 			// Report progress (thread-safe)
+			progressMu.Lock()
+			*completed++
+			currentCompleted := *completed
+			progressMu.Unlock()
 			if progress != nil {
-				progressMu.Lock()
-				*completed++
-				currentCompleted := *completed
-				progressMu.Unlock()
 				progress(currentCompleted, total, fmt.Sprintf("Installing %s/%s", request.Registry, request.Ruleset))
 			}
 
