@@ -1,3 +1,24 @@
 {
-  "rulesets": {}
+  "rulesets": {
+    "registry1": {
+      "ruleset0": {
+        "version": "1.0.0",
+        "resolved": "2025-08-08T23:01:09-07:00",
+        "registry": "https://github.com/test/repo1",
+        "type": "git"
+      },
+      "ruleset1": {
+        "version": "1.0.0",
+        "resolved": "2025-08-08T23:01:37-07:00",
+        "registry": "https://github.com/test/repo1",
+        "type": "git"
+      },
+      "ruleset2": {
+        "version": "1.0.0",
+        "resolved": "2025-08-08T23:00:05-07:00",
+        "registry": "https://github.com/test/repo1",
+        "type": "git"
+      }
+    }
+  }
 }
