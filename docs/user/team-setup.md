@@ -183,7 +183,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install ARM
-        run: curl -sSL https://install.arm.dev | bash
+        run: curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
 
       - name: Configure ARM
         run: |
@@ -206,7 +206,7 @@ Include ARM in development containers:
 FROM node:18
 
 # Install ARM
-RUN curl -sSL https://install.arm.dev | bash
+RUN curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
 
 # Copy team configuration
 COPY .armrc /root/.armrc
