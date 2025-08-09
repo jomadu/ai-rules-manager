@@ -1,4 +1,289 @@
 package install
 
-// Package installation and file management
-// Will be implemented in task 5.3
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/max-dunn/ai-rules-manager/internal/config"
+)
+
+// Installer manages ruleset installation and file operations
+type Installer struct {
+	config *config.Config
+}
+
+// InstallRequest represents a ruleset installation request
+type InstallRequest struct {
+	Registry    string
+	Ruleset     string
+	Version     string
+	SourceFiles []string // Files to install from cache/extraction
+	Channels    []string // Target channels (empty = all channels)
+}
+
+// InstallResult represents the result of an installation
+type InstallResult struct {
+	Registry      string
+	Ruleset       string
+	Version       string
+	InstalledPath string
+	FilesCount    int
+	Channels      []string
+}
+
+// New creates a new installer instance
+func New(cfg *config.Config) *Installer {
+	return &Installer{
+		config: cfg,
+	}
+}
+
+// Install installs a ruleset to configured channels
+func (i *Installer) Install(req *InstallRequest) (*InstallResult, error) {
+	if req.Registry == "" || req.Ruleset == "" || req.Version == "" {
+		return nil, fmt.Errorf("registry, ruleset, and version are required")
+	}
+
+	if len(req.SourceFiles) == 0 {
+		return nil, fmt.Errorf("no source files provided")
+	}
+
+	// Determine target channels
+	targetChannels := req.Channels
+	if len(targetChannels) == 0 {
+		// Install to all configured channels
+		for channelName := range i.config.Channels {
+			targetChannels = append(targetChannels, channelName)
+		}
+	}
+
+	if len(targetChannels) == 0 {
+		return nil, fmt.Errorf("no channels configured")
+	}
+
+	var installedChannels []string
+	var totalFiles int
+
+	// Install to each channel
+	for _, channelName := range targetChannels {
+		channelConfig, exists := i.config.Channels[channelName]
+		if !exists {
+			return nil, fmt.Errorf("channel '%s' not configured", channelName)
+		}
+
+		for _, channelDir := range channelConfig.Directories {
+			// Expand environment variables in channel directory
+			expandedDir := expandPath(channelDir)
+
+			// Install to this channel directory
+			filesCount, err := i.installToChannel(req, expandedDir)
+			if err != nil {
+				return nil, fmt.Errorf("failed to install to channel '%s' directory '%s': %w", channelName, expandedDir, err)
+			}
+
+			totalFiles += filesCount
+		}
+
+		installedChannels = append(installedChannels, channelName)
+	}
+
+	return &InstallResult{
+		Registry:      req.Registry,
+		Ruleset:       req.Ruleset,
+		Version:       req.Version,
+		InstalledPath: fmt.Sprintf("arm/%s/%s/%s", req.Registry, req.Ruleset, req.Version),
+		FilesCount:    totalFiles,
+		Channels:      installedChannels,
+	}, nil
+}
+
+// installToChannel installs files to a specific channel directory
+func (i *Installer) installToChannel(req *InstallRequest, channelDir string) (int, error) {
+	// Create ARM namespace directory structure
+	armDir := filepath.Join(channelDir, "arm")
+	registryDir := filepath.Join(armDir, req.Registry)
+	rulesetDir := filepath.Join(registryDir, req.Ruleset)
+	versionDir := filepath.Join(rulesetDir, req.Version)
+
+	// Create directories if they don't exist
+	if err := os.MkdirAll(versionDir, 0o755); err != nil {
+		return 0, fmt.Errorf("failed to create version directory: %w", err)
+	}
+
+	// Remove previous version after successful installation
+	defer i.cleanupPreviousVersion(rulesetDir, req.Version)
+
+	// Copy files to version directory
+	filesCount := 0
+	for _, sourceFile := range req.SourceFiles {
+		filename := filepath.Base(sourceFile)
+		destPath := filepath.Join(versionDir, filename)
+
+		if err := i.copyFile(sourceFile, destPath); err != nil {
+			return 0, fmt.Errorf("failed to copy file '%s': %w", filename, err)
+		}
+
+		filesCount++
+	}
+
+	return filesCount, nil
+}
+
+// copyFile copies a file from source to destination with proper permissions
+func (i *Installer) copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer func() { _ = srcFile.Close() }()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer func() { _ = dstFile.Close() }()
+
+	// Copy file contents
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("failed to copy file contents: %w", err)
+	}
+
+	// Set file permissions (644 - user read/write, group/other read)
+	if err := os.Chmod(dst, 0o644); err != nil {
+		return fmt.Errorf("failed to set file permissions: %w", err)
+	}
+
+	return nil
+}
+
+// cleanupPreviousVersion removes previous version directories, keeping only current
+func (i *Installer) cleanupPreviousVersion(rulesetDir, currentVersion string) {
+	entries, err := os.ReadDir(rulesetDir)
+	if err != nil {
+		return // Ignore errors during cleanup
+	}
+
+	// Remove all version directories except the current one
+	for _, entry := range entries {
+		if entry.IsDir() && entry.Name() != currentVersion {
+			versionPath := filepath.Join(rulesetDir, entry.Name())
+			_ = os.RemoveAll(versionPath) // Ignore errors during cleanup
+		}
+	}
+}
+
+// Uninstall removes a ruleset from configured channels
+func (i *Installer) Uninstall(registry, ruleset string, channels []string) error {
+	if registry == "" || ruleset == "" {
+		return fmt.Errorf("registry and ruleset are required")
+	}
+
+	// Determine target channels
+	targetChannels := channels
+	if len(targetChannels) == 0 {
+		// Uninstall from all configured channels
+		for channelName := range i.config.Channels {
+			targetChannels = append(targetChannels, channelName)
+		}
+	}
+
+	// Uninstall from each channel
+	for _, channelName := range targetChannels {
+		channelConfig, exists := i.config.Channels[channelName]
+		if !exists {
+			continue // Skip non-existent channels
+		}
+
+		for _, channelDir := range channelConfig.Directories {
+			expandedDir := expandPath(channelDir)
+			rulesetPath := filepath.Join(expandedDir, "arm", registry, ruleset)
+
+			// Remove entire ruleset directory
+			if err := os.RemoveAll(rulesetPath); err != nil {
+				return fmt.Errorf("failed to remove ruleset from channel '%s': %w", channelName, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// ListInstalled returns information about installed rulesets
+func (i *Installer) ListInstalled(channels []string) (map[string]map[string][]string, error) {
+	result := make(map[string]map[string][]string) // channel -> registry -> []rulesets
+
+	// Determine target channels
+	targetChannels := channels
+	if len(targetChannels) == 0 {
+		// List all configured channels
+		for channelName := range i.config.Channels {
+			targetChannels = append(targetChannels, channelName)
+		}
+	}
+
+	// Scan each channel
+	for _, channelName := range targetChannels {
+		channelConfig, exists := i.config.Channels[channelName]
+		if !exists {
+			continue
+		}
+
+		result[channelName] = make(map[string][]string)
+
+		for _, channelDir := range channelConfig.Directories {
+			expandedDir := expandPath(channelDir)
+			armDir := filepath.Join(expandedDir, "arm")
+
+			// Scan ARM directory for registries
+			registries, err := os.ReadDir(armDir)
+			if err != nil {
+				continue // ARM directory doesn't exist or can't be read
+			}
+
+			for _, registryEntry := range registries {
+				if !registryEntry.IsDir() {
+					continue
+				}
+
+				registryName := registryEntry.Name()
+				registryPath := filepath.Join(armDir, registryName)
+
+				// Scan registry directory for rulesets
+				rulesets, err := os.ReadDir(registryPath)
+				if err != nil {
+					continue
+				}
+
+				for _, rulesetEntry := range rulesets {
+					if !rulesetEntry.IsDir() {
+						continue
+					}
+
+					rulesetName := rulesetEntry.Name()
+					result[channelName][registryName] = append(result[channelName][registryName], rulesetName)
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// expandPath expands environment variables and tilde in file paths
+func expandPath(path string) string {
+	// Handle tilde expansion
+	if strings.HasPrefix(path, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			path = filepath.Join(homeDir, path[2:])
+		}
+	}
+
+	// Handle environment variable expansion
+	path = os.ExpandEnv(path)
+
+	return path
+}
