@@ -256,3 +256,158 @@ func TestInstaller_CleanupPreviousVersion(t *testing.T) {
 		t.Errorf("Expected version 2.0.0 to remain, got %s", entries[0].Name())
 	}
 }
+
+func TestInstaller_LockFileManagement(t *testing.T) {
+	// Create temporary directory for test
+	tempDir, err := os.MkdirTemp("", "arm-lock-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// Change to temp directory for lock file operations
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tempDir)
+
+	// Create test configuration
+	cfg := &config.Config{
+		Registries: map[string]string{
+			"test-registry": "https://github.com/test/repo",
+		},
+		RegistryConfigs: map[string]map[string]string{
+			"test-registry": {
+				"type":   "git",
+				"region": "us-east-1",
+			},
+		},
+	}
+
+	installer := New(cfg)
+
+	// Test updating lock file
+	err = installer.updateLockFile("test-registry", "test-ruleset", "1.0.0")
+	if err != nil {
+		t.Fatalf("Failed to update lock file: %v", err)
+	}
+
+	// Verify lock file was created and contains entry
+	lockFile, err := installer.GetLockFile()
+	if err != nil {
+		t.Fatalf("Failed to load lock file: %v", err)
+	}
+
+	entry, exists := lockFile.Rulesets["test-registry"]["test-ruleset"]
+	if !exists {
+		t.Fatalf("Lock file entry not found")
+	}
+
+	if entry.Version != "1.0.0" {
+		t.Errorf("Expected version 1.0.0, got %s", entry.Version)
+	}
+	if entry.Type != "git" {
+		t.Errorf("Expected type git, got %s", entry.Type)
+	}
+	if entry.Registry != "https://github.com/test/repo" {
+		t.Errorf("Expected registry URL, got %s", entry.Registry)
+	}
+
+	// Test removing lock entry
+	err = installer.removeLockEntry("test-registry", "test-ruleset")
+	if err != nil {
+		t.Fatalf("Failed to remove lock entry: %v", err)
+	}
+
+	// Verify entry was removed
+	lockFile, err = installer.GetLockFile()
+	if err != nil {
+		t.Fatalf("Failed to load lock file: %v", err)
+	}
+
+	if len(lockFile.Rulesets) != 0 {
+		t.Errorf("Expected empty lock file, got %d registries", len(lockFile.Rulesets))
+	}
+}
+
+func TestInstaller_SyncLockFile(t *testing.T) {
+	// Create temporary directory for test
+	tempDir, err := os.MkdirTemp("", "arm-sync-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// Change to temp directory for lock file operations
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tempDir)
+
+	// Create test configuration with rulesets
+	cfg := &config.Config{
+		Registries: map[string]string{
+			"registry1": "https://github.com/test/repo1",
+			"registry2": "s3://test-bucket",
+		},
+		RegistryConfigs: map[string]map[string]string{
+			"registry1": {"type": "git"},
+			"registry2": {"type": "s3", "region": "us-west-2"},
+		},
+		Rulesets: map[string]map[string]config.RulesetSpec{
+			"registry1": {
+				"ruleset1": {Version: "^1.0.0"},
+				"ruleset2": {Version: "~2.1.0"},
+			},
+			"registry2": {
+				"ruleset3": {Version: "latest"},
+			},
+		},
+	}
+
+	installer := New(cfg)
+
+	// Test syncing lock file
+	err = installer.SyncLockFile()
+	if err != nil {
+		t.Fatalf("Failed to sync lock file: %v", err)
+	}
+
+	// Verify lock file contains all rulesets
+	lockFile, err := installer.GetLockFile()
+	if err != nil {
+		t.Fatalf("Failed to load lock file: %v", err)
+	}
+
+	if len(lockFile.Rulesets) != 2 {
+		t.Errorf("Expected 2 registries in lock file, got %d", len(lockFile.Rulesets))
+	}
+
+	// Check registry1 entries
+	reg1, exists := lockFile.Rulesets["registry1"]
+	if !exists {
+		t.Fatalf("registry1 not found in lock file")
+	}
+	if len(reg1) != 2 {
+		t.Errorf("Expected 2 rulesets in registry1, got %d", len(reg1))
+	}
+
+	// Check registry2 entries
+	reg2, exists := lockFile.Rulesets["registry2"]
+	if !exists {
+		t.Fatalf("registry2 not found in lock file")
+	}
+	if len(reg2) != 1 {
+		t.Errorf("Expected 1 ruleset in registry2, got %d", len(reg2))
+	}
+
+	// Verify specific entry details
+	entry := reg2["ruleset3"]
+	if entry.Version != "latest" {
+		t.Errorf("Expected version 'latest', got %s", entry.Version)
+	}
+	if entry.Type != "s3" {
+		t.Errorf("Expected type 's3', got %s", entry.Type)
+	}
+	if entry.Region != "us-west-2" {
+		t.Errorf("Expected region 'us-west-2', got %s", entry.Region)
+	}
+}
