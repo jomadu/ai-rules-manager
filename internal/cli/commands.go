@@ -1,13 +1,17 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/max-dunn/ai-rules-manager/internal/config"
+	"github.com/max-dunn/ai-rules-manager/internal/install"
+	"github.com/max-dunn/ai-rules-manager/internal/registry"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
 )
@@ -706,8 +710,8 @@ func handleInstallRuleset(rulesetSpec string, global, dryRun bool, channels, pat
 		return nil
 	}
 
-	// TODO: Implement actual ruleset installation
-	return fmt.Errorf("ruleset installation not yet implemented")
+	// Implement actual ruleset installation
+	return performInstallation(cfg, registry, name, version, channels, patterns)
 }
 
 func parseRulesetSpec(spec string) (registry, name, version string) {
@@ -1549,4 +1553,130 @@ func contains(slice []string, item string) bool {
 // expandEnvVars is a simple version - would use the one from config package
 func expandEnvVars(s string) string {
 	return os.ExpandEnv(s)
+}
+
+// performInstallation performs the actual installation of a ruleset
+func performInstallation(cfg *config.Config, registryName, rulesetName, version, channels, _ string) error {
+	// Create registry configuration
+	registryConfig := &registry.RegistryConfig{
+		Name: registryName,
+		Type: cfg.RegistryConfigs[registryName]["type"],
+		URL:  cfg.Registries[registryName],
+	}
+
+	// Create auth configuration
+	authConfig := &registry.AuthConfig{}
+	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
+		authConfig.Token = regConfig["authToken"]
+		authConfig.Region = regConfig["region"]
+		authConfig.Profile = regConfig["profile"]
+	}
+
+	// Create registry instance
+	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create registry: %w", err)
+	}
+	defer func() { _ = reg.Close() }()
+
+	// Resolve version if "latest"
+	if version == "latest" {
+		versions, err := reg.GetVersions(context.Background(), rulesetName)
+		if err != nil {
+			return fmt.Errorf("failed to get versions: %w", err)
+		}
+		if len(versions) == 0 {
+			return fmt.Errorf("no versions found for ruleset %s", rulesetName)
+		}
+		version = versions[len(versions)-1] // Use latest version
+	}
+
+	fmt.Printf("⬇ Downloading %s@%s\n", rulesetName, version)
+
+	// Create temporary directory for download
+	tempDir, err := os.MkdirTemp("", "arm-install-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// Download ruleset
+	if err := reg.DownloadRuleset(context.Background(), rulesetName, version, tempDir); err != nil {
+		return fmt.Errorf("failed to download ruleset: %w", err)
+	}
+
+	// Extract downloaded files
+	sourceFiles, err := extractRuleset(tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract ruleset: %w", err)
+	}
+
+	// Parse channels
+	var targetChannels []string
+	if channels != "" {
+		targetChannels = strings.Split(channels, ",")
+		for i, ch := range targetChannels {
+			targetChannels[i] = strings.TrimSpace(ch)
+		}
+	}
+
+	// Create installer and install
+	installer := install.New(cfg)
+	req := &install.InstallRequest{
+		Registry:    registryName,
+		Ruleset:     rulesetName,
+		Version:     version,
+		SourceFiles: sourceFiles,
+		Channels:    targetChannels,
+	}
+
+	result, err := installer.Install(req)
+	if err != nil {
+		return fmt.Errorf("failed to install: %w", err)
+	}
+
+	fmt.Printf("✓ Installed %s/%s@%s\n", result.Registry, result.Ruleset, result.Version)
+	fmt.Printf("  Files: %d\n", result.FilesCount)
+	fmt.Printf("  Channels: %s\n", strings.Join(result.Channels, ", "))
+
+	return nil
+}
+
+// extractRuleset extracts files from downloaded ruleset
+func extractRuleset(tempDir string) ([]string, error) {
+	// Look for ruleset.tar.gz file
+	tarPath := filepath.Join(tempDir, "ruleset.tar.gz")
+	if _, err := os.Stat(tarPath); err != nil {
+		return nil, fmt.Errorf("ruleset.tar.gz not found: %w", err)
+	}
+
+	// Extract tar.gz file
+	extractDir := filepath.Join(tempDir, "extracted")
+	if err := os.MkdirAll(extractDir, 0o755); err != nil {
+		return nil, fmt.Errorf("failed to create extract directory: %w", err)
+	}
+
+	// Use tar command to extract
+	cmd := exec.Command("tar", "-xzf", tarPath, "-C", extractDir)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to extract tar.gz: %w", err)
+	}
+
+	// Find all extracted files
+	var sourceFiles []string
+	err := filepath.Walk(extractDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			sourceFiles = append(sourceFiles, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan extracted files: %w", err)
+	}
+
+	return sourceFiles, nil
 }
