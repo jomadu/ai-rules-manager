@@ -34,13 +34,7 @@ This creates `.armrc` and `arm.json` stub files in your current directory.
 Add a Git registry (we'll use a fake Mario-themed example):
 
 ```bash
-arm config add registry mushroom-kingdom https://github.com/mushroom-kingdom/cursor-rules.example --type=git
-```
-
-Set it as your default registry:
-
-```bash
-arm config set registries.default mushroom-kingdom
+arm config add registry default https://github.com/mushroom-kingdom/cursor-rules.example --type=git
 ```
 
 ### 3. Configure Channels
