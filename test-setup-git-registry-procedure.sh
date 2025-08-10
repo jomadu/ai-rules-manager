@@ -7,6 +7,6 @@ cd sandbox
 ../bin/arm version
 ../bin/arm install
 ../bin/arm clean all --force
-../bin/arm config add registry default https://github.com/PatrickJS/awesome-cursorrules --type=git
+../bin/arm config add registry sdlc-rules https://github.com/jomadu/sdlc-rules --type=git
 ../bin/arm config add channel q --directories ./amazonq/rules
-../bin/arm install python --patterns "rules-new/python.mdc"
+../bin/arm install sdlc-rules/its-a-me@main --patterns "rules/its-a-me.md"
