@@ -128,6 +128,14 @@ func (s *S3Registry) GetRuleset(ctx context.Context, name, version string) (*Rul
 
 // DownloadRuleset downloads a ruleset to the specified directory
 func (s *S3Registry) DownloadRuleset(ctx context.Context, name, version, destDir string) error {
+	return s.DownloadRulesetWithPatterns(ctx, name, version, destDir, nil)
+}
+
+// DownloadRulesetWithPatterns downloads a ruleset (patterns ignored for S3)
+func (s *S3Registry) DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error {
+	// S3 registries use pre-packaged tar.gz files, so patterns are ignored
+	_ = patterns
+
 	// Construct the S3 key for the ruleset tarball
 	key := s.prefix + name + "/" + version + "/ruleset.tar.gz"
 

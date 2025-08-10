@@ -1555,8 +1555,99 @@ func expandEnvVars(s string) string {
 	return os.ExpandEnv(s)
 }
 
+// performGitInstallation handles Git registry installations with proper version tracking
+func performGitInstallation(cfg *config.Config, registryName, rulesetName, version, channels, patterns string) error {
+	// Create registry configuration
+	registryConfig := &registry.RegistryConfig{
+		Name: registryName,
+		Type: cfg.RegistryConfigs[registryName]["type"],
+		URL:  cfg.Registries[registryName],
+	}
+
+	// Create auth configuration
+	authConfig := &registry.AuthConfig{}
+	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
+		authConfig.Token = regConfig["authToken"]
+		authConfig.Region = regConfig["region"]
+		authConfig.Profile = regConfig["profile"]
+	}
+
+	// Create Git registry instance
+	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create registry: %w", err)
+	}
+	defer func() { _ = reg.Close() }()
+
+	// Cast to GitRegistry to access structured download
+	gitReg, ok := reg.(*registry.GitRegistry)
+	if !ok {
+		return fmt.Errorf("expected Git registry but got %T", reg)
+	}
+
+	fmt.Printf("⬇ Downloading %s@%s\n", rulesetName, version)
+
+	// Create temporary directory for download
+	tempDir, err := os.MkdirTemp("", "arm-install-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// Parse patterns
+	var patternList []string
+	if patterns != "" {
+		patternList = strings.Split(patterns, ",")
+		for i, p := range patternList {
+			patternList[i] = strings.TrimSpace(p)
+		}
+	}
+
+	// Download with structured result
+	result, err := gitReg.DownloadRulesetWithResult(context.Background(), rulesetName, version, tempDir, patternList)
+	if err != nil {
+		return fmt.Errorf("failed to download ruleset: %w", err)
+	}
+
+	// Parse channels
+	var targetChannels []string
+	if channels != "" {
+		targetChannels = strings.Split(channels, ",")
+		for i, ch := range targetChannels {
+			targetChannels[i] = strings.TrimSpace(ch)
+		}
+	}
+
+	// Install using resolved version
+	installer := install.New(cfg)
+	req := &install.InstallRequest{
+		Registry:    registryName,
+		Ruleset:     rulesetName,
+		Version:     result.ResolvedVersion, // Use resolved version for installation
+		SourceFiles: result.Files,
+		Channels:    targetChannels,
+	}
+
+	installResult, err := installer.Install(req)
+	if err != nil {
+		return fmt.Errorf("failed to install: %w", err)
+	}
+
+	// Update manifest with original version spec
+	manifestMgr := config.NewManifestManager(false)
+	if err := manifestMgr.AddRuleset(registryName, rulesetName, result.VersionSpec, patternList); err != nil {
+		fmt.Printf("Warning: Failed to update manifest: %v\n", err)
+	}
+
+	fmt.Printf("✓ Installed %s/%s@%s\n", installResult.Registry, installResult.Ruleset, installResult.Version)
+	fmt.Printf("  Files: %d\n", installResult.FilesCount)
+	fmt.Printf("  Channels: %s\n", strings.Join(installResult.Channels, ", "))
+
+	return nil
+}
+
 // performInstallation performs the actual installation of a ruleset
-func performInstallation(cfg *config.Config, registryName, rulesetName, version, channels, _ string) error {
+func performInstallation(cfg *config.Config, registryName, rulesetName, version, channels, patterns string) error {
 	// Create registry configuration
 	registryConfig := &registry.RegistryConfig{
 		Name: registryName,
@@ -1579,17 +1670,12 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 	}
 	defer func() { _ = reg.Close() }()
 
-	// Resolve version if "latest"
-	if version == "latest" {
-		versions, err := reg.GetVersions(context.Background(), rulesetName)
-		if err != nil {
-			return fmt.Errorf("failed to get versions: %w", err)
-		}
-		if len(versions) == 0 {
-			return fmt.Errorf("no versions found for ruleset %s", rulesetName)
-		}
-		version = versions[len(versions)-1] // Use latest version
+	// For Git registries, use structured download to get both versions
+	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil && regConfig["type"] == "git" {
+		return performGitInstallation(cfg, registryName, rulesetName, version, channels, patterns)
 	}
+
+	// For non-Git registries, use version as-is (they use concrete versions)
 
 	fmt.Printf("⬇ Downloading %s@%s\n", rulesetName, version)
 
@@ -1600,15 +1686,41 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 	}
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
-	// Download ruleset
-	if err := reg.DownloadRuleset(context.Background(), rulesetName, version, tempDir); err != nil {
-		return fmt.Errorf("failed to download ruleset: %w", err)
-	}
+	// Download ruleset with patterns for Git registries
+	var sourceFiles []string
+	regConfig := cfg.RegistryConfigs[registryName]
 
-	// Extract downloaded files
-	sourceFiles, err := extractRuleset(tempDir)
-	if err != nil {
-		return fmt.Errorf("failed to extract ruleset: %w", err)
+	if regConfig != nil && regConfig["type"] == "git" {
+		// Parse patterns from command line
+		var patternList []string
+		if patterns != "" {
+			patternList = strings.Split(patterns, ",")
+			for i, p := range patternList {
+				patternList[i] = strings.TrimSpace(p)
+			}
+		}
+
+		// Use Git-specific download method
+		if err := reg.DownloadRulesetWithPatterns(context.Background(), rulesetName, version, tempDir, patternList); err != nil {
+			return fmt.Errorf("failed to download ruleset: %w", err)
+		}
+
+		// For Git registries, files are copied directly - find them
+		sourceFiles, err = findDownloadedFiles(tempDir)
+		if err != nil {
+			return fmt.Errorf("failed to find downloaded files: %w", err)
+		}
+	} else {
+		// Use standard download method for other registry types
+		if err := reg.DownloadRuleset(context.Background(), rulesetName, version, tempDir); err != nil {
+			return fmt.Errorf("failed to download ruleset: %w", err)
+		}
+
+		// Extract downloaded tar.gz files
+		sourceFiles, err = extractRuleset(tempDir)
+		if err != nil {
+			return fmt.Errorf("failed to extract ruleset: %w", err)
+		}
 	}
 
 	// Parse channels
@@ -1676,6 +1788,26 @@ func extractRuleset(tempDir string) ([]string, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan extracted files: %w", err)
+	}
+
+	return sourceFiles, nil
+}
+
+// findDownloadedFiles finds all files in the download directory (for Git registries)
+func findDownloadedFiles(tempDir string) ([]string, error) {
+	var sourceFiles []string
+	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			sourceFiles = append(sourceFiles, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan downloaded files: %w", err)
 	}
 
 	return sourceFiles, nil

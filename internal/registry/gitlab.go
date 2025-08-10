@@ -126,6 +126,14 @@ func (g *GitLabRegistry) GetRuleset(ctx context.Context, name, version string) (
 
 // DownloadRuleset downloads a ruleset to the specified directory
 func (g *GitLabRegistry) DownloadRuleset(ctx context.Context, name, version, destDir string) error {
+	return g.DownloadRulesetWithPatterns(ctx, name, version, destDir, nil)
+}
+
+// DownloadRulesetWithPatterns downloads a ruleset (patterns ignored for GitLab)
+func (g *GitLabRegistry) DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error {
+	// GitLab registries use pre-packaged tar.gz files, so patterns are ignored
+	_ = patterns
+
 	// Construct GitLab Generic Packages API URL
 	url := fmt.Sprintf("%s/api/v4/projects/%s/packages/generic/%s/%s/ruleset.tar.gz",
 		g.baseURL, g.projectID, name, version)

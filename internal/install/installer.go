@@ -130,11 +130,40 @@ func (i *Installer) installToChannel(req *InstallRequest, channelDir string) (in
 	// Copy files to version directory
 	filesCount := 0
 	for _, sourceFile := range req.SourceFiles {
-		filename := filepath.Base(sourceFile)
-		destPath := filepath.Join(versionDir, filename)
+		// For Git registries, preserve directory structure by using relative path from temp dir
+		// For other registries, use just the filename
+		var destPath string
+		if strings.Contains(sourceFile, string(filepath.Separator)) {
+			// Extract relative path from temp directory structure
+			// sourceFile format: /tmp/arm-install-xxx/rules-new/python.mdc
+			// We want to preserve: rules-new/python.mdc
+			parts := strings.Split(sourceFile, string(filepath.Separator))
+			// Find the temp directory part and take everything after it
+			for i, part := range parts {
+				if strings.HasPrefix(part, "arm-install-") && i+1 < len(parts) {
+					// Join all parts after the temp directory
+					relativePath := filepath.Join(parts[i+1:]...)
+					destPath = filepath.Join(versionDir, relativePath)
+					break
+				}
+			}
+			// Fallback if pattern not found
+			if destPath == "" {
+				destPath = filepath.Join(versionDir, filepath.Base(sourceFile))
+			}
+		} else {
+			// Simple filename, no directory structure
+			destPath = filepath.Join(versionDir, filepath.Base(sourceFile))
+		}
+
+		// Create destination directory if needed
+		destDir := filepath.Dir(destPath)
+		if err := os.MkdirAll(destDir, 0o755); err != nil {
+			return 0, fmt.Errorf("failed to create destination directory: %w", err)
+		}
 
 		if err := i.copyFile(sourceFile, destPath); err != nil {
-			return 0, fmt.Errorf("failed to copy file '%s': %w", filename, err)
+			return 0, fmt.Errorf("failed to copy file '%s': %w", sourceFile, err)
 		}
 
 		filesCount++
