@@ -143,38 +143,14 @@ func (g *GitRegistry) getRulesetsAPI(ctx context.Context, patterns []string) ([]
 
 // getRulesetsClone gets rulesets using git clone
 func (g *GitRegistry) getRulesetsClone(ctx context.Context, patterns []string) ([]RulesetInfo, error) {
-	// Create temporary directory for cloning
-	tmpDir, err := os.MkdirTemp("", "arm-git-*")
+	// Get or create cached repository
+	repoDir, err := g.getCachedRepository(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	// Clone repository
-	cloneOptions := &git.CloneOptions{
-		URL:      g.config.URL,
-		Progress: nil, // Silent clone
-	}
-
-	if g.auth.Token != "" {
-		cloneOptions.Auth = &githttp.BasicAuth{
-			Username: "token",
-			Password: g.auth.Token,
-		}
-	} else if g.auth.Username != "" && g.auth.Password != "" {
-		cloneOptions.Auth = &githttp.BasicAuth{
-			Username: g.auth.Username,
-			Password: g.auth.Password,
-		}
-	}
-
-	_, err = git.PlainCloneContext(ctx, tmpDir, false, cloneOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to clone repository: %w", err)
-	}
 
 	// Scan for rulesets
-	return g.scanDirectory(tmpDir, patterns)
+	return g.scanDirectory(repoDir, patterns)
 }
 
 // getRulesetAPI gets a specific ruleset using GitHub API
@@ -274,38 +250,32 @@ func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, destDir stri
 
 // downloadRulesetClone downloads a ruleset using git clone
 func (g *GitRegistry) downloadRulesetClone(ctx context.Context, name, version, destDir string) error {
-	// Create temporary directory for cloning
-	tmpDir, err := os.MkdirTemp("", "arm-git-*")
+	// Get or create cached repository
+	repoDir, err := g.getCachedRepository(ctx)
 	if err != nil {
 		return err
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	// Clone repository
-	cloneOptions := &git.CloneOptions{
-		URL:      g.config.URL,
-		Progress: nil,
-	}
-
-	if g.auth.Token != "" {
-		cloneOptions.Auth = &githttp.BasicAuth{
-			Username: "token",
-			Password: g.auth.Token,
-		}
 	}
 
 	// Checkout specific version if not "latest"
 	if version != "latest" {
-		cloneOptions.ReferenceName = plumbing.ReferenceName("refs/tags/" + version)
-	}
-
-	_, err = git.PlainCloneContext(ctx, tmpDir, false, cloneOptions)
-	if err != nil {
-		return fmt.Errorf("failed to clone repository: %w", err)
+		repo, err := git.PlainOpen(repoDir)
+		if err != nil {
+			return fmt.Errorf("failed to open repository: %w", err)
+		}
+		w, err := repo.Worktree()
+		if err != nil {
+			return fmt.Errorf("failed to get worktree: %w", err)
+		}
+		err = w.Checkout(&git.CheckoutOptions{
+			Hash: plumbing.NewHash(version),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to checkout version %s: %w", version, err)
+		}
 	}
 
 	// Copy files matching the ruleset name
-	return g.copyRulesetFiles(tmpDir, name, destDir)
+	return g.copyRulesetFiles(repoDir, name, destDir)
 }
 
 // getVersionsAPI gets versions using GitHub API
@@ -475,6 +445,101 @@ type GitHubContent struct {
 	Path        string `json:"path"`
 	Type        string `json:"type"`
 	DownloadURL string `json:"download_url"`
+}
+
+// getCachedRepository gets or creates a cached Git repository
+func (g *GitRegistry) getCachedRepository(ctx context.Context) (string, error) {
+	// Create cache directory path
+	cacheDir, err := g.getCacheDir()
+	if err != nil {
+		return "", err
+	}
+	repoDir := filepath.Join(cacheDir, "repository")
+
+	// Check if repository already exists
+	if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
+		// Repository exists, update it
+		return g.updateRepository(ctx, repoDir)
+	}
+
+	// Repository doesn't exist, clone it
+	return g.cloneRepository(ctx, repoDir)
+}
+
+// getCacheDir returns the cache directory for this registry
+func (g *GitRegistry) getCacheDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+	cacheDir := filepath.Join(homeDir, ".arm", "cache", "registries", g.config.Name)
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create cache directory: %w", err)
+	}
+	return cacheDir, nil
+}
+
+// cloneRepository clones the repository to the cache directory
+func (g *GitRegistry) cloneRepository(ctx context.Context, repoDir string) (string, error) {
+	cloneOptions := &git.CloneOptions{
+		URL:      g.config.URL,
+		Progress: nil,
+	}
+
+	if g.auth.Token != "" {
+		cloneOptions.Auth = &githttp.BasicAuth{
+			Username: "token",
+			Password: g.auth.Token,
+		}
+	} else if g.auth.Username != "" && g.auth.Password != "" {
+		cloneOptions.Auth = &githttp.BasicAuth{
+			Username: g.auth.Username,
+			Password: g.auth.Password,
+		}
+	}
+
+	_, err := git.PlainCloneContext(ctx, repoDir, false, cloneOptions)
+	if err != nil {
+		return "", fmt.Errorf("failed to clone repository: %w", err)
+	}
+
+	return repoDir, nil
+}
+
+// updateRepository updates an existing cached repository
+func (g *GitRegistry) updateRepository(ctx context.Context, repoDir string) (string, error) {
+	repo, err := git.PlainOpen(repoDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	w, err := repo.Worktree()
+	if err != nil {
+		return "", fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	pullOptions := &git.PullOptions{
+		RemoteName: "origin",
+	}
+
+	if g.auth.Token != "" {
+		pullOptions.Auth = &githttp.BasicAuth{
+			Username: "token",
+			Password: g.auth.Token,
+		}
+	} else if g.auth.Username != "" && g.auth.Password != "" {
+		pullOptions.Auth = &githttp.BasicAuth{
+			Username: g.auth.Username,
+			Password: g.auth.Password,
+		}
+	}
+
+	err = w.PullContext(ctx, pullOptions)
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		return "", fmt.Errorf("failed to pull repository: %w", err)
+	}
+
+	return repoDir, nil
 }
 
 // GitHubTag represents GitHub API tag response
