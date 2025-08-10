@@ -384,6 +384,9 @@ func (g *GitRegistry) parseGitHubURL() (owner, repo string, err error) {
 
 // matchesPatterns checks if a filename matches any of the given patterns (legacy function)
 func (g *GitRegistry) matchesPatterns(filename string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return true // Empty patterns match everything
+	}
 	return g.matchesAnyPattern(filename, patterns)
 }
 
