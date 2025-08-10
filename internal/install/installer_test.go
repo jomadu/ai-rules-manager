@@ -30,11 +30,13 @@ func TestInstaller_Install(t *testing.T) {
 
 	installer := New(cfg)
 
-	// Create test source files
-	sourceDir := filepath.Join(tempDir, "source")
-	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
-		t.Fatalf("Failed to create source dir: %v", err)
+	// Create test source files that simulate what would come from a real download
+	// The installer expects files with full paths that include temp directory names
+	sourceDir, err := os.MkdirTemp("", "arm-install-")
+	if err != nil {
+		t.Fatalf("Failed to create source temp dir: %v", err)
 	}
+	defer func() { _ = os.RemoveAll(sourceDir) }()
 
 	testFile1 := filepath.Join(sourceDir, "rule1.md")
 	testFile2 := filepath.Join(sourceDir, "rule2.mdc")
