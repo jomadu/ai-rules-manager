@@ -19,6 +19,9 @@ type Registry interface {
 	// DownloadRuleset downloads a ruleset to the specified directory
 	DownloadRuleset(ctx context.Context, name, version, destDir string) error
 
+	// DownloadRulesetWithPatterns downloads a ruleset with pattern matching (for Git registries)
+	DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error
+
 	// GetVersions returns available versions for a ruleset
 	GetVersions(ctx context.Context, name string) ([]string, error)
 

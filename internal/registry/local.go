@@ -145,6 +145,14 @@ func (l *LocalRegistry) GetRuleset(ctx context.Context, name, version string) (*
 
 // DownloadRuleset copies a ruleset from the local filesystem to the specified directory
 func (l *LocalRegistry) DownloadRuleset(ctx context.Context, name, version, destDir string) error {
+	return l.DownloadRulesetWithPatterns(ctx, name, version, destDir, nil)
+}
+
+// DownloadRulesetWithPatterns copies a ruleset (patterns ignored for Local)
+func (l *LocalRegistry) DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error {
+	// Local registries use pre-packaged tar.gz files, so patterns are ignored
+	_ = patterns
+
 	// Construct source path: path/ruleset/version/ruleset.tar.gz
 	sourcePath := filepath.Join(l.path, name, version, "ruleset.tar.gz")
 

@@ -17,6 +17,13 @@ import (
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
+// DownloadResult contains the results of a Git registry download
+type DownloadResult struct {
+	VersionSpec     string   // Original version spec (e.g., "latest")
+	ResolvedVersion string   // Actual commit hash
+	Files           []string // Downloaded file paths
+}
+
 // GitRegistry implements the Registry interface for Git repositories
 type GitRegistry struct {
 	config *RegistryConfig
@@ -54,12 +61,75 @@ func (g *GitRegistry) GetRuleset(ctx context.Context, name, version string) (*Ru
 	return g.getRulesetClone(ctx, name, version)
 }
 
-// DownloadRuleset downloads a ruleset to the specified directory
+// DownloadRuleset downloads a ruleset to the specified directory (legacy method)
 func (g *GitRegistry) DownloadRuleset(ctx context.Context, name, version, destDir string) error {
-	if g.auth.APIType == "github" {
-		return g.downloadRulesetAPI(ctx, name, destDir)
+	// For backward compatibility, use empty patterns
+	return g.DownloadRulesetWithPatterns(ctx, name, version, destDir, []string{})
+}
+
+// DownloadRulesetWithPatterns downloads a ruleset with pattern matching
+func (g *GitRegistry) DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error {
+	if len(patterns) == 0 {
+		// Default pattern if none provided
+		patterns = []string{"**/*"}
 	}
-	return g.downloadRulesetClone(ctx, name, version, destDir)
+
+	if g.auth.APIType == "github" {
+		return g.downloadRulesetAPI(ctx, destDir, patterns)
+	}
+	return g.downloadRulesetClone(ctx, version, destDir, patterns)
+}
+
+// DownloadRulesetWithResult downloads a ruleset and returns structured results
+func (g *GitRegistry) DownloadRulesetWithResult(ctx context.Context, name, version, destDir string, patterns []string) (*DownloadResult, error) {
+	if len(patterns) == 0 {
+		patterns = []string{"**/*"}
+	}
+
+	// Resolve version to get actual commit hash
+	resolvedVersion, err := g.ResolveVersion(ctx, version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve version: %w", err)
+	}
+
+	// Download the files
+	var files []string
+	if g.auth.APIType == "github" {
+		if err := g.downloadRulesetAPI(ctx, destDir, patterns); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := g.downloadRulesetClone(ctx, resolvedVersion, destDir, patterns); err != nil {
+			return nil, err
+		}
+	}
+
+	// Find downloaded files
+	files, err = g.findDownloadedFiles(destDir)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DownloadResult{
+		VersionSpec:     version,
+		ResolvedVersion: resolvedVersion,
+		Files:           files,
+	}, nil
+}
+
+// findDownloadedFiles finds all files in the download directory
+func (g *GitRegistry) findDownloadedFiles(destDir string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(destDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
 }
 
 // GetVersions returns available versions for a ruleset
@@ -68,6 +138,17 @@ func (g *GitRegistry) GetVersions(ctx context.Context, name string) ([]string, e
 		return g.getVersionsAPI(ctx)
 	}
 	return g.getVersionsClone(ctx, name)
+}
+
+// ResolveVersion resolves a version spec to a concrete commit hash
+func (g *GitRegistry) ResolveVersion(ctx context.Context, version string) (string, error) {
+	if version == "latest" {
+		if g.auth.APIType == "github" {
+			return g.resolveLatestAPI(ctx)
+		}
+		return g.resolveLatestClone(ctx)
+	}
+	return version, nil // Return as-is for other version specs
 }
 
 // GetType returns the registry type
@@ -188,94 +269,59 @@ func (g *GitRegistry) getRulesetClone(ctx context.Context, name, version string)
 }
 
 // downloadRulesetAPI downloads a ruleset using GitHub API
-func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, name, destDir string) error {
+func (g *GitRegistry) downloadRulesetAPI(ctx context.Context, destDir string, patterns []string) error {
 	owner, repo, err := g.parseGitHubURL()
 	if err != nil {
 		return err
 	}
 
-	// Find the file
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, name)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	// Get repository file tree
+	fileTree, err := g.getFileTreeAPI(ctx, owner, repo)
 	if err != nil {
 		return err
 	}
 
-	if g.auth.Token != "" {
-		req.Header.Set("Authorization", "token "+g.auth.Token)
+	// Apply patterns to find matching files
+	matchingFiles := g.applyPatternsToFileTree(fileTree, patterns)
+	if len(matchingFiles) == 0 {
+		return fmt.Errorf("no files match patterns: %v", patterns)
 	}
 
-	resp, err := g.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GitHub API error: %s", resp.Status)
+	// Download each matching file
+	for _, file := range matchingFiles {
+		if err := g.downloadFileAPI(ctx, owner, repo, file, destDir); err != nil {
+			return fmt.Errorf("failed to download %s: %w", file, err)
+		}
 	}
 
-	var content GitHubContent
-	if err := json.NewDecoder(resp.Body).Decode(&content); err != nil {
-		return err
-	}
-
-	// Download the file content
-	fileReq, err := http.NewRequestWithContext(ctx, "GET", content.DownloadURL, http.NoBody)
-	if err != nil {
-		return err
-	}
-
-	fileResp, err := g.client.Do(fileReq)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = fileResp.Body.Close() }()
-
-	// Create destination file
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		return err
-	}
-
-	destPath := filepath.Join(destDir, content.Name)
-	destFile, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = destFile.Close() }()
-
-	_, err = io.Copy(destFile, fileResp.Body)
-	return err
+	return nil
 }
 
 // downloadRulesetClone downloads a ruleset using git clone
-func (g *GitRegistry) downloadRulesetClone(ctx context.Context, name, version, destDir string) error {
+func (g *GitRegistry) downloadRulesetClone(ctx context.Context, version, destDir string, patterns []string) error {
 	// Get or create cached repository
 	repoDir, err := g.getCachedRepository(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Checkout specific version if not "latest"
-	if version != "latest" {
-		repo, err := git.PlainOpen(repoDir)
-		if err != nil {
-			return fmt.Errorf("failed to open repository: %w", err)
-		}
-		w, err := repo.Worktree()
-		if err != nil {
-			return fmt.Errorf("failed to get worktree: %w", err)
-		}
-		err = w.Checkout(&git.CheckoutOptions{
-			Hash: plumbing.NewHash(version),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to checkout version %s: %w", version, err)
-		}
+	// Resolve and checkout specific version
+	if err := g.checkoutVersion(repoDir, version); err != nil {
+		return fmt.Errorf("failed to checkout version %s: %w", version, err)
 	}
 
-	// Copy files matching the ruleset name
-	return g.copyRulesetFiles(repoDir, name, destDir)
+	// Apply patterns to find matching files
+	matchingFiles, err := g.findMatchingFiles(repoDir, patterns)
+	if err != nil {
+		return err
+	}
+
+	if len(matchingFiles) == 0 {
+		return fmt.Errorf("no files match patterns: %v", patterns)
+	}
+
+	// Copy matching files to destination
+	return g.copyMatchingFiles(repoDir, matchingFiles, destDir)
 }
 
 // getVersionsAPI gets versions using GitHub API
@@ -336,26 +382,9 @@ func (g *GitRegistry) parseGitHubURL() (owner, repo string, err error) {
 	return matches[1], matches[2], nil
 }
 
-// matchesPatterns checks if a filename matches any of the given patterns
+// matchesPatterns checks if a filename matches any of the given patterns (legacy function)
 func (g *GitRegistry) matchesPatterns(filename string, patterns []string) bool {
-	if len(patterns) == 0 {
-		return true // No patterns means match all
-	}
-
-	for _, pattern := range patterns {
-		matched, err := filepath.Match(pattern, filename)
-		if err == nil && matched {
-			return true
-		}
-		// Also try glob-style matching
-		if strings.Contains(pattern, "*") {
-			re := regexp.MustCompile(strings.ReplaceAll(regexp.QuoteMeta(pattern), `\*`, ".*"))
-			if re.MatchString(filename) {
-				return true
-			}
-		}
-	}
-	return false
+	return g.matchesAnyPattern(filename, patterns)
 }
 
 // scanDirectory scans a directory for rulesets matching patterns
@@ -390,53 +419,229 @@ func (g *GitRegistry) scanDirectory(dir string, patterns []string) ([]RulesetInf
 	return rulesets, err
 }
 
-// copyRulesetFiles copies files matching the ruleset name
-func (g *GitRegistry) copyRulesetFiles(srcDir, name, destDir string) error {
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
+// checkoutVersion resolves and checks out a specific version
+func (g *GitRegistry) checkoutVersion(repoDir, version string) error {
+	if version == "latest" {
+		return nil // Already on latest after clone/pull
+	}
+
+	repo, err := git.PlainOpen(repoDir)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	w, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	// Try to resolve version as branch, tag, or commit
+	if err := g.resolveAndCheckout(w, repo, version); err != nil {
 		return err
 	}
 
-	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+	return nil
+}
+
+// resolveAndCheckout resolves version spec and checks out the appropriate ref
+func (g *GitRegistry) resolveAndCheckout(w *git.Worktree, repo *git.Repository, version string) error {
+	// Check if it's a semver pattern
+	if g.isSemverPattern(version) {
+		return g.checkoutSemverTag(w, repo, version)
+	}
+
+	// Try as branch name first
+	if err := w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName("refs/heads/" + version),
+	}); err == nil {
+		return nil
+	}
+
+	// Try as tag name
+	if err := w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName("refs/tags/" + version),
+	}); err == nil {
+		return nil
+	}
+
+	// Try as commit hash
+	if err := w.Checkout(&git.CheckoutOptions{
+		Hash: plumbing.NewHash(version),
+	}); err == nil {
+		return nil
+	}
+
+	return fmt.Errorf("unable to resolve version: %s", version)
+}
+
+// isSemverPattern checks if version is a semver pattern
+func (g *GitRegistry) isSemverPattern(version string) bool {
+	return strings.HasPrefix(version, "^") || strings.HasPrefix(version, "~") ||
+		strings.HasPrefix(version, ">=") || strings.HasPrefix(version, "<=") ||
+		strings.HasPrefix(version, ">") || strings.HasPrefix(version, "<")
+}
+
+// checkoutSemverTag finds and checks out the highest matching semver tag
+func (g *GitRegistry) checkoutSemverTag(w *git.Worktree, repo *git.Repository, versionSpec string) error {
+	// Get all tags
+	tagRefs, err := repo.Tags()
+	if err != nil {
+		return fmt.Errorf("failed to get tags: %w", err)
+	}
+
+	// Find matching tags (simplified - would use proper semver library)
+	var matchingTag string
+	err = tagRefs.ForEach(func(ref *plumbing.Reference) error {
+		tagName := ref.Name().Short()
+		// Simple pattern matching - would use proper semver resolution
+		if g.matchesSemverPattern(tagName, versionSpec) {
+			matchingTag = tagName
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if matchingTag == "" {
+		return fmt.Errorf("no tags match version spec: %s", versionSpec)
+	}
+
+	// Checkout the matching tag
+	return w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName("refs/tags/" + matchingTag),
+	})
+}
+
+// matchesSemverPattern checks if a tag matches a semver pattern (simplified)
+func (g *GitRegistry) matchesSemverPattern(tag, pattern string) bool {
+	// Remove 'v' prefix if present
+	tag = strings.TrimPrefix(tag, "v")
+	// Simplified matching - would use proper semver library
+	if strings.HasPrefix(pattern, "^") {
+		return strings.HasPrefix(tag, pattern[1:])
+	}
+	return tag == pattern
+}
+
+// findMatchingFiles finds files in repository that match the given patterns
+func (g *GitRegistry) findMatchingFiles(repoDir string, patterns []string) ([]string, error) {
+	var matchingFiles []string
+
+	err := filepath.Walk(repoDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+
+		// Skip .git directory and other hidden directories
+		if info.IsDir() && (info.Name() == ".git" || strings.HasPrefix(info.Name(), ".")) {
+			return filepath.SkipDir
 		}
 
 		if info.IsDir() {
 			return nil
 		}
 
-		// Check if file matches the ruleset name
-		filename := info.Name()
-		if strings.Contains(filename, name) || g.matchesPatterns(filename, []string{name + "*"}) {
-			relPath, _ := filepath.Rel(srcDir, path)
-			destPath := filepath.Join(destDir, relPath)
+		// Get relative path from repo root
+		relPath, err := filepath.Rel(repoDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
 
-			// Create destination directory
-			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-				return err
-			}
+		// Validate path to prevent traversal
+		if strings.Contains(relPath, "..") {
+			return nil // Skip potentially malicious paths
+		}
 
-			// Copy file
-			srcFile, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = srcFile.Close() }()
-
-			destFile, err := os.Create(destPath)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = destFile.Close() }()
-
-			_, err = io.Copy(destFile, srcFile)
-			if err != nil {
-				return err
-			}
+		// Check if file matches any pattern
+		if g.matchesAnyPattern(relPath, patterns) {
+			matchingFiles = append(matchingFiles, relPath)
 		}
 
 		return nil
 	})
+
+	return matchingFiles, err
+}
+
+// matchesAnyPattern checks if a file path matches any of the given patterns
+func (g *GitRegistry) matchesAnyPattern(filePath string, patterns []string) bool {
+	for _, pattern := range patterns {
+		if matched, _ := filepath.Match(pattern, filePath); matched {
+			return true
+		}
+		// Also support glob patterns with **
+		if g.matchesGlobPattern(filePath, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesGlobPattern handles glob patterns including **
+func (g *GitRegistry) matchesGlobPattern(filePath, pattern string) bool {
+	// Handle ** patterns (simplified)
+	if strings.Contains(pattern, "**") {
+		// Convert glob pattern to regex (simplified)
+		regexPattern := strings.ReplaceAll(pattern, "**", ".*")
+		regexPattern = strings.ReplaceAll(regexPattern, "*", "[^/]*")
+		regexPattern = "^" + regexPattern + "$"
+
+		if matched, _ := regexp.MatchString(regexPattern, filePath); matched {
+			return true
+		}
+	}
+	return false
+}
+
+// copyMatchingFiles copies the matching files to destination directory preserving structure
+func (g *GitRegistry) copyMatchingFiles(repoDir string, matchingFiles []string, destDir string) error {
+	if err := os.MkdirAll(destDir, 0o700); err != nil {
+		return err
+	}
+
+	for _, relPath := range matchingFiles {
+		// Validate path to prevent traversal
+		if strings.Contains(relPath, "..") {
+			continue // Skip potentially malicious paths
+		}
+
+		srcPath := filepath.Join(repoDir, relPath)
+		// Preserve directory structure in destination
+		destPath := filepath.Join(destDir, relPath)
+
+		// Create destination directory
+		destFileDir := filepath.Dir(destPath)
+		if err := os.MkdirAll(destFileDir, 0o700); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", destFileDir, err)
+		}
+
+		// Copy file
+		if err := g.copyFile(srcPath, destPath); err != nil {
+			return fmt.Errorf("failed to copy %s: %w", relPath, err)
+		}
+	}
+
+	return nil
+}
+
+// copyFile copies a single file
+func (g *GitRegistry) copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = srcFile.Close() }()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dstFile.Close() }()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }
 
 // GitHubContent represents GitHub API content response
@@ -545,4 +750,194 @@ func (g *GitRegistry) updateRepository(ctx context.Context, repoDir string) (str
 // GitHubTag represents GitHub API tag response
 type GitHubTag struct {
 	Name string `json:"name"`
+}
+
+// getFileTreeAPI gets the complete file tree from GitHub API
+func (g *GitRegistry) getFileTreeAPI(ctx context.Context, owner, repo string) ([]string, error) {
+	// Get repository tree recursively using correct GitHub API
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/trees/HEAD?recursive=1", owner, repo)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Use Bearer token format for GitHub API
+	if g.auth.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+g.auth.Token)
+	}
+	if g.auth.APIVersion != "" {
+		req.Header.Set("X-GitHub-Api-Version", g.auth.APIVersion)
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GitHub API request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	var treeResp struct {
+		Tree []struct {
+			Path string `json:"path"`
+			Type string `json:"type"`
+		} `json:"tree"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&treeResp); err != nil {
+		return nil, fmt.Errorf("failed to decode GitHub API response: %w", err)
+	}
+
+	// Extract file paths (not directories)
+	var filePaths []string
+	for _, item := range treeResp.Tree {
+		if item.Type == "blob" { // blob = file, tree = directory
+			// Validate path to prevent traversal
+			if !strings.Contains(item.Path, "..") {
+				filePaths = append(filePaths, item.Path)
+			}
+		}
+	}
+
+	return filePaths, nil
+}
+
+// applyPatternsToFileTree filters file paths using glob patterns
+func (g *GitRegistry) applyPatternsToFileTree(filePaths, patterns []string) []string {
+	var matchingFiles []string
+	for _, filePath := range filePaths {
+		if g.matchesAnyPattern(filePath, patterns) {
+			matchingFiles = append(matchingFiles, filePath)
+		}
+	}
+	return matchingFiles
+}
+
+// resolveLatestAPI resolves "latest" to HEAD commit hash using GitHub API
+func (g *GitRegistry) resolveLatestAPI(ctx context.Context) (string, error) {
+	owner, repo, err := g.parseGitHubURL()
+	if err != nil {
+		return "", err
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/HEAD", owner, repo)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return "", err
+	}
+
+	if g.auth.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+g.auth.Token)
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	var commit struct {
+		SHA string `json:"sha"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&commit); err != nil {
+		return "", err
+	}
+
+	return commit.SHA, nil
+}
+
+// resolveLatestClone resolves "latest" to HEAD commit hash using git clone
+func (g *GitRegistry) resolveLatestClone(ctx context.Context) (string, error) {
+	repoDir, err := g.getCachedRepository(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	repo, err := git.PlainOpen(repoDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	return head.Hash().String(), nil
+}
+
+// downloadFileAPI downloads a single file using GitHub API preserving directory structure
+func (g *GitRegistry) downloadFileAPI(ctx context.Context, owner, repo, filePath, destDir string) error {
+	// Validate path to prevent traversal
+	if strings.Contains(filePath, "..") {
+		return fmt.Errorf("invalid file path: %s", filePath)
+	}
+
+	// Get file content from GitHub API
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, filePath)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Use Bearer token format for GitHub API
+	if g.auth.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+g.auth.Token)
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("GitHub API request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("GitHub API error %d for %s: %s", resp.StatusCode, filePath, resp.Status)
+	}
+
+	var content GitHubContent
+	if err := json.NewDecoder(resp.Body).Decode(&content); err != nil {
+		return fmt.Errorf("failed to decode GitHub API response: %w", err)
+	}
+
+	// Download the file content
+	fileReq, err := http.NewRequestWithContext(ctx, "GET", content.DownloadURL, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create download request: %w", err)
+	}
+
+	fileResp, err := g.client.Do(fileReq)
+	if err != nil {
+		return fmt.Errorf("file download failed: %w", err)
+	}
+	defer func() { _ = fileResp.Body.Close() }()
+
+	// Preserve directory structure in destination
+	destPath := filepath.Join(destDir, filePath)
+	destFileDir := filepath.Dir(destPath)
+	if err := os.MkdirAll(destFileDir, 0o700); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", destFileDir, err)
+	}
+
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %w", destPath, err)
+	}
+	defer func() { _ = destFile.Close() }()
+
+	_, err = io.Copy(destFile, fileResp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write file content: %w", err)
+	}
+
+	return nil
 }

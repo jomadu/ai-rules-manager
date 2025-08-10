@@ -119,6 +119,14 @@ func (h *HTTPSRegistry) GetRuleset(ctx context.Context, name, version string) (*
 
 // DownloadRuleset downloads a ruleset to the specified directory
 func (h *HTTPSRegistry) DownloadRuleset(ctx context.Context, name, version, destDir string) error {
+	return h.DownloadRulesetWithPatterns(ctx, name, version, destDir, nil)
+}
+
+// DownloadRulesetWithPatterns downloads a ruleset (patterns ignored for HTTPS)
+func (h *HTTPSRegistry) DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error {
+	// HTTPS registries use pre-packaged tar.gz files, so patterns are ignored
+	_ = patterns
+
 	// Construct download URL: baseURL/ruleset/version/ruleset.tar.gz
 	url := fmt.Sprintf("%s/%s/%s/ruleset.tar.gz", h.baseURL, name, version)
 
