@@ -1,0 +1,62 @@
+prompts:
+  - name: "explain-code"
+    description: "Explain what a piece of code does in simple terms"
+    content: |
+      Please explain this code in simple terms:
+      - What does it do?
+      - How does it work?
+      - Are there any potential issues or improvements?
+
+  - name: "optimize-performance"
+    description: "Suggest performance optimizations for code"
+    content: |
+      Please analyze this code for performance optimizations:
+      - Identify any performance bottlenecks
+      - Suggest specific improvements
+      - Consider memory usage and algorithmic complexity
+      - Provide optimized code examples if applicable
+
+  - name: "add-error-handling"
+    description: "Add proper error handling to code"
+    content: |
+      Please improve this code by adding proper error handling:
+      - Identify potential failure points
+      - Add appropriate error checks and handling
+      - Follow the language's idiomatic error handling patterns
+      - Ensure graceful degradation where possible
+
+  - name: "write-tests"
+    description: "Generate comprehensive tests for code"
+    content: |
+      Please write comprehensive tests for this code:
+      - Cover happy path scenarios
+      - Include edge cases and error conditions
+      - Follow the project's testing conventions
+      - Ensure good test coverage
+
+  - name: "security-review"
+    description: "Review code for security vulnerabilities"
+    content: |
+      Please review this code for security vulnerabilities:
+      - Check for common security issues (OWASP Top 10)
+      - Look for input validation problems
+      - Identify potential injection attacks
+      - Suggest security improvements
+
+  - name: "code-review"
+    description: "Perform a comprehensive code review"
+    content: |
+      Please perform a comprehensive code review:
+      - Check for bugs and logic errors
+      - Evaluate code style and readability
+      - Suggest improvements for maintainability
+      - Identify any violations of best practices
+
+  - name: "generate-docs"
+    description: "Generate documentation for code"
+    content: |
+      Please generate documentation for this code:
+      - Write clear function/method descriptions
+      - Document parameters and return values
+      - Include usage examples
+      - Follow the project's documentation style

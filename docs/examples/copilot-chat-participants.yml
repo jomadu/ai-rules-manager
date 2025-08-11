@@ -1,0 +1,40 @@
+participants:
+  - name: "code-reviewer"
+    description: "AI assistant specialized in code review and best practices"
+    commands:
+      - name: "review"
+        description: "Perform a comprehensive code review"
+      - name: "security"
+        description: "Focus on security vulnerabilities and best practices"
+      - name: "performance"
+        description: "Analyze code for performance improvements"
+
+  - name: "documentation-helper"
+    description: "AI assistant for generating and improving documentation"
+    commands:
+      - name: "docstring"
+        description: "Generate or improve function/method documentation"
+      - name: "readme"
+        description: "Help write or update README files"
+      - name: "api-docs"
+        description: "Generate API documentation"
+
+  - name: "test-assistant"
+    description: "AI assistant for writing and improving tests"
+    commands:
+      - name: "unit-test"
+        description: "Generate unit tests for functions/methods"
+      - name: "integration-test"
+        description: "Create integration tests"
+      - name: "test-coverage"
+        description: "Analyze and improve test coverage"
+
+  - name: "refactor-expert"
+    description: "AI assistant specialized in code refactoring"
+    commands:
+      - name: "extract-function"
+        description: "Extract code into reusable functions"
+      - name: "simplify"
+        description: "Simplify complex code while maintaining functionality"
+      - name: "modernize"
+        description: "Update code to use modern language features"

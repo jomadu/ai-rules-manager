@@ -16,6 +16,9 @@ Set up different types of registries (Git, S3, GitLab, HTTPS, Local) for storing
 ### [Team Setup Guide](team-setup.md)
 Guide for team leads and platform engineers to distribute rulesets across development teams.
 
+### [GitHub Copilot Integration](copilot.md)
+Configure ARM to manage GitHub Copilot instructions, chat participants, and custom prompts.
+
 ## Quick Reference
 
 ### Common Commands
@@ -28,6 +31,7 @@ arm config add registry my-registry https://github.com/user/repo.example --type=
 
 # Add a channel
 arm config add channel cursor --directories ~/.cursor/rules
+arm config add channel copilot --directories .github
 
 # Install a ruleset
 arm install my-rules --patterns "rules/*.md"

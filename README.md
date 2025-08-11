@@ -2,11 +2,11 @@
 
 # AI Rules Manager (ARM)
 
-A package manager for AI coding assistant rulesets that enables developers and teams to install, update, and manage coding rules across different AI tools like Cursor and Amazon Q Developer.
+A package manager for AI coding assistant rulesets that enables developers and teams to install, update, and manage coding rules across different AI tools like Cursor, Amazon Q Developer, and GitHub Copilot.
 
 ## Why ARM?
 
-Stop manually copying `.cursorrules` and `.amazonq/rules` files between projects. ARM provides an npm-like experience for AI coding rules with version control, team synchronization, and multi-registry support.
+Stop manually copying `.cursorrules`, `.amazonq/rules`, and `.github/copilot-*` files between projects. ARM provides an npm-like experience for AI coding rules with version control, team synchronization, and multi-registry support.
 
 ## Quick Start
 
@@ -23,6 +23,7 @@ arm config add registry default https://github.com/mushroom-kingdom/cursor-rules
 # Add channels for your AI tools
 arm config add channel cursor --directories ~/.cursor/rules
 arm config add channel q --directories ~/.aws/amazonq/rules
+arm config add channel copilot --directories .github
 
 # Install your first ruleset
 arm install power-up-rules --patterns "rules/*.md"
