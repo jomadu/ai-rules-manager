@@ -17,13 +17,13 @@ ARM supports five registry types:
 
 ```bash
 # Public repository
-arm config add registry mushroom-kingdom https://github.com/mushroom-kingdom/cursor-rules.example --type=git
+arm config add registry test-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 
 # Private repository with token
-arm config add registry bowser-castle https://github.com/bowser-castle/private-rules.example --type=git --authToken=$GITHUB_TOKEN
+arm config add registry private-registry https://github.com/user/private-rules --type=git --authToken=$GITHUB_TOKEN
 
 # Enable API mode for faster access
-arm config add registry peach-castle https://github.com/peach-castle/rules.example --type=git --authToken=$GITHUB_TOKEN --apiType=github --apiVersion=2022-11-28
+arm config add registry api-registry https://github.com/user/rules --type=git --authToken=$GITHUB_TOKEN --apiType=github --apiVersion=2022-11-28
 ```
 
 ### Installing from Git
@@ -32,26 +32,26 @@ Git registries require patterns to select files:
 
 ```bash
 # Install with patterns
-arm install power-up-rules --patterns "rules/*.md,docs/*.mdc"
+arm install rules --patterns "*.md"
 
 # Multiple patterns
-arm install fire-flower-security --patterns ".cursor/rules/*.md,security/*.mdc"
+arm install rules --patterns "rules/*.md,cursor/*.md"
 ```
 
 ### Version Targeting
 
 ```bash
 # Latest commit on default branch
-arm install power-up-rules@latest
+arm install rules@latest
 
 # Specific branch
-arm install power-up-rules@main
+arm install rules@main
 
 # Git tag (supports v1.0.0 and 1.0.0 formats)
-arm install power-up-rules@^1.0.0
+arm install rules@^1.0.0
 
 # Specific commit
-arm install power-up-rules@abc123def
+arm install rules@abc123def
 ```
 
 ## S3 Registries
@@ -170,7 +170,7 @@ arm config add registry project-rules ./local-rulesets --type=local
 
 ```bash
 # Increase parallel operations for fast registries
-arm config set registries.mushroom-kingdom.concurrency 5
+arm config set registries.test-registry.concurrency 5
 
 # Reduce for rate-limited APIs
 arm config set registries.bowser-castle.concurrency 1
@@ -209,14 +209,14 @@ arm config remove registry old-registry
 arm search "power-up"
 
 # Search specific registries
-arm search "security" --registries mushroom-kingdom,bowser-castle
+arm search "security" --registries test-registry,private-registry
 ```
 
 ## Troubleshooting
 
 ### Authentication Failed
 ```bash
-Error [AUTH]: Access denied to registry 'bowser-castle'
+Error [AUTH]: Access denied to registry 'private-registry'
 Details: HTTP 403 - invalid or expired token
 ```
 **Solution**: Check your authentication token:
@@ -225,12 +225,12 @@ Details: HTTP 403 - invalid or expired token
 echo $GITHUB_TOKEN
 
 # Update token
-arm config set registries.bowser-castle.authToken $NEW_TOKEN
+arm config set registries.private-registry.authToken $NEW_TOKEN
 ```
 
 ### Registry Not Found
 ```bash
-Error [NETWORK]: Failed to connect to registry 'https://github.com/fake-repo.example'
+Error [NETWORK]: Failed to connect to registry 'https://github.com/fake-repo'
 Details: DNS lookup failed
 ```
 **Solution**: Verify the registry URL is correct.
@@ -246,10 +246,10 @@ arm config set registries.koopa-troopa.region us-west-2
 
 ### Rate Limited
 ```bash
-Error [NETWORK]: Rate limit exceeded for registry 'bowser-castle'
+Error [NETWORK]: Rate limit exceeded for registry 'private-registry'
 Details: 60 requests per hour limit reached
 ```
 **Solution**: Wait for rate limit reset or reduce rate limit:
 ```bash
-arm config set registries.bowser-castle.rateLimit 50/hour
+arm config set registries.private-registry.rateLimit 50/hour
 ```

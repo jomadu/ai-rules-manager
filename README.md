@@ -18,7 +18,7 @@ curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts
 arm install
 
 # Add a registry
-arm config add registry default https://github.com/mushroom-kingdom/cursor-rules.example --type=git
+arm config add registry default https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 
 # Add channels for your AI tools
 arm config add channel cursor --directories ~/.cursor/rules

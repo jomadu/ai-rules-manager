@@ -16,10 +16,10 @@ Create a shared Git repository for your team's rulesets:
 
 ```bash
 # Team lead sets up the registry
-arm config add registry mario-team https://github.com/mario-team/coding-rules.example --type=git --authToken=$GITHUB_TOKEN
+arm config add registry team-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git --authToken=$GITHUB_TOKEN
 
 # Team members add the same registry
-arm config add registry mario-team https://github.com/mario-team/coding-rules.example --type=git
+arm config add registry team-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 ```
 
 ### Option 2: S3 Bucket (Enterprise)
@@ -28,10 +28,10 @@ For larger teams with AWS infrastructure:
 
 ```bash
 # Platform team creates shared S3 registry
-arm config add registry mario-corp mario-team-rules --type=s3 --region=us-east-1 --profile=company-aws
+arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1 --profile=company-aws
 
 # Team members use the same bucket
-arm config add registry mario-corp mario-team-rules --type=s3 --region=us-east-1
+arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
 ```
 
 ## Standardizing Team Configuration
@@ -41,18 +41,18 @@ arm config add registry mario-corp mario-team-rules --type=s3 --region=us-east-1
 Create a template `.armrc` for your team:
 
 ```ini
-# Mario Team ARM Configuration Template
+# Team ARM Configuration Template
 
 [registries]
-mario-team = https://github.com/mario-team/coding-rules.example
-mario-corp = mario-team-rules
+team-registry = https://github.com/jomadu/ai-rules-manager-test-git-registry
+corp-registry = team-rules-bucket
 
-[registries.mario-team]
+[registries.team-registry]
 type = git
 concurrency = 2
 rateLimit = 15/minute
 
-[registries.mario-corp]
+[registries.corp-registry]
 type = s3
 region = us-east-1
 concurrency = 5
@@ -79,14 +79,10 @@ maxSize = 500MB
     }
   },
   "rulesets": {
-    "mario-team": {
-      "typescript-rules": {
+    "team-registry": {
+      "rules": {
         "version": "^2.0.0",
-        "patterns": ["typescript/*.md"]
-      },
-      "react-rules": {
-        "version": "^1.5.0",
-        "patterns": ["react/*.md", "components/*.mdc"]
+        "patterns": ["*.md"]
       }
     }
   }
@@ -101,26 +97,25 @@ Create an onboarding script for new team members:
 
 ```bash
 #!/bin/bash
-# mario-team-setup.sh
+# team-setup.sh
 
-echo "Setting up Mario Team ARM configuration..."
+echo "Setting up Team ARM configuration..."
 
 # Add team registries
-arm config add registry mario-team https://github.com/mario-team/coding-rules.example --type=git
-arm config add registry mario-corp mario-team-rules --type=s3 --region=us-east-1
+arm config add registry team-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
+arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
 
 # Set default registry
-arm config set registries.default mario-team
+arm config set registries.default team-registry
 
 # Add channels
 arm config add channel cursor --directories ~/.cursor/rules
 arm config add channel q --directories ~/.aws/amazonq/rules
 
 # Install team rulesets
-arm install typescript-rules --patterns "typescript/*.md"
-arm install react-rules --patterns "react/*.md,components/*.mdc"
+arm install rules --patterns "*.md"
 
-echo "Mario Team setup complete! 🍄"
+echo "Team setup complete!"
 ```
 
 ### Verification
@@ -162,7 +157,7 @@ arm outdated
 arm update
 
 # Update specific ruleset
-arm update typescript-rules
+arm update rules
 ```
 
 ## Enterprise Deployment
@@ -187,7 +182,7 @@ jobs:
 
       - name: Configure ARM
         run: |
-          arm config add registry mario-corp mario-team-rules --type=s3 --region=us-east-1
+          arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
           arm config add channel cursor --directories ./.cursor/rules
 
       - name: Install rulesets
@@ -227,13 +222,13 @@ Choose a versioning strategy for your team:
 
 ```bash
 # Conservative: Pin exact versions
-arm install typescript-rules@2.1.0
+arm install rules@2.0.0
 
 # Flexible: Use semver ranges
-arm install typescript-rules@^2.0.0
+arm install rules@^2.0.0
 
 # Latest: Always use newest (not recommended for production)
-arm install typescript-rules@latest
+arm install rules@latest
 ```
 
 ### Registry Access Control
@@ -264,19 +259,19 @@ arm outdated --json
 # Team member has wrong version
 $ arm list
 cursor:
-  mario-team:
-    - typescript-rules@1.9.0  # Should be 2.1.0
+  team-registry:
+    - rules@1.9.0  # Should be 2.0.0
 ```
 
 **Solution**: Update to latest:
 ```bash
-arm update typescript-rules
+arm update rules
 ```
 
 ### Registry Access Issues
 
 ```bash
-Error [AUTH]: Access denied to registry 'mario-team'
+Error [AUTH]: Access denied to registry 'team-registry'
 Details: HTTP 403 - insufficient permissions
 ```
 

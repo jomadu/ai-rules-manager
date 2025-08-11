@@ -31,10 +31,10 @@ This creates `.armrc` and `arm.json` stub files in your current directory.
 
 ### 2. Configure Your First Registry
 
-Add a Git registry (we'll use a fake Mario-themed example):
+Add a Git registry:
 
 ```bash
-arm config add registry default https://github.com/mushroom-kingdom/cursor-rules.example --type=git
+arm config add registry default https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 ```
 
 ### 3. Configure Channels
@@ -51,10 +51,10 @@ arm config add channel q --directories ~/.aws/amazonq/rules
 
 ### 4. Install Your First Ruleset
 
-Install a Mario-themed ruleset:
+Install a ruleset:
 
 ```bash
-arm install power-up-rules --patterns "rules/*.md"
+arm install rules --patterns "*.md"
 ```
 
 ### 5. Verify Installation
@@ -68,12 +68,12 @@ arm list
 You should see:
 ```
 cursor:
-  mushroom-kingdom:
-    - power-up-rules@1.0.0
+  default:
+    - rules@2.0.0
 
 q:
-  mushroom-kingdom:
-    - power-up-rules@1.0.0
+  default:
+    - rules@2.0.0
 ```
 
 ## What Just Happened?
@@ -94,7 +94,7 @@ q:
 ### Registry Not Found
 ```bash
 $ arm install power-up-rules
-Error [REGISTRY]: Registry 'mushroom-kingdom' not configured
+Error [REGISTRY]: Registry 'default' not configured
 ```
 **Solution**: Make sure you've added the registry with `arm config add registry`.
 
