@@ -432,9 +432,6 @@ func (g *GitRegistry) parseGitHubURL() (owner, repo string, err error) {
 
 // matchesPatterns checks if a filename matches any of the given patterns (legacy function)
 func (g *GitRegistry) matchesPatterns(filename string, patterns []string) bool {
-	if len(patterns) == 0 {
-		return true // Empty patterns match everything
-	}
 	return g.matchesAnyPattern(filename, patterns)
 }
 
@@ -618,11 +615,22 @@ func (g *GitRegistry) findMatchingFiles(repoDir string, patterns []string) ([]st
 
 // matchesAnyPattern checks if a file path matches any of the given patterns
 func (g *GitRegistry) matchesAnyPattern(filePath string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return true // Empty patterns match everything
+	}
+
 	for _, pattern := range patterns {
+		// Direct filepath.Match for exact patterns
 		if matched, _ := filepath.Match(pattern, filePath); matched {
 			return true
 		}
-		// Also support glob patterns with **
+
+		// Check if pattern matches just the filename
+		if matched, _ := filepath.Match(pattern, filepath.Base(filePath)); matched {
+			return true
+		}
+
+		// Handle glob patterns with ** and *
 		if g.matchesGlobPattern(filePath, pattern) {
 			return true
 		}
@@ -632,17 +640,33 @@ func (g *GitRegistry) matchesAnyPattern(filePath string, patterns []string) bool
 
 // matchesGlobPattern handles glob patterns including **
 func (g *GitRegistry) matchesGlobPattern(filePath, pattern string) bool {
-	// Handle ** patterns (simplified)
+	// Handle ** patterns
 	if strings.Contains(pattern, "**") {
-		// Convert glob pattern to regex (simplified)
-		regexPattern := strings.ReplaceAll(pattern, "**", ".*")
-		regexPattern = strings.ReplaceAll(regexPattern, "*", "[^/]*")
+		// Convert glob pattern to regex
+		regexPattern := regexp.QuoteMeta(pattern)
+		// Replace ** with .* (matches any characters including /)
+		regexPattern = strings.ReplaceAll(regexPattern, `\*\*`, ".*")
+		// Replace single * with [^/]* (matches any characters except /)
+		regexPattern = strings.ReplaceAll(regexPattern, `\*`, "[^/]*")
 		regexPattern = "^" + regexPattern + "$"
 
 		if matched, _ := regexp.MatchString(regexPattern, filePath); matched {
 			return true
 		}
 	}
+
+	// Handle simple * patterns
+	if strings.Contains(pattern, "*") && !strings.Contains(pattern, "**") {
+		// For patterns like *.md, check if it matches the full path or just the filename
+		if matched, _ := filepath.Match(pattern, filepath.Base(filePath)); matched {
+			return true
+		}
+		// Also check the full path
+		if matched, _ := filepath.Match(pattern, filePath); matched {
+			return true
+		}
+	}
+
 	return false
 }
 
