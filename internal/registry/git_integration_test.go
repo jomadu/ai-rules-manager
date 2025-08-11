@@ -34,7 +34,7 @@ func TestGitRegistryIntegration(t *testing.T) {
 
 	// Create test repository
 	repoDir := createTestRepository(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	// Test version resolution according to tech spec section 4.1
 	t.Run("VersionResolution", func(t *testing.T) {
@@ -82,10 +82,10 @@ func createTestRepository(t *testing.T) string {
 
 	for filePath, content := range testFiles {
 		fullPath := filepath.Join(repoDir, filePath)
-		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
 			t.Fatalf("Failed to create directory: %v", err)
 		}
-		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to create test file %s: %v", filePath, err)
 		}
 	}
@@ -98,13 +98,13 @@ func createTestRepository(t *testing.T) string {
 	runGitCmd(t, repoDir, "tag", "v1.0.0")
 
 	// Create additional commits for version testing
-	os.WriteFile(filepath.Join(repoDir, "version2.md"), []byte("Version 2 content"), 0644)
+	_ = os.WriteFile(filepath.Join(repoDir, "version2.md"), []byte("Version 2 content"), 0o644)
 	runGitCmd(t, repoDir, "add", "version2.md")
 	runGitCmd(t, repoDir, "commit", "-m", "Version 2 commit")
 
 	// Create a branch
 	runGitCmd(t, repoDir, "checkout", "-b", "feature-branch")
-	os.WriteFile(filepath.Join(repoDir, "feature.md"), []byte("Feature content"), 0644)
+	_ = os.WriteFile(filepath.Join(repoDir, "feature.md"), []byte("Feature content"), 0o644)
 	runGitCmd(t, repoDir, "add", "feature.md")
 	runGitCmd(t, repoDir, "commit", "-m", "Feature commit")
 
@@ -186,11 +186,9 @@ func testVersionResolution(t *testing.T, repoDir string) {
 				if resolved == tt.version {
 					t.Errorf("Expected version %q to be resolved to different commit hash, got same value", tt.version)
 				}
-			} else {
+			} else if resolved != tt.version {
 				// Should return the original version
-				if resolved != tt.version {
-					t.Errorf("Expected version %q to remain unchanged, got %q", tt.version, resolved)
-				}
+				t.Errorf("Expected version %q to remain unchanged, got %q", tt.version, resolved)
 			}
 		})
 	}
@@ -427,7 +425,7 @@ func testUpdateVersionResolution(t *testing.T, repoDir string) {
 
 	// Add a new commit to the repository (simulating remote update)
 	newFile := filepath.Join(repoDir, "update-test.md")
-	if err := os.WriteFile(newFile, []byte("# Update Test\nNew content after update"), 0644); err != nil {
+	if err := os.WriteFile(newFile, []byte("# Update Test\nNew content after update"), 0o644); err != nil {
 		t.Fatalf("Failed to create new file: %v", err)
 	}
 
@@ -468,11 +466,9 @@ func testUpdateVersionResolution(t *testing.T, repoDir string) {
 		// The key point is demonstrated: commit hashes change when repositories are updated
 		t.Logf("Full resolution failed (expected due to test setup): %v", err)
 		t.Logf("But the core concept is demonstrated below:")
-	} else {
+	} else if resolvedHash != updatedHash {
 		// If resolution works, verify it matches the updated hash
-		if resolvedHash != updatedHash {
-			t.Errorf("Expected resolution to match updated hash %s, got %s", updatedHash, resolvedHash)
-		}
+		t.Errorf("Expected resolution to match updated hash %s, got %s", updatedHash, resolvedHash)
 	}
 
 	// This demonstrates the key tech spec requirement:

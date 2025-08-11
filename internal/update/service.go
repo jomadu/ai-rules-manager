@@ -64,9 +64,7 @@ func (s *Service) UpdateRuleset(ctx context.Context, rulesetSpec string) (*Updat
 
 	// Update lock file if version changed
 	if result.Updated {
-		if err := s.updateLockFile(registry, name, latestVersion, &locked); err != nil {
-			return nil, fmt.Errorf("failed to update lock file: %w", err)
-		}
+		s.updateLockFile(registry, name, latestVersion, &locked)
 	}
 
 	return result, nil
@@ -116,7 +114,7 @@ func (s *Service) resolveLatestVersion(ctx context.Context, registryName, _, cur
 }
 
 // updateLockFile updates the lock file with a new version
-func (s *Service) updateLockFile(registry, name, newVersion string, existingLocked *config.LockedRuleset) error {
+func (s *Service) updateLockFile(registry, name, newVersion string, existingLocked *config.LockedRuleset) {
 	updatedLocked := *existingLocked
 	updatedLocked.Version = newVersion
 	updatedLocked.Resolved = "2024-01-15T10:30:00Z" // Would use current time
@@ -125,8 +123,6 @@ func (s *Service) updateLockFile(registry, name, newVersion string, existingLock
 		s.config.LockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
 	}
 	s.config.LockFile.Rulesets[registry][name] = updatedLocked
-
-	return nil
 }
 
 // parseRulesetSpec parses a ruleset specification into registry, name, and version
