@@ -512,6 +512,13 @@ func (g *GitRegistry) resolveAndCheckout(w *git.Worktree, repo *git.Repository, 
 		return nil
 	}
 
+	// Try as tag name with 'v' prefix
+	if err := w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName("refs/tags/v" + version),
+	}); err == nil {
+		return nil
+	}
+
 	// Try as commit hash
 	if err := w.Checkout(&git.CheckoutOptions{
 		Hash: plumbing.NewHash(version),
