@@ -57,6 +57,26 @@ arm list
 - [Team Setup](docs/user/team-setup.md) - Deploy ARM across your team
 - [Configuration](docs/user/configuration.md) - Advanced configuration options
 
+## Testing
+
+ARM includes automated testing scripts for comprehensive workflow validation:
+
+```bash
+# Create test repository with version history
+./tests/integration/git/setup-test-repos.sh
+
+# Run all test scenarios
+./tests/integration/git/test-workflow.sh all "https://github.com/USERNAME/ai-rules-manager-test-git-registry"
+```
+
+The testing suite validates:
+- **Version Resolution** - Latest, semantic versioning, and breaking changes
+- **Pattern Matching** - File patterns, exclusions, and complex combinations
+- **Registry Integration** - Git-based repository workflows
+- **Content Verification** - Ensures correct files are installed with proper content
+
+See [Testing Documentation](tests/integration/git/README.md) for detailed usage.
+
 ## Contributing
 
 ARM is designed for community adoption. Contributions welcome for new registry types, AI tool integrations, and feature improvements.
