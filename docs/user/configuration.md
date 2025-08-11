@@ -159,17 +159,63 @@ arm config set network.retry.maxAttempts 5
 arm config set network.retry.backoffMultiplier 2.0
 ```
 
-### Cache Settings
+### Cache Configuration
+
+Configure content-based caching to improve performance:
 
 ```bash
-# Change cache location
-arm config set cache.path ~/my-arm-cache
+# Set cache directory (supports environment variables)
+arm config set cache.path $HOME/.arm/cache
 
-# Increase cache size
-arm config set cache.maxSize 2GB
+# Set maximum cache size (in bytes, 0 = unlimited)
+arm config set cache.maxSize 1073741824  # 1GB
 
-# Adjust TTL (time to live)
-arm config set cache.ttl 7200
+# Set cache entry time-to-live
+arm config set cache.ttl 24h
+
+# Set cleanup interval
+arm config set cache.cleanupInterval 6h
+```
+
+#### Registry-Specific Cache Settings
+
+Override cache settings for specific registries:
+
+```bash
+# Disable caching for a registry (registry will not use cache at all)
+arm config set cache.slow-registry.enabled false
+
+# Set shorter TTL for frequently updated registry
+arm config set cache.dev-registry.ttl 1h
+
+# Set smaller cache size for large registry
+arm config set cache.big-registry.maxSize 536870912  # 512MB
+```
+
+#### Cache Configuration Examples
+
+Example `.armrc` cache configuration:
+
+```ini
+# Global cache settings
+[cache]
+path = $HOME/.arm/cache
+maxSize = 1073741824    # 1GB
+ttl = 24h
+cleanupInterval = 6h
+
+# Registry-specific overrides
+[cache.dev-registry]
+enabled = true
+ttl = 1h                # Shorter TTL for dev
+
+[cache.archive-registry]
+enabled = true
+ttl = 168h              # 1 week for archives
+maxSize = 2147483648    # 2GB for large archives
+
+[cache.temp-registry]
+enabled = false         # Disable caching
 ```
 
 ## Configuration Validation

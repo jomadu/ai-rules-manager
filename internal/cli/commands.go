@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/max-dunn/ai-rules-manager/internal/cache"
 	"github.com/max-dunn/ai-rules-manager/internal/config"
 	"github.com/max-dunn/ai-rules-manager/internal/install"
 	"github.com/max-dunn/ai-rules-manager/internal/registry"
@@ -316,8 +317,8 @@ func newUpdateCommand(_ *config.Config) *cobra.Command {
 func newCleanCommand(_ *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean [target]",
-		Short: "Clean cache and unused rulesets",
-		Long:  "Clean cache and unused rulesets. Targets: cache, unused, all",
+		Short: "Clean unused rulesets",
+		Long:  "Clean unused rulesets. Targets: cache (no-op), unused, all",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			global, _ := cmd.Flags().GetBool("global")
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
@@ -438,19 +439,34 @@ func handleConfigList(_ bool) error {
 		}
 	}
 
-	if len(cfg.CacheConfig) > 0 {
-		fmt.Println("\n[cache]")
-		for key, value := range cfg.CacheConfig {
-			fmt.Printf("%s = %s\n", key, value)
-		}
-	}
-
 	return nil
 }
 
 func handleAddRegistry(name, url, registryType string, global bool, options map[string]string) error {
 	if registryType == "" {
 		return fmt.Errorf("registry type is required")
+	}
+
+	// Validate git-local registry path immediately
+	if registryType == "git-local" {
+		if url == "" {
+			return fmt.Errorf("git-local registry requires a local path")
+		}
+
+		// Resolve and validate the path
+		resolvedPath, err := config.ResolvePath(url)
+		if err != nil {
+			return fmt.Errorf("invalid path for git-local registry: %w", err)
+		}
+
+		// Check if it's a Git repository
+		gitDir := filepath.Join(resolvedPath, ".git")
+		if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+			return fmt.Errorf("path is not a Git repository (no .git directory found): %s", resolvedPath)
+		}
+
+		// Use the resolved path for storage
+		url = resolvedPath
 	}
 
 	// Add to registries section
@@ -614,8 +630,6 @@ func getConfigValue(cfg *config.Config, key string) string {
 		}
 	case "network":
 		return cfg.NetworkConfig[field]
-	case "cache":
-		return cfg.CacheConfig[field]
 	default:
 		if typeConfig, exists := cfg.TypeDefaults[section]; exists {
 			return typeConfig[field]
@@ -798,14 +812,43 @@ func handleSearch(query, registries string, jsonOutput bool, limit int) error {
 		return fmt.Errorf("no matching registries found")
 	}
 
+	// Perform search across registries
+	allResults, searchErrors := performSearch(cfg, targetRegistries, query, limit)
+
+	// Handle JSON output
 	if jsonOutput {
-		fmt.Printf(`{"query":"%s","registries":%v,"limit":%d,"results":[]}`, query, targetRegistries, limit)
+		data, _ := json.MarshalIndent(map[string]interface{}{
+			"query":      query,
+			"registries": targetRegistries,
+			"limit":      limit,
+			"results":    allResults,
+			"errors":     searchErrors,
+		}, "", "  ")
+		fmt.Println(string(data))
 		return nil
 	}
 
+	// Display search results in table format
 	fmt.Printf("Searching for '%s' in registries: %s\n", query, strings.Join(targetRegistries, ", "))
 	fmt.Printf("Limit: %d results\n\n", limit)
-	fmt.Println("No results found (search functionality not yet implemented)")
+
+	if len(allResults) == 0 {
+		fmt.Println("No results found")
+	} else {
+		fmt.Printf("%-20s %-30s %s\n", "REGISTRY", "RULESET", "MATCH")
+		fmt.Printf("%-20s %-30s %s\n", "--------", "-------", "-----")
+		for _, result := range allResults {
+			fmt.Printf("%-20s %-30s %s\n", result.RegistryName, result.RulesetName, result.Match)
+		}
+	}
+
+	// Show warnings for failed registries
+	if len(searchErrors) > 0 {
+		fmt.Printf("\nWarnings:\n")
+		for registry, errMsg := range searchErrors {
+			fmt.Printf("  %s: %s\n", registry, errMsg)
+		}
+	}
 
 	return nil
 }
@@ -910,6 +953,64 @@ func handleList(global, local, jsonOutput bool, channels string) error {
 	fmt.Println("\nActual installation status: (not yet implemented)")
 
 	return nil
+}
+
+// performSearch executes search across multiple registries
+func performSearch(cfg *config.Config, targetRegistries []string, query string, limit int) (results []registry.SearchResult, errors map[string]string) {
+	var allResults []registry.SearchResult
+	searchErrors := make(map[string]string)
+
+	// Create cache manager
+	cacheManager := cache.NewManager(cfg.CacheConfig.Path)
+
+	for _, registryName := range targetRegistries {
+		// Create registry instance
+		registryConfig := &registry.RegistryConfig{
+			Name: registryName,
+			Type: cfg.RegistryConfigs[registryName]["type"],
+			URL:  cfg.Registries[registryName],
+		}
+
+		// Create auth configuration
+		authConfig := &registry.AuthConfig{}
+		if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
+			authConfig.Token = regConfig["authToken"]
+			authConfig.Region = regConfig["region"]
+			authConfig.Profile = regConfig["profile"]
+		}
+
+		// Create registry instance
+		reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cacheManager, cfg.CacheConfig, registryName)
+		if err != nil {
+			searchErrors[registryName] = fmt.Sprintf("failed to create registry: %v", err)
+			continue
+		}
+
+		// Check if registry supports search
+		searcher, ok := reg.(registry.Searcher)
+		if !ok {
+			searchErrors[registryName] = "search not supported for this registry type"
+			_ = reg.Close()
+			continue
+		}
+
+		// Perform search
+		results, err := searcher.Search(context.Background(), query)
+		if err != nil {
+			searchErrors[registryName] = fmt.Sprintf("search failed: %v", err)
+		} else {
+			allResults = append(allResults, results...)
+		}
+
+		_ = reg.Close()
+	}
+
+	// Apply limit
+	if len(allResults) > limit {
+		allResults = allResults[:limit]
+	}
+
+	return allResults, searchErrors
 }
 
 func getTargetRegistries(allRegistries map[string]string, filter string) []string {
@@ -1044,7 +1145,7 @@ func handleOutdated(_, jsonOutput bool) error {
 	for registry, rulesets := range cfg.LockFile.Rulesets {
 		for name := range rulesets {
 			rulesetSpec := fmt.Sprintf("%s/%s", registry, name)
-			result, err := updateService.UpdateRuleset(context.Background(), rulesetSpec)
+			result, err := updateService.CheckOutdated(context.Background(), rulesetSpec)
 			if err != nil {
 				continue // Skip failed resolutions
 			}
@@ -1141,7 +1242,6 @@ func handleUpdateRuleset(rulesetSpec string, _, dryRun bool) error {
 
 	if result.Updated {
 		fmt.Printf("Updating %s/%s %s → %s...\n", result.Registry, result.Ruleset, result.PreviousVersion, result.Version)
-		fmt.Printf("  Invalidating cache for %s registry\n", result.Registry)
 		fmt.Printf("  Installing new version...\n")
 		fmt.Printf("✓ Updated %s/%s to %s\n", result.Registry, result.Ruleset, result.Version)
 	} else {
@@ -1276,16 +1376,12 @@ func handleClean(target string, global, dryRun, force bool) error {
 		fmt.Printf("Would clean target: %s\n", target)
 		switch target {
 		case "cache":
-			fmt.Println("  - Remove all cached registry data")
-			fmt.Println("  - Remove downloaded tar.gz files")
-			fmt.Println("  - Remove Git repository clones")
+			fmt.Println("  - No cache to clean (caching disabled)")
 		case "unused":
 			fmt.Println("  - Remove rulesets not in any manifest")
 			fmt.Println("  - Clean up empty ARM directories")
 		case "all":
-			fmt.Println("  - Remove all cached registry data")
-			fmt.Println("  - Remove downloaded tar.gz files")
-			fmt.Println("  - Remove Git repository clones")
+			fmt.Println("  - No cache to clean (caching disabled)")
 			fmt.Println("  - Remove rulesets not in any manifest")
 			fmt.Println("  - Clean up empty ARM directories")
 		}
@@ -1347,37 +1443,8 @@ func handleClean(target string, global, dryRun, force bool) error {
 }
 
 func cleanCache() (int, error) {
-	// Get cache path from config or use default
-	cachePath := filepath.Join(os.Getenv("HOME"), ".arm", "cache")
-
-	// Load config to get custom cache path if set
-	if cfg, err := config.Load(); err == nil {
-		if customPath, exists := cfg.CacheConfig["path"]; exists && customPath != "" {
-			cachePath = expandEnvVars(customPath)
-		}
-	}
-
-	// Check if cache directory exists
-	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
-		return 0, nil // No cache to clean
-	}
-
-	// Count items before removal
-	count := 0
-	_ = filepath.Walk(cachePath, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() {
-			count++
-		}
-		return nil
-	})
-
-	// Remove entire cache directory
-	if err := os.RemoveAll(cachePath); err != nil {
-		return 0, fmt.Errorf("failed to remove cache directory: %w", err)
-	}
-
-	fmt.Printf("  Removed cache directory: %s\n", cachePath)
-	return count, nil
+	// No cache to clean since caching is disabled
+	return 0, nil
 }
 
 func cleanUnused(_ bool) (int, error) {
@@ -1495,8 +1562,11 @@ func performGitInstallation(cfg *config.Config, registryName, rulesetName, versi
 		authConfig.Profile = regConfig["profile"]
 	}
 
-	// Create Git registry instance
-	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	// Create cache manager with configured path
+	cacheManager := cache.NewManager(cfg.CacheConfig.Path)
+
+	// Create Git registry instance with cache
+	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cacheManager, cfg.CacheConfig, registryName)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
@@ -1544,11 +1614,12 @@ func performGitInstallation(cfg *config.Config, registryName, rulesetName, versi
 	// Install using resolved version
 	installer := install.New(cfg)
 	req := &install.InstallRequest{
-		Registry:    registryName,
-		Ruleset:     rulesetName,
-		Version:     result.ResolvedVersion, // Use resolved version for installation
-		SourceFiles: result.Files,
-		Channels:    targetChannels,
+		Registry:        registryName,
+		Ruleset:         rulesetName,
+		Version:         result.VersionSpec,     // Original version spec (e.g., "latest")
+		ResolvedVersion: result.ResolvedVersion, // Actual commit hash
+		SourceFiles:     result.Files,
+		Channels:        targetChannels,
 	}
 
 	installResult, err := installer.Install(req)
@@ -1586,8 +1657,11 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 		authConfig.Profile = regConfig["profile"]
 	}
 
-	// Create registry instance
-	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	// Create cache manager with configured path
+	cacheManager := cache.NewManager(cfg.CacheConfig.Path)
+
+	// Create registry instance with cache
+	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cacheManager, cfg.CacheConfig, registryName)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}

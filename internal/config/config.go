@@ -18,13 +18,15 @@ type Config struct {
 	RegistryConfigs map[string]map[string]string // [registries.name] sections
 	TypeDefaults    map[string]map[string]string // [git], [s3], etc. sections
 	NetworkConfig   map[string]string            // [network] section
-	CacheConfig     map[string]string            // [cache] section
 
 	// JSON configuration
 	Channels map[string]ChannelConfig          // channels from arm.json
 	Rulesets map[string]map[string]RulesetSpec // rulesets from arm.json
 	Engines  map[string]string                 // engines from arm.json
 	LockFile *LockFile                         // arm.lock content
+
+	// Cache configuration (loaded from INI sections)
+	CacheConfig *CacheConfig // cache settings
 }
 
 // ChannelConfig represents a channel configuration
@@ -95,7 +97,6 @@ func loadConfigFromPaths(iniPath, jsonPath, lockPath string) (*Config, error) {
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
-		CacheConfig:     make(map[string]string),
 		Channels:        make(map[string]ChannelConfig),
 		Rulesets:        make(map[string]map[string]RulesetSpec),
 		Engines:         make(map[string]string),
@@ -160,6 +161,7 @@ func (c *Config) processSection(section *ini.Section) error {
 		if parts[0] == "registries" {
 			return c.processRegistryConfig(parts[1], section)
 		}
+
 		return fmt.Errorf("unsupported nested section: %s", sectionName)
 	}
 
@@ -167,12 +169,10 @@ func (c *Config) processSection(section *ini.Section) error {
 	switch sectionName {
 	case "registries":
 		return c.processRegistries(section)
-	case "git", "https", "s3", "gitlab", "local":
+	case "git", "https", "s3", "gitlab", "local", "cache":
 		return c.processTypeDefaults(sectionName, section)
 	case "network":
 		return c.processNetworkConfig(section)
-	case "cache":
-		return c.processCacheConfig(section)
 	default:
 		return fmt.Errorf("unknown section: %s", sectionName)
 	}
@@ -222,15 +222,6 @@ func (c *Config) processNetworkConfig(section *ini.Section) error {
 	return nil
 }
 
-// processCacheConfig processes the [cache] section
-func (c *Config) processCacheConfig(section *ini.Section) error {
-	for _, key := range section.Keys() {
-		value := expandEnvVars(key.String())
-		c.CacheConfig[key.Name()] = value
-	}
-	return nil
-}
-
 // mergeConfigs merges two configurations with local taking precedence at key level
 func mergeConfigs(global, local *Config) *Config {
 	merged := &Config{
@@ -238,7 +229,6 @@ func mergeConfigs(global, local *Config) *Config {
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
-		CacheConfig:     make(map[string]string),
 		Channels:        make(map[string]ChannelConfig),
 		Rulesets:        make(map[string]map[string]RulesetSpec),
 		Engines:         make(map[string]string),
@@ -253,9 +243,8 @@ func mergeConfigs(global, local *Config) *Config {
 	// Merge type defaults (nested map merge)
 	mergeNestedStringMaps(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults)
 
-	// Merge network and cache configs (key-level merge)
+	// Merge network config (key-level merge)
 	mergeStringMaps(merged.NetworkConfig, global.NetworkConfig, local.NetworkConfig)
-	mergeStringMaps(merged.CacheConfig, global.CacheConfig, local.CacheConfig)
 
 	// Merge engines (key-level merge)
 	mergeStringMaps(merged.Engines, global.Engines, local.Engines)
@@ -421,6 +410,9 @@ func validateConfig(cfg *Config) error {
 		return fmt.Errorf("channels: %w", err)
 	}
 
+	// Load cache configuration
+	cfg.CacheConfig = cfg.LoadCacheConfig()
+
 	return nil
 }
 
@@ -436,7 +428,7 @@ func validateRegistry(name, url string, config map[string]string) error {
 	}
 
 	// Validate registry type
-	validTypes := []string{"git", "https", "s3", "gitlab", "local"}
+	validTypes := []string{"git", "git-local", "https", "s3", "gitlab", "local"}
 	if !contains(validTypes, registryType) {
 		return fmt.Errorf("unknown registry type '%s'. Supported types: %s", registryType, strings.Join(validTypes, ", "))
 	}
@@ -471,6 +463,10 @@ func validateRegistry(name, url string, config map[string]string) error {
 	case "local":
 		if url == "" {
 			return fmt.Errorf("missing registry path for Local registry")
+		}
+	case "git-local":
+		if url == "" {
+			return fmt.Errorf("missing registry path for Git-Local registry")
 		}
 	}
 
@@ -619,9 +615,11 @@ func generateARMRCStub(path string) error {
 
 # Cache configuration
 # [cache]
-# path = ~/.arm/cache
-# maxSize = 1GB
-# ttl = 3600
+# path = $HOME/.arm/cache        # Cache root directory
+# maxSize = 1073741824           # Max cache size in bytes (1GB)
+# ttl = 24h                      # Time-to-live for cache entries
+# cleanupInterval = 6h           # How often to run cleanup
+
 `
 
 	return os.WriteFile(path, []byte(stubContent), 0o600)

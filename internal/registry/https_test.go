@@ -353,8 +353,9 @@ func TestHTTPSRegistry_ManifestCaching(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	if requestCount != 1 {
-		t.Errorf("Expected 1 request (cached), got %d", requestCount)
+	// Since caching is disabled, expect 2 requests
+	if requestCount != 2 {
+		t.Errorf("Expected 2 requests (no caching), got %d", requestCount)
 	}
 }
 

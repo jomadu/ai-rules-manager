@@ -5,8 +5,7 @@ Guidelines for managing task lists in markdown files to track progress on comple
 ## Task Implementation
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y"
 - **Completion protocol:**
-  1. Start the sub-task by asking the user clarifying questions about the sub-task, and how they'd like it implemented. provide options, tradeoffs, and your recommendation.
-  2. When you finish a **sub‑task**, follow this sequence:
+  1. When you finish a **task**, follow this sequence:
     - **First**: Mark it as completed by changing `[ ]` to `[x]`
     - **Run tests**: Run relevant tests for the subtask (`pytest path/to/test`, `npm test -- path/to/test`, etc.)
     - **Only if tests pass**: Stage changes (`git add .`)
@@ -21,7 +20,7 @@ Guidelines for managing task lists in markdown files to track progress on comple
         ```
         git commit -m "feat: implement user validation" -m "- Add email format validation" -m "- Include unit tests" -m "Subtask 1.2 from PRD"
         ```
-  3. Once all the subtasks are marked completed, mark the **parent task** as completed.
+  2. Once all the subtasks are marked completed, mark the **parent task** as completed.
 - Stop after each sub‑task and wait for the user's go‑ahead.
 
 ## Task List Maintenance

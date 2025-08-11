@@ -9,17 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 // HTTPSRegistry implements the Registry interface for HTTPS registries with manifest.json discovery
 type HTTPSRegistry struct {
-	config           *RegistryConfig
-	auth             *AuthConfig
-	client           *http.Client
-	baseURL          string
-	manifest         *HTTPSManifest
-	manifestCachedAt time.Time
+	config  *RegistryConfig
+	auth    *AuthConfig
+	client  *http.Client
+	baseURL string
 }
 
 // HTTPSManifest represents the manifest.json structure
@@ -202,14 +199,8 @@ func (h *HTTPSRegistry) Close() error {
 	return nil
 }
 
-// getManifest fetches and caches the manifest.json file
+// getManifest fetches the manifest.json file
 func (h *HTTPSRegistry) getManifest(ctx context.Context) (*HTTPSManifest, error) {
-	// Check if we have a cached manifest that's still valid (1 hour TTL)
-	if h.manifest != nil && time.Since(h.manifestCachedAt) < time.Hour {
-		return h.manifest, nil
-	}
-
-	// Fetch fresh manifest
 	url := fmt.Sprintf("%s/manifest.json", h.baseURL)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
@@ -240,10 +231,6 @@ func (h *HTTPSRegistry) getManifest(ctx context.Context) (*HTTPSManifest, error)
 	if manifest.Rulesets == nil {
 		return nil, fmt.Errorf("manifest.json missing required 'rulesets' field")
 	}
-
-	// Cache the manifest
-	h.manifest = &manifest
-	h.manifestCachedAt = time.Now()
 
 	return &manifest, nil
 }

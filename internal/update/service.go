@@ -35,6 +35,36 @@ func New(cfg *config.Config) *Service {
 	}
 }
 
+// CheckOutdated checks if a ruleset is outdated by comparing installed version with latest available
+func (s *Service) CheckOutdated(ctx context.Context, rulesetSpec string) (*UpdateResult, error) {
+	registry, name, _ := parseRulesetSpec(rulesetSpec)
+
+	// Get current locked version
+	if s.config.LockFile == nil || s.config.LockFile.Rulesets[registry] == nil {
+		return nil, fmt.Errorf("ruleset '%s/%s' is not installed", registry, name)
+	}
+
+	locked := s.config.LockFile.Rulesets[registry][name]
+	currentVersion := locked.Version
+
+	// Always resolve against latest available version for outdated check
+	latestVersion, err := s.resolveLatestVersion(ctx, registry, name, currentVersion, "latest")
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve latest version: %w", err)
+	}
+
+	result := &UpdateResult{
+		Registry:        registry,
+		Ruleset:         name,
+		Version:         latestVersion,
+		PreviousVersion: currentVersion,
+		Updated:         latestVersion != currentVersion,
+	}
+
+	// Don't perform actual update for outdated check
+	return result, nil
+}
+
 // UpdateRuleset updates a single ruleset to the latest version matching its constraint
 func (s *Service) UpdateRuleset(ctx context.Context, rulesetSpec string) (*UpdateResult, error) {
 	registry, name, _ := parseRulesetSpec(rulesetSpec)
@@ -104,18 +134,32 @@ func (s *Service) resolveLatestVersion(ctx context.Context, registryName, _, cur
 	defer func() { _ = reg.Close() }()
 
 	// For Git registries, resolve the version spec
-	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil && regConfig["type"] == "git" {
-		gitReg, ok := reg.(*registry.GitRegistry)
-		if !ok {
-			return currentVersion, fmt.Errorf("expected Git registry but got %T", reg)
-		}
+	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil && (regConfig["type"] == "git" || regConfig["type"] == "git-local") {
+		if regConfig["type"] == "git" {
+			gitReg, ok := reg.(*registry.GitRegistry)
+			if !ok {
+				return currentVersion, fmt.Errorf("expected Git registry but got %T", reg)
+			}
 
-		resolvedVersion, err := gitReg.ResolveVersion(ctx, versionSpec)
-		if err != nil {
-			return currentVersion, fmt.Errorf("failed to resolve version: %w", err)
-		}
+			resolvedVersion, err := gitReg.ResolveVersion(ctx, versionSpec)
+			if err != nil {
+				return currentVersion, fmt.Errorf("failed to resolve version: %w", err)
+			}
 
-		return resolvedVersion, nil
+			return resolvedVersion, nil
+		} else if regConfig["type"] == "git-local" {
+			gitLocalReg, ok := reg.(*registry.GitLocalRegistry)
+			if !ok {
+				return currentVersion, fmt.Errorf("expected GitLocal registry but got %T", reg)
+			}
+
+			resolvedVersion, err := gitLocalReg.ResolveVersion(ctx, versionSpec)
+			if err != nil {
+				return currentVersion, fmt.Errorf("failed to resolve version: %w", err)
+			}
+
+			return resolvedVersion, nil
+		}
 	}
 
 	// For other registry types, return current version
@@ -181,6 +225,21 @@ func (s *Service) downloadRuleset(ctx context.Context, reg registry.Registry, na
 		}
 
 		result, err := gitReg.DownloadRulesetWithResult(ctx, name, version, tempDir, patterns)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Files, nil
+	}
+
+	// For Git-local registries, use structured download
+	if gitLocalReg, ok := reg.(*registry.GitLocalRegistry); ok {
+		tempDir, err := createTempDir()
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := gitLocalReg.DownloadRulesetWithResult(ctx, name, version, tempDir, patterns)
 		if err != nil {
 			return nil, err
 		}
