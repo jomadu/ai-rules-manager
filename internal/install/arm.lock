@@ -19,6 +19,14 @@
         "registry": "https://github.com/test/repo1",
         "type": "git"
       }
+    },
+    "test-registry": {
+      "copilot-rules": {
+        "version": "1.0.0",
+        "resolved": "2025-08-11T17:04:13Z",
+        "registry": "",
+        "type": ""
+      }
     }
   }
 }

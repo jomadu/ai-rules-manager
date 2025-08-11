@@ -113,47 +113,65 @@ func (i *Installer) Install(req *InstallRequest) (*InstallResult, error) {
 
 // installToChannel installs files to a specific channel directory
 func (i *Installer) installToChannel(req *InstallRequest, channelDir string) (int, error) {
-	// Create ARM namespace directory structure
-	armDir := filepath.Join(channelDir, "arm")
-	registryDir := filepath.Join(armDir, req.Registry)
-	rulesetDir := filepath.Join(registryDir, req.Ruleset)
-	versionDir := filepath.Join(rulesetDir, req.Version)
+	// Check if this is a GitHub Copilot channel (channel dir ends with .github or contains copilot files)
+	isCopilotChannel := strings.HasSuffix(channelDir, ".github") || i.isCopilotRuleset(req.SourceFiles)
+	
+	var targetDir string
+	if isCopilotChannel {
+		// For Copilot, install files directly to the .github directory
+		targetDir = channelDir
+		// Create the target directory if it doesn't exist
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return 0, fmt.Errorf("failed to create target directory: %w", err)
+		}
+	} else {
+		// Create ARM namespace directory structure for other channels
+		armDir := filepath.Join(channelDir, "arm")
+		registryDir := filepath.Join(armDir, req.Registry)
+		rulesetDir := filepath.Join(registryDir, req.Ruleset)
+		targetDir = filepath.Join(rulesetDir, req.Version)
 
-	// Create directories if they don't exist
-	if err := os.MkdirAll(versionDir, 0o755); err != nil {
-		return 0, fmt.Errorf("failed to create version directory: %w", err)
+		// Create directories if they don't exist
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return 0, fmt.Errorf("failed to create version directory: %w", err)
+		}
+
+		// Remove previous version after successful installation
+		defer i.cleanupPreviousVersion(rulesetDir, req.Version)
 	}
 
-	// Remove previous version after successful installation
-	defer i.cleanupPreviousVersion(rulesetDir, req.Version)
-
-	// Copy files to version directory
+	// Copy files to target directory
 	filesCount := 0
 	for _, sourceFile := range req.SourceFiles {
-		// For Git registries, preserve directory structure by using relative path from temp dir
-		// For other registries, use just the filename
 		var destPath string
-		if strings.Contains(sourceFile, string(filepath.Separator)) {
-			// Extract relative path from temp directory structure
-			// sourceFile format: /tmp/arm-install-xxx/rules-new/python.mdc
-			// We want to preserve: rules-new/python.mdc
-			parts := strings.Split(sourceFile, string(filepath.Separator))
-			// Find the temp directory part and take everything after it
-			for i, part := range parts {
-				if strings.HasPrefix(part, "arm-install-") && i+1 < len(parts) {
-					// Join all parts after the temp directory
-					relativePath := filepath.Join(parts[i+1:]...)
-					destPath = filepath.Join(versionDir, relativePath)
-					break
-				}
-			}
-			// Fallback if pattern not found
-			if destPath == "" {
-				destPath = filepath.Join(versionDir, filepath.Base(sourceFile))
-			}
+		
+		if isCopilotChannel {
+			// For Copilot, use the original filename directly
+			destPath = filepath.Join(targetDir, filepath.Base(sourceFile))
 		} else {
-			// Simple filename, no directory structure
-			destPath = filepath.Join(versionDir, filepath.Base(sourceFile))
+			// For other channels, preserve directory structure by using relative path from temp dir
+			if strings.Contains(sourceFile, string(filepath.Separator)) {
+				// Extract relative path from temp directory structure
+				// sourceFile format: /tmp/arm-install-xxx/rules-new/python.mdc
+				// We want to preserve: rules-new/python.mdc
+				parts := strings.Split(sourceFile, string(filepath.Separator))
+				// Find the temp directory part and take everything after it
+				for i, part := range parts {
+					if strings.HasPrefix(part, "arm-install-") && i+1 < len(parts) {
+						// Join all parts after the temp directory
+						relativePath := filepath.Join(parts[i+1:]...)
+						destPath = filepath.Join(targetDir, relativePath)
+						break
+					}
+				}
+				// Fallback if pattern not found
+				if destPath == "" {
+					destPath = filepath.Join(targetDir, filepath.Base(sourceFile))
+				}
+			} else {
+				// Simple filename, no directory structure
+				destPath = filepath.Join(targetDir, filepath.Base(sourceFile))
+			}
 		}
 
 		// Create destination directory if needed
@@ -475,4 +493,16 @@ func (i *Installer) SyncLockFile() error {
 	}
 
 	return i.saveLockFile(lockFile)
+}
+
+// isCopilotRuleset checks if the source files contain GitHub Copilot specific files
+func (i *Installer) isCopilotRuleset(sourceFiles []string) bool {
+for _, sourceFile := range sourceFiles {
+filename := filepath.Base(sourceFile)
+if strings.HasPrefix(filename, "copilot-") && 
+   (strings.HasSuffix(filename, ".md") || strings.HasSuffix(filename, ".yml") || strings.HasSuffix(filename, ".yaml")) {
+return true
+}
+}
+return false
 }

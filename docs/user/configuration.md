@@ -89,6 +89,9 @@ arm config add channel cursor --directories "~/.cursor/rules,./project-rules"
 
 # Environment variables supported
 arm config add channel q --directories '$HOME/.aws/amazonq/rules'
+
+# GitHub Copilot channel (uses .github directory)
+arm config add channel copilot --directories .github
 ```
 
 ### Manual JSON Editing
@@ -106,6 +109,9 @@ You can also edit `arm.json` directly:
     },
     "q": {
       "directories": ["$HOME/.aws/amazonq/rules"]
+    },
+    "copilot": {
+      "directories": [".github"]
     }
   },
   "rulesets": {
@@ -114,6 +120,34 @@ You can also edit `arm.json` directly:
         "version": "^1.0.0",
         "patterns": ["rules/*.md", "docs/*.mdc"]
       }
+    }
+  }
+}
+```
+
+### GitHub Copilot Configuration
+
+GitHub Copilot supports custom instructions, chat participants, and prompts through files placed in the `.github` directory:
+
+```bash
+# Add Copilot channel
+arm config add channel copilot --directories .github
+
+# Install rulesets that include Copilot configurations
+arm install copilot-rules --patterns "copilot-*.md,copilot-*.yml"
+```
+
+**Supported Copilot Files:**
+- `copilot-instructions.md` - General instructions for Copilot behavior
+- `copilot-chat-participants.yml` - Custom chat participants and commands
+- `copilot-prompts.yml` - Reusable prompts for common tasks
+
+**Example Channel Configuration:**
+```json
+{
+  "channels": {
+    "copilot": {
+      "directories": [".github"]
     }
   }
 }

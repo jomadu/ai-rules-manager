@@ -47,6 +47,9 @@ arm config add channel cursor --directories ~/.cursor/rules
 
 # For Amazon Q Developer
 arm config add channel q --directories ~/.aws/amazonq/rules
+
+# For GitHub Copilot
+arm config add channel copilot --directories .github
 ```
 
 ### 4. Install Your First Ruleset
@@ -72,6 +75,10 @@ cursor:
     - power-up-rules@1.0.0
 
 q:
+  mushroom-kingdom:
+    - power-up-rules@1.0.0
+
+copilot:
   mushroom-kingdom:
     - power-up-rules@1.0.0
 ```
