@@ -148,7 +148,22 @@ func (g *GitRegistry) ResolveVersion(ctx context.Context, version string) (strin
 		}
 		return g.resolveLatestClone(ctx)
 	}
-	return version, nil // Return as-is for other version specs
+
+	// Check if it's a commit hash (40 hex characters)
+	if len(version) == 40 && isHexString(version) {
+		return version, nil // Already a commit hash
+	}
+
+	// Check if it's a semver pattern
+	if g.isSemverPattern(version) {
+		return version, nil // Let semver resolution happen during checkout
+	}
+
+	// Assume it's a branch name and resolve to commit hash
+	if g.auth.APIType == "github" {
+		return g.resolveBranchAPI(ctx, version)
+	}
+	return g.resolveBranchClone(ctx, version)
 }
 
 // GetType returns the registry type
@@ -875,6 +890,81 @@ func (g *GitRegistry) resolveLatestClone(ctx context.Context) (string, error) {
 	}
 
 	return head.Hash().String(), nil
+}
+
+// isHexString checks if a string contains only hexadecimal characters
+func isHexString(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+// resolveBranchAPI resolves a branch name to commit hash using GitHub API
+func (g *GitRegistry) resolveBranchAPI(ctx context.Context, branch string) (string, error) {
+	owner, repo, err := g.parseGitHubURL()
+	if err != nil {
+		return "", err
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/branches/%s", owner, repo, branch)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return "", err
+	}
+
+	if g.auth.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+g.auth.Token)
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	var branchInfo struct {
+		Commit struct {
+			SHA string `json:"sha"`
+		} `json:"commit"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&branchInfo); err != nil {
+		return "", err
+	}
+
+	return branchInfo.Commit.SHA, nil
+}
+
+// resolveBranchClone resolves a branch name to commit hash using git clone
+func (g *GitRegistry) resolveBranchClone(ctx context.Context, branch string) (string, error) {
+	repoDir, err := g.getCachedRepository(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	repo, err := git.PlainOpen(repoDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	// Try to get branch reference
+	branchRef, err := repo.Reference(plumbing.ReferenceName("refs/heads/"+branch), true)
+	if err != nil {
+		// Branch not found, try as remote branch
+		branchRef, err = repo.Reference(plumbing.ReferenceName("refs/remotes/origin/"+branch), true)
+		if err != nil {
+			return "", fmt.Errorf("branch '%s' not found: %w", branch, err)
+		}
+	}
+
+	return branchRef.Hash().String(), nil
 }
 
 // downloadFileAPI downloads a single file using GitHub API preserving directory structure
