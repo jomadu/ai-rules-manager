@@ -82,13 +82,13 @@ arm config add registry private-registry https://github.com/private/repo --type=
 
 ```bash
 # Single directory
-arm config add channel cursor --directories ~/.cursor/rules
+arm config add channel cursor --directories .cursor/rules
 
 # Multiple directories
-arm config add channel cursor --directories "~/.cursor/rules,./project-rules"
+arm config add channel cursor --directories ".cursor/rules,./project-rules"
 
 # Environment variables supported
-arm config add channel q --directories '$HOME/.aws/amazonq/rules'
+arm config add channel q --directories .amazonq/rules
 ```
 
 ### Manual JSON Editing
@@ -102,10 +102,10 @@ You can also edit `arm.json` directly:
   },
   "channels": {
     "cursor": {
-      "directories": ["~/.cursor/rules", "./custom-cursor"]
+      "directories": [".cursor/rules", "./custom-cursor"]
     },
     "q": {
-      "directories": ["$HOME/.aws/amazonq/rules"]
+      "directories": [".amazonq/rules"]
     }
   },
   "rulesets": {

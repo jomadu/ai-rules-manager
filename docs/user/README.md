@@ -27,7 +27,7 @@ arm install
 arm config add registry my-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 
 # Add a channel
-arm config add channel cursor --directories ~/.cursor/rules
+arm config add channel cursor --directories .cursor/rules
 
 # Install a ruleset
 arm install my-rules --patterns "rules/*.md"

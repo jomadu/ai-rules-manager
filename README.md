@@ -21,8 +21,8 @@ arm install
 arm config add registry default https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 
 # Add channels for your AI tools
-arm config add channel cursor --directories ~/.cursor/rules
-arm config add channel q --directories ~/.aws/amazonq/rules
+arm config add channel cursor --directories .cursor/rules
+arm config add channel q --directories .amazonq/rules
 
 # Install your first ruleset
 arm install power-up-rules --patterns "rules/*.md"
