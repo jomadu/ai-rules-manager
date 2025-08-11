@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/max-dunn/ai-rules-manager/internal/config"
 )
 
 // Registry defines the interface for all registry implementations
@@ -33,6 +35,19 @@ type Registry interface {
 
 	// Close cleans up any resources
 	Close() error
+}
+
+// Searcher defines the optional search interface for registries
+type Searcher interface {
+	// Search returns rulesets matching the query
+	Search(ctx context.Context, query string) ([]SearchResult, error)
+}
+
+// SearchResult contains minimal search result information
+type SearchResult struct {
+	RulesetName  string `json:"ruleset_name"`
+	RegistryName string `json:"registry_name"`
+	Match        string `json:"match"`
 }
 
 // RulesetInfo contains metadata about a ruleset
@@ -71,6 +86,11 @@ type RegistryConfig struct {
 	Timeout      time.Duration          `json:"timeout"`
 	RetryConfig  *RetryConfig           `json:"retry_config,omitempty"`
 	CustomConfig map[string]interface{} `json:"custom_config,omitempty"`
+}
+
+// ResolvePath resolves the registry path using the config package
+func (c *RegistryConfig) ResolvePath(path string) (string, error) {
+	return config.ResolvePath(path)
 }
 
 // RetryConfig contains retry configuration
@@ -163,7 +183,7 @@ func ValidateRegistryConfig(config *RegistryConfig) error {
 		return fmt.Errorf("registry type cannot be empty")
 	}
 
-	validTypes := []string{"git", "https", "s3", "gitlab", "local"}
+	validTypes := []string{"git", "git-local", "https", "s3", "gitlab", "local"}
 	if !contains(validTypes, config.Type) {
 		return fmt.Errorf("unsupported registry type: %s", config.Type)
 	}
@@ -174,8 +194,23 @@ func ValidateRegistryConfig(config *RegistryConfig) error {
 		if config.URL == "" {
 			return fmt.Errorf("%s registry requires URL", config.Type)
 		}
-		if !strings.HasPrefix(config.URL, "https://") {
-			return fmt.Errorf("%s registry URL must use HTTPS", config.Type)
+		// Git registries support HTTPS, SSH, and local file paths
+		if !strings.HasPrefix(config.URL, "https://") &&
+			!strings.HasPrefix(config.URL, "git@") &&
+			!strings.HasPrefix(config.URL, "ssh://") &&
+			!strings.HasPrefix(config.URL, "file://") &&
+			!strings.HasPrefix(config.URL, "/") {
+			return fmt.Errorf("%s registry URL must use HTTPS, SSH, or local path", config.Type)
+		}
+	case "git-local":
+		if config.URL == "" {
+			return fmt.Errorf("git-local registry requires local path in URL field")
+		}
+		// Validate that it's a local path (not a remote URL)
+		if strings.HasPrefix(config.URL, "https://") ||
+			strings.HasPrefix(config.URL, "git@") ||
+			strings.HasPrefix(config.URL, "ssh://") {
+			return fmt.Errorf("git-local registry URL must be a local file path, not a remote URL")
 		}
 	case "s3":
 		if config.Auth == nil || config.Auth.Region == "" {

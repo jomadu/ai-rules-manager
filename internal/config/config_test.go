@@ -92,7 +92,6 @@ rateLimit = 10/minute
 [network]
 timeout = 30
 
-[cache]
 path = ~/.arm/cache
 `
 
@@ -110,7 +109,6 @@ path = ~/.arm/cache
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
-		CacheConfig:     make(map[string]string),
 	}
 
 	err := cfg.loadINIFile(configPath, true)
@@ -138,10 +136,6 @@ path = ~/.arm/cache
 		t.Errorf("Expected network timeout '30', got %q", cfg.NetworkConfig["timeout"])
 	}
 
-	// Test cache config
-	if cfg.CacheConfig["path"] != "~/.arm/cache" {
-		t.Errorf("Expected cache path '~/.arm/cache', got %q", cfg.CacheConfig["path"])
-	}
 }
 
 func TestLoadMissingFile(t *testing.T) {
@@ -150,7 +144,6 @@ func TestLoadMissingFile(t *testing.T) {
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
-		CacheConfig:     make(map[string]string),
 	}
 
 	// Should not error for optional missing file
@@ -218,7 +211,6 @@ func TestLoadARMJSON(t *testing.T) {
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
-		CacheConfig:     make(map[string]string),
 		Channels:        make(map[string]ChannelConfig),
 		Rulesets:        make(map[string]map[string]RulesetSpec),
 		Engines:         make(map[string]string),
@@ -292,7 +284,6 @@ func TestLoadLockFile(t *testing.T) {
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
-		CacheConfig:     make(map[string]string),
 		Channels:        make(map[string]ChannelConfig),
 		Rulesets:        make(map[string]map[string]RulesetSpec),
 		Engines:         make(map[string]string),
@@ -1010,7 +1001,6 @@ func TestGenerateARMRCStub(t *testing.T) {
 		"[gitlab]",
 		"[local]",
 		"[network]",
-		"[cache]",
 	}
 
 	for _, section := range requiredSections {

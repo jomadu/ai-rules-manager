@@ -111,8 +111,6 @@ func (m *mockGitRegistry) resolveSemverPattern(ctx context.Context, versionSpec 
 }
 
 func TestIsSemverPattern(t *testing.T) {
-	g := &GitRegistry{}
-
 	tests := []struct {
 		version  string
 		expected bool
@@ -126,7 +124,7 @@ func TestIsSemverPattern(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := g.isSemverPattern(tt.version)
+		result := IsSemverPattern(tt.version)
 		if result != tt.expected {
 			t.Errorf("isSemverPattern(%q) = %v, want %v", tt.version, result, tt.expected)
 		}
@@ -134,8 +132,6 @@ func TestIsSemverPattern(t *testing.T) {
 }
 
 func TestIsVersionNumber(t *testing.T) {
-	g := &GitRegistry{}
-
 	tests := []struct {
 		version  string
 		expected bool
@@ -149,7 +145,7 @@ func TestIsVersionNumber(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := g.isVersionNumber(tt.version)
+		result := IsVersionNumber(tt.version)
 		if result != tt.expected {
 			t.Errorf("isVersionNumber(%q) = %v, want %v", tt.version, result, tt.expected)
 		}

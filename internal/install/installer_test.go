@@ -288,7 +288,7 @@ func TestInstaller_LockFileManagement(t *testing.T) {
 	installer := New(cfg)
 
 	// Test updating lock file
-	err = installer.updateLockFile("test-registry", "test-ruleset", "1.0.0")
+	err = installer.updateLockFile("test-registry", "test-ruleset", "1.0.0", "abc123def")
 	if err != nil {
 		t.Fatalf("Failed to update lock file: %v", err)
 	}

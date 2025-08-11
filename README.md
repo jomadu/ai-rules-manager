@@ -35,10 +35,11 @@ arm list
 
 - **Multi-Registry Support** - Git, S3, GitLab, HTTPS, and Local registries
 - **Semantic Versioning** - Version constraints with `^`, `~`, `>=` operators
+- **Content-Based Caching** - Intelligent caching with configurable TTL and size limits
 - **Team Synchronization** - Share standardized rules across development teams
 - **Cross-Platform** - Fast, reliable Go implementation
 - **Channel Management** - Support multiple AI tools simultaneously
-- **Caching & Offline** - Local caching with graceful offline fallback
+- **Reliable Operations** - Direct registry access for always up-to-date data
 
 ## Registry Types
 

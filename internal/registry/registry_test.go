@@ -227,6 +227,34 @@ func TestValidateRegistryConfig(t *testing.T) {
 			expectError:   true,
 			errorContains: "requires path",
 		},
+		{
+			name: "valid git-local registry",
+			config: &RegistryConfig{
+				Name: "my-git-local",
+				Type: "git-local",
+				URL:  "/path/to/local/repo",
+			},
+			expectError: false,
+		},
+		{
+			name: "git-local without path",
+			config: &RegistryConfig{
+				Name: "test",
+				Type: "git-local",
+			},
+			expectError:   true,
+			errorContains: "requires local path",
+		},
+		{
+			name: "git-local with remote URL",
+			config: &RegistryConfig{
+				Name: "test",
+				Type: "git-local",
+				URL:  "https://github.com/user/repo",
+			},
+			expectError:   true,
+			errorContains: "must be a local file path",
+		},
 	}
 
 	for _, tt := range tests {

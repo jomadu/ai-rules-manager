@@ -64,6 +64,17 @@ The product eliminates the tedious process of manually copying `.cursorrules` an
 4.3. The system must handle registry failures gracefully by falling back to cache when available
 4.4. The system must not attempt fallback registries when specific source is defined in ruleset specification
 4.5. The system must maintain metadata and version information for cached packages
+4.6. The system must use SHA-256 hashes of registry URLs as cache directory names to prevent collisions
+4.7. The system must organize cached rulesets using `rulesets/ruleset-name/version/` directory structure
+4.8. The system must resolve all git-based versions (branches, tags, commits) to commit hashes for deduplication
+4.9. The system must store individual files (not tarballs) in cache directories for direct access
+4.10. The system must maintain registry mapping file at `~/.arm/cache/registry-map.json` for hash-to-URL lookup
+4.11. The system must generate `versions.json` and `metadata.json` files for each cached registry
+4.12. The system must include version resolution mappings in `versions.json` for git repositories
+4.13. The system must include file counts and sizes in `metadata.json` without description parsing
+4.14. The system must normalize registry URLs before hashing (remove trailing slashes, convert to lowercase)
+4.15. The system must clean up unreferenced version directories during cache refresh operations
+4.16. The system must update registry mapping file atomically to prevent corruption during concurrent operations
 
 ### 5. Command Line Interface
 5.1. The system must provide `config` command with subcommands for add, remove, set, and list operations
@@ -106,13 +117,122 @@ The product eliminates the tedious process of manually copying `.cursorrules` an
 - **Language**: Go for cross-platform compatibility and performance
 - **Configuration Format**: INI format for `.armrc`, JSON for `arm.json` and `arm.lock`
 - **Package Format**: `.tar.gz` archives for most registries, direct file tree access for Git repositories
-- **Caching Strategy**: Local filesystem cache with metadata and version tracking
+- **Caching Strategy**: Content-based cache using SHA-256 hashes with individual file storage
+
+### Cache Structure
+- **Hash-based Directories**: Use SHA-256 of registry URLs to prevent naming collisions
+- **Version Resolution**: All git versions resolve to commit hashes for deduplication
+- **File Storage**: Store individual files rather than compressed archives in cache
+- **Metadata Files**: Generate `versions.json`, `metadata.json`, and `cache-info.json` for each registry
+- **Registry Mapping**: Maintain global mapping file for hash-to-URL reverse lookup
+
+#### Cache Directory Layout
+```
+~/.arm/cache/
+├── registry-map.json           # Global registry hash-to-URL mapping
+├── registries/
+│   ├── 9897b502e18be21a.../    # SHA-256 hash of registry URL
+│   │   ├── repository/         # Git repository clones (git registries only)
+│   │   ├── rulesets/
+│   │   │   └── rules/          # ruleset name
+│   │   │       ├── 1e47f0b44efa.../  # resolved commit hash (git)
+│   │   │       │   ├── create-prd.md
+│   │   │       │   └── generate-tasks.md
+│   │   │       └── 1.2.0/      # resolved semver (non-git)
+│   │   │           └── rule.md
+│   │   ├── metadata.json       # Registry metadata cache
+│   │   ├── versions.json       # Available versions cache
+│   │   └── cache-info.json     # Cache timestamps and TTL
+│   └── a1b2c3d4e5f6789.../     # Another registry hash
+└── temp/                       # Temporary extraction directories
+```
+
+#### Cache File Formats
+
+**registry-map.json:**
+```json
+{
+  "version": "1.0",
+  "registries": {
+    "9897b502e18be21a...": {
+      "url": "https://github.com/user/repo",
+      "type": "git",
+      "created": "2024-01-15T10:30:00Z",
+      "last_used": "2024-01-16T14:22:00Z"
+    }
+  }
+}
+```
+
+**versions.json (Git registries with resolution mappings):**
+```json
+{
+  "cached_at": "2024-01-15T10:30:00Z",
+  "ttl_seconds": 3600,
+  "rulesets": {
+    "rules": ["1e47f0b44efa795cd09f45d77a9cbd76484722f1"]
+  },
+  "mappings": {
+    "rules": {
+      "latest": "1e47f0b44efa795cd09f45d77a9cbd76484722f1",
+      "main": "1e47f0b44efa795cd09f45d77a9cbd76484722f1",
+      "v1.0.0": "1e47f0b44efa795cd09f45d77a9cbd76484722f1"
+    }
+  }
+}
+```
+
+**versions.json (Non-git registries - semver only):**
+```json
+{
+  "cached_at": "2024-01-15T10:30:00Z",
+  "ttl_seconds": 3600,
+  "rulesets": {
+    "python-rules": ["1.0.0", "1.2.0", "2.0.0"]
+  }
+}
+```
+
+**metadata.json (All registry types - no descriptions):**
+```json
+{
+  "cached_at": "2024-01-15T10:30:00Z",
+  "ttl_seconds": 3600,
+  "rulesets": {
+    "rules": {
+      "latest_version": "1e47f0b44efa795cd09f45d77a9cbd76484722f1",
+      "file_count": 3,
+      "total_size_bytes": 15420
+    }
+  }
+}
+```
+
+**cache-info.json:**
+```json
+{
+  "registry_url": "https://github.com/user/repo",
+  "registry_url_normalized": "https://github.com/user/repo",
+  "registry_type": "git",
+  "cache_key_hash": "9897b502e18be21a...",
+  "last_accessed": "2024-01-15T10:30:00Z",
+  "total_size_bytes": 1048576,
+  "created": "2024-01-15T10:30:00Z"
+}
+```
 
 ### Registry Integration
 - **Git Registries**: Support both Git operations and API-based access (GitHub, GitLab APIs)
 - **S3 Registries**: AWS SDK integration with profile and credential support
 - **GitLab Registries**: GitLab Package Registry API integration
 - **Authentication**: Environment variable and configuration file support for tokens and credentials
+
+### Version Resolution Strategy
+- **Git Registries**: All versions (branches, tags, commits) resolve to commit hashes during cache population
+- **Non-Git Registries**: Semver versions remain as-is (1.2.0 stays 1.2.0)
+- **Deduplication**: Git repos with multiple references to same commit share single cache directory
+- **User Display**: Show resolved commit with original mappings (e.g., "1e47f0b4... (main, v1.0.0)")
+- **Cache Cleanup**: Remove unreferenced commit directories during cache refresh
 
 ### Extensibility
 - **Plugin Architecture**: Designed to support additional AI tools through channel configuration

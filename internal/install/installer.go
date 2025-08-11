@@ -22,11 +22,12 @@ type Installer struct {
 
 // InstallRequest represents a ruleset installation request
 type InstallRequest struct {
-	Registry    string
-	Ruleset     string
-	Version     string
-	SourceFiles []string // Files to install from cache/extraction
-	Channels    []string // Target channels (empty = all channels)
+	Registry        string
+	Ruleset         string
+	Version         string
+	ResolvedVersion string   // Actual resolved version (e.g., commit hash)
+	SourceFiles     []string // Files to install from cache/extraction
+	Channels        []string // Target channels (empty = all channels)
 }
 
 // InstallResult represents the result of an installation
@@ -96,8 +97,12 @@ func (i *Installer) Install(req *InstallRequest) (*InstallResult, error) {
 		installedChannels = append(installedChannels, channelName)
 	}
 
-	// Update lock file
-	if err := i.updateLockFile(req.Registry, req.Ruleset, req.Version); err != nil {
+	// Update lock file with resolved version
+	resolvedVersion := req.ResolvedVersion
+	if resolvedVersion == "" {
+		resolvedVersion = req.Version // Fallback to version if no resolved version provided
+	}
+	if err := i.updateLockFile(req.Registry, req.Ruleset, req.Version, resolvedVersion); err != nil {
 		return nil, fmt.Errorf("failed to update lock file: %w", err)
 	}
 
@@ -339,7 +344,7 @@ func expandPath(path string) string {
 }
 
 // updateLockFile updates the lock file with a new ruleset entry
-func (i *Installer) updateLockFile(registry, ruleset, version string) error {
+func (i *Installer) updateLockFile(registry, ruleset, version, resolvedVersion string) error {
 	i.lockMu.Lock()
 	defer i.lockMu.Unlock()
 
@@ -365,7 +370,7 @@ func (i *Installer) updateLockFile(registry, ruleset, version string) error {
 	// Update entry
 	lockFile.Rulesets[registry][ruleset] = config.LockedRuleset{
 		Version:  version,
-		Resolved: time.Now().Format(time.RFC3339),
+		Resolved: resolvedVersion,
 		Registry: i.config.Registries[registry],
 		Type:     registryType,
 		Region:   region,

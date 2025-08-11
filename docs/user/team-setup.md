@@ -57,10 +57,6 @@ type = s3
 region = us-east-1
 concurrency = 5
 rateLimit = 50/minute
-
-[cache]
-ttl = 7200
-maxSize = 500MB
 ```
 
 ### Shared arm.json Template

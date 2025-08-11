@@ -222,9 +222,6 @@ func TestGetConfigValue(t *testing.T) {
 		NetworkConfig: map[string]string{
 			"timeout": "30",
 		},
-		CacheConfig: map[string]string{
-			"path": "~/.arm/cache",
-		},
 	}
 
 	tests := []struct {
@@ -237,7 +234,7 @@ func TestGetConfigValue(t *testing.T) {
 		{"git.concurrency", "1"},
 		{"git.rateLimit", "10/minute"},
 		{"network.timeout", "30"},
-		{"cache.path", "~/.arm/cache"},
+
 		{"nonexistent.key", ""},
 	}
 
