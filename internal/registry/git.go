@@ -901,62 +901,60 @@ func (g *GitRegistry) applyPatternsToFileTree(filePaths, patterns []string) []st
 	return matchingFiles
 }
 
-// resolveLatestAPI resolves "latest" to HEAD commit hash using GitHub API
+// resolveLatestAPI resolves "latest" to the highest semantic version tag using GitHub API
 func (g *GitRegistry) resolveLatestAPI(ctx context.Context) (string, error) {
-	owner, repo, err := g.parseGitHubURL()
+	// Get all versions and return the highest semantic version
+	versions, err := g.getVersionsAPI(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/HEAD", owner, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return "", err
+	// Parse and filter valid semantic versions
+	var candidates []*semver.Version
+	for _, v := range versions {
+		if v == "latest" {
+			continue
+		}
+		if ver, err := semver.NewVersion(v); err == nil {
+			candidates = append(candidates, ver)
+		}
 	}
 
-	if g.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+g.auth.Token)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := g.client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no valid semantic versions found")
 	}
 
-	var commit struct {
-		SHA string `json:"sha"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&commit); err != nil {
-		return "", err
-	}
-
-	return commit.SHA, nil
+	// Sort versions (highest first) and return the latest
+	sort.Sort(sort.Reverse(semver.Collection(candidates)))
+	return candidates[0].String(), nil
 }
 
-// resolveLatestClone resolves "latest" to HEAD commit hash using git clone
+// resolveLatestClone resolves "latest" to the highest semantic version tag using git clone
 func (g *GitRegistry) resolveLatestClone(ctx context.Context) (string, error) {
-	repoDir, err := g.getCachedRepository(ctx)
+	// Get all versions and return the highest semantic version
+	versions, err := g.getVersionsClone(ctx, "")
 	if err != nil {
 		return "", err
 	}
 
-	repo, err := git.PlainOpen(repoDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to open repository: %w", err)
+	// Parse and filter valid semantic versions
+	var candidates []*semver.Version
+	for _, v := range versions {
+		if v == "latest" {
+			continue
+		}
+		if ver, err := semver.NewVersion(v); err == nil {
+			candidates = append(candidates, ver)
+		}
 	}
 
-	head, err := repo.Head()
-	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD: %w", err)
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no valid semantic versions found")
 	}
 
-	return head.Hash().String(), nil
+	// Sort versions (highest first) and return the latest
+	sort.Sort(sort.Reverse(semver.Collection(candidates)))
+	return candidates[0].String(), nil
 }
 
 // isHexString checks if a string contains only hexadecimal characters
@@ -1075,7 +1073,7 @@ func (g *GitRegistry) resolveSemverPattern(ctx context.Context, versionSpec stri
 	// Find the highest version that satisfies the constraint
 	for _, candidate := range candidates {
 		if constraint.Check(candidate) {
-			return candidate.Original(), nil
+			return candidate.String(), nil
 		}
 	}
 

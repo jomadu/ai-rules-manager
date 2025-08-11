@@ -3,9 +3,12 @@ package update
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/max-dunn/ai-rules-manager/internal/config"
+	"github.com/max-dunn/ai-rules-manager/internal/install"
 	"github.com/max-dunn/ai-rules-manager/internal/registry"
 )
 
@@ -20,12 +23,16 @@ type UpdateResult struct {
 
 // Service handles ruleset updates
 type Service struct {
-	config *config.Config
+	config    *config.Config
+	installer *install.Installer
 }
 
 // New creates a new update service
 func New(cfg *config.Config) *Service {
-	return &Service{config: cfg}
+	return &Service{
+		config:    cfg,
+		installer: install.New(cfg),
+	}
 }
 
 // UpdateRuleset updates a single ruleset to the latest version matching its constraint
@@ -62,9 +69,11 @@ func (s *Service) UpdateRuleset(ctx context.Context, rulesetSpec string) (*Updat
 		Updated:         latestVersion != currentVersion,
 	}
 
-	// Update lock file if version changed
+	// Perform actual file operations if version changed
 	if result.Updated {
-		s.updateLockFile(registry, name, latestVersion, &locked)
+		if err := s.performUpdate(ctx, registry, name, latestVersion); err != nil {
+			return nil, fmt.Errorf("failed to perform update: %w", err)
+		}
 	}
 
 	return result, nil
@@ -113,16 +122,104 @@ func (s *Service) resolveLatestVersion(ctx context.Context, registryName, _, cur
 	return currentVersion, nil
 }
 
-// updateLockFile updates the lock file with a new version
-func (s *Service) updateLockFile(registry, name, newVersion string, existingLocked *config.LockedRuleset) {
-	updatedLocked := *existingLocked
-	updatedLocked.Version = newVersion
-	updatedLocked.Resolved = "2024-01-15T10:30:00Z" // Would use current time
-
-	if s.config.LockFile.Rulesets[registry] == nil {
-		s.config.LockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
+// performUpdate performs the actual file operations for an update
+func (s *Service) performUpdate(ctx context.Context, registryName, name, newVersion string) error {
+	// Get patterns from manifest
+	var patterns []string
+	if s.config.Rulesets[registryName] != nil && s.config.Rulesets[registryName][name].Patterns != nil {
+		patterns = s.config.Rulesets[registryName][name].Patterns
 	}
-	s.config.LockFile.Rulesets[registry][name] = updatedLocked
+
+	// Create registry configuration
+	registryConfig := &registry.RegistryConfig{
+		Name: registryName,
+		Type: s.config.RegistryConfigs[registryName]["type"],
+		URL:  s.config.Registries[registryName],
+	}
+
+	// Create auth configuration
+	authConfig := &registry.AuthConfig{}
+	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil {
+		authConfig.Token = regConfig["authToken"]
+		authConfig.Region = regConfig["region"]
+		authConfig.Profile = regConfig["profile"]
+	}
+
+	// Create registry instance
+	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create registry: %w", err)
+	}
+	defer func() { _ = reg.Close() }()
+
+	// Download new version
+	sourceFiles, err := s.downloadRuleset(ctx, reg, name, newVersion, patterns)
+	if err != nil {
+		return fmt.Errorf("failed to download ruleset: %w", err)
+	}
+
+	// Install using the installer (which handles file replacement and lock file updates)
+	req := &install.InstallRequest{
+		Registry:    registryName,
+		Ruleset:     name,
+		Version:     newVersion,
+		SourceFiles: sourceFiles,
+		Channels:    nil, // Use all configured channels
+	}
+
+	_, err = s.installer.Install(req)
+	return err
+}
+
+// downloadRuleset downloads a ruleset and returns the source files
+func (s *Service) downloadRuleset(ctx context.Context, reg registry.Registry, name, version string, patterns []string) ([]string, error) {
+	// For Git registries, use structured download
+	if gitReg, ok := reg.(*registry.GitRegistry); ok {
+		tempDir, err := createTempDir()
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := gitReg.DownloadRulesetWithResult(ctx, name, version, tempDir, patterns)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Files, nil
+	}
+
+	// For other registry types, use standard download
+	tempDir, err := createTempDir()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := reg.DownloadRuleset(ctx, name, version, tempDir); err != nil {
+		return nil, err
+	}
+
+	// Find downloaded files
+	return findFiles(tempDir)
+}
+
+// createTempDir creates a temporary directory for downloads
+func createTempDir() (string, error) {
+	return os.MkdirTemp("", "arm-update-*")
+}
+
+// findFiles finds all files in a directory
+func findFiles(dir string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
 }
 
 // parseRulesetSpec parses a ruleset specification into registry, name, and version
