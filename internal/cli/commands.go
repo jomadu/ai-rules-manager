@@ -696,7 +696,7 @@ func handleInstallRuleset(rulesetSpec string, global, dryRun bool, channels, pat
 	// Check if it's a Git registry and patterns are required
 	if regConfig, exists := cfg.RegistryConfigs[registry]; exists {
 		if regConfig["type"] == "git" && patterns == "" {
-			return fmt.Errorf("Git registry rulesets require --patterns flag")
+			return fmt.Errorf("git registry rulesets require --patterns flag")
 		}
 	}
 
