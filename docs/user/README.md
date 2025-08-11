@@ -24,7 +24,7 @@ Guide for team leads and platform engineers to distribute rulesets across develo
 arm install
 
 # Add a registry
-arm config add registry my-registry https://github.com/user/repo.example --type=git
+arm config add registry my-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
 
 # Add a channel
 arm config add channel cursor --directories ~/.cursor/rules

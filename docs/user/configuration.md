@@ -34,9 +34,9 @@ arm install --global
 
 ```bash
 # Add different registry types
-arm config add registry bowser-castle https://github.com/bowser-castle/security-rules.example --type=git
-arm config add registry koopa-troopa koopa-castle-rules --type=s3 --region=us-east-1
-arm config add registry toad-house https://gitlab.mushroom-kingdom.example/projects/456 --type=gitlab --authToken=$GITLAB_TOKEN
+arm config add registry test-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
+arm config add registry s3-registry my-rules-bucket --type=s3 --region=us-east-1
+arm config add registry gitlab-registry https://gitlab.example.com/projects/456 --type=gitlab --authToken=$GITLAB_TOKEN
 ```
 
 ### Registry-Specific Settings
@@ -45,13 +45,13 @@ Override defaults for specific registries:
 
 ```bash
 # Increase concurrency for a fast registry
-arm config set registries.bowser-castle.concurrency 5
+arm config set registries.test-registry.concurrency 5
 
 # Set custom rate limit
-arm config set registries.koopa-troopa.rateLimit 20/minute
+arm config set registries.s3-registry.rateLimit 20/minute
 
 # Configure S3 profile
-arm config set registries.koopa-troopa.profile mario-aws-profile
+arm config set registries.s3-registry.profile my-aws-profile
 ```
 
 ### Type Defaults
@@ -73,7 +73,7 @@ arm config set s3.rateLimit 100/hour
 Use environment variables in configuration:
 
 ```bash
-arm config add registry private-castle https://github.com/private/repo.example --type=git --authToken=$GITHUB_TOKEN
+arm config add registry private-registry https://github.com/private/repo --type=git --authToken=$GITHUB_TOKEN
 ```
 
 ## Channel Configuration (arm.json)
@@ -109,10 +109,10 @@ You can also edit `arm.json` directly:
     }
   },
   "rulesets": {
-    "mushroom-kingdom": {
-      "power-up-rules": {
+    "default": {
+      "rules": {
         "version": "^1.0.0",
-        "patterns": ["rules/*.md", "docs/*.mdc"]
+        "patterns": ["*.md"]
       }
     }
   }
@@ -138,7 +138,7 @@ arm config list --global
 
 ```bash
 # Set values
-arm config set registries.default mushroom-kingdom
+arm config set registries.default test-registry
 arm config set git.concurrency 3
 
 # Remove registries/channels
