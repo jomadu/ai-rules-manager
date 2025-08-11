@@ -72,10 +72,10 @@ maxSize = 500MB
   },
   "channels": {
     "cursor": {
-      "directories": ["~/.cursor/rules"]
+      "directories": [".cursor/rules"]
     },
     "q": {
-      "directories": ["~/.aws/amazonq/rules"]
+      "directories": [".amazonq/rules"]
     }
   },
   "rulesets": {
@@ -109,8 +109,8 @@ arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-ea
 arm config set registries.default team-registry
 
 # Add channels
-arm config add channel cursor --directories ~/.cursor/rules
-arm config add channel q --directories ~/.aws/amazonq/rules
+arm config add channel cursor --directories .cursor/rules
+arm config add channel q --directories .amazonq/rules
 
 # Install team rulesets
 arm install rules --patterns "*.md"
@@ -183,7 +183,7 @@ jobs:
       - name: Configure ARM
         run: |
           arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
-          arm config add channel cursor --directories ./.cursor/rules
+          arm config add channel cursor --directories .cursor/rules
 
       - name: Install rulesets
         run: arm install

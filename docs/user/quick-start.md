@@ -43,10 +43,10 @@ Tell ARM where to install rulesets for your AI tools:
 
 ```bash
 # For Cursor
-arm config add channel cursor --directories ~/.cursor/rules
+arm config add channel cursor --directories .cursor/rules
 
 # For Amazon Q Developer
-arm config add channel q --directories ~/.aws/amazonq/rules
+arm config add channel q --directories .amazonq/rules
 ```
 
 ### 4. Install Your First Ruleset
@@ -108,9 +108,9 @@ Error: no channels configured
 ### Permission Denied
 ```bash
 $ arm install power-up-rules
-Error [FILESYSTEM]: Permission denied writing to ~/.cursor/rules
+Error [FILESYSTEM]: Permission denied writing to .cursor/rules
 ```
 **Solution**: Check directory permissions or create the directory manually:
 ```bash
-mkdir -p ~/.cursor/rules
+mkdir -p .cursor/rules
 ```
