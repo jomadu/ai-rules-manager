@@ -12,6 +12,7 @@ import (
 	"github.com/max-dunn/ai-rules-manager/internal/config"
 	"github.com/max-dunn/ai-rules-manager/internal/install"
 	"github.com/max-dunn/ai-rules-manager/internal/registry"
+	"github.com/max-dunn/ai-rules-manager/internal/update"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
 )
@@ -1037,27 +1038,23 @@ func handleOutdated(_, jsonOutput bool) error {
 	}
 
 	var outdatedRulesets []outdatedInfo
+	updateService := update.New(cfg)
 
 	// Check each installed ruleset
 	for registry, rulesets := range cfg.LockFile.Rulesets {
-		for name, locked := range rulesets {
-			// Get version spec from manifest
-			var versionSpec string
-			if cfg.Rulesets[registry] != nil && cfg.Rulesets[registry][name].Version != "" {
-				versionSpec = cfg.Rulesets[registry][name].Version
-			} else {
-				versionSpec = "latest"
+		for name := range rulesets {
+			rulesetSpec := fmt.Sprintf("%s/%s", registry, name)
+			result, err := updateService.UpdateRuleset(context.Background(), rulesetSpec)
+			if err != nil {
+				continue // Skip failed resolutions
 			}
-
-			// For now, simulate version checking (would query registry in real implementation)
-			latestVersion := simulateLatestVersion(locked.Version, versionSpec)
-			if latestVersion != locked.Version {
+			if result.Updated {
 				outdatedRulesets = append(outdatedRulesets, outdatedInfo{
-					Registry:       registry,
-					Name:           name,
-					CurrentVersion: locked.Version,
-					LatestVersion:  latestVersion,
-					UpdateCommand:  fmt.Sprintf("arm update %s/%s", registry, name),
+					Registry:       result.Registry,
+					Name:           result.Ruleset,
+					CurrentVersion: result.PreviousVersion,
+					LatestVersion:  result.Version,
+					UpdateCommand:  fmt.Sprintf("arm update %s/%s", result.Registry, result.Ruleset),
 				})
 			}
 		}
@@ -1087,104 +1084,70 @@ func handleOutdated(_, jsonOutput bool) error {
 	return nil
 }
 
-func handleUpdateAll(global, dryRun bool) error {
+func handleUpdateAll(_, dryRun bool) error {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Check if we have a lock file
-	if cfg.LockFile == nil {
-		return fmt.Errorf("no lock file found - no rulesets installed")
+	if dryRun {
+		fmt.Println("Would update all rulesets")
+		return nil
 	}
 
+	updateService := update.New(cfg)
 	var updatedCount int
-	var failedUpdates []string
 
 	// Update each installed ruleset
 	for registry, rulesets := range cfg.LockFile.Rulesets {
 		for name := range rulesets {
 			rulesetSpec := fmt.Sprintf("%s/%s", registry, name)
-			if err := handleUpdateRuleset(rulesetSpec, global, dryRun); err != nil {
-				failedUpdates = append(failedUpdates, fmt.Sprintf("%s: %v", rulesetSpec, err))
+			result, err := updateService.UpdateRuleset(context.Background(), rulesetSpec)
+			if err != nil {
+				fmt.Printf("Failed to update %s: %v\n", rulesetSpec, err)
 				continue
 			}
-			updatedCount++
+			if result.Updated {
+				fmt.Printf("Updated %s/%s %s → %s\n", result.Registry, result.Ruleset, result.PreviousVersion, result.Version)
+				updatedCount++
+			} else {
+				fmt.Printf("%s/%s is already up to date (%s)\n", result.Registry, result.Ruleset, result.Version)
+			}
 		}
-	}
-
-	if dryRun {
-		fmt.Printf("Would attempt to update %d ruleset(s)\n", updatedCount+len(failedUpdates))
-		return nil
 	}
 
 	fmt.Printf("Updated %d ruleset(s)\n", updatedCount)
-	if len(failedUpdates) > 0 {
-		fmt.Printf("Failed to update %d ruleset(s):\n", len(failedUpdates))
-		for _, failure := range failedUpdates {
-			fmt.Printf("  %s\n", failure)
-		}
-	}
-
 	return nil
 }
 
 func handleUpdateRuleset(rulesetSpec string, _, dryRun bool) error {
-	// Parse ruleset specification
-	registry, name, _ := parseRulesetSpec(rulesetSpec)
-
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Check if ruleset is installed
-	if cfg.LockFile == nil || cfg.LockFile.Rulesets[registry] == nil || cfg.LockFile.Rulesets[registry][name].Version == "" {
-		return fmt.Errorf("ruleset '%s/%s' is not installed", registry, name)
-	}
-
-	lockedRuleset := cfg.LockFile.Rulesets[registry][name]
-	currentVersion := lockedRuleset.Version
-
-	// Get version spec from manifest
-	var versionSpec string
-	if cfg.Rulesets[registry] != nil && cfg.Rulesets[registry][name].Version != "" {
-		versionSpec = cfg.Rulesets[registry][name].Version
-	} else {
-		versionSpec = "latest"
-	}
-
-	// Simulate version resolution (would query registry in real implementation)
-	latestVersion := simulateLatestVersion(currentVersion, versionSpec)
-
-	if latestVersion == currentVersion {
-		if !dryRun {
-			fmt.Printf("%s/%s is already up to date (%s)\n", registry, name, currentVersion)
-		}
-		return nil
-	}
-
 	if dryRun {
-		fmt.Printf("Would update: %s/%s %s → %s\n", registry, name, currentVersion, latestVersion)
+		fmt.Printf("Would update: %s\n", rulesetSpec)
 		return nil
 	}
 
-	fmt.Printf("Updating %s/%s %s → %s...\n", registry, name, currentVersion, latestVersion)
-
-	// Invalidate cache (simulate)
-	fmt.Printf("  Invalidating cache for %s registry\n", registry)
-
-	// Update lock file
-	if err := updateLockFile(registry, name, latestVersion, &lockedRuleset); err != nil {
-		return fmt.Errorf("failed to update lock file: %w", err)
+	updateService := update.New(cfg)
+	result, err := updateService.UpdateRuleset(context.Background(), rulesetSpec)
+	if err != nil {
+		return err
 	}
 
-	// Reinstall with new version (simulate)
-	fmt.Printf("  Installing new version...\n")
+	if result.Updated {
+		fmt.Printf("Updating %s/%s %s → %s...\n", result.Registry, result.Ruleset, result.PreviousVersion, result.Version)
+		fmt.Printf("  Invalidating cache for %s registry\n", result.Registry)
+		fmt.Printf("  Installing new version...\n")
+		fmt.Printf("✓ Updated %s/%s to %s\n", result.Registry, result.Ruleset, result.Version)
+	} else {
+		fmt.Printf("%s/%s is already up to date (%s)\n", result.Registry, result.Ruleset, result.Version)
+	}
 
-	fmt.Printf("✓ Updated %s/%s to %s\n", registry, name, latestVersion)
 	return nil
 }
 
@@ -1284,46 +1247,6 @@ func removeRulesetFiles(cfg *config.Config, registry, name, channels string) err
 	}
 
 	return nil
-}
-
-func updateLockFile(registry, name, newVersion string, existingLocked *config.LockedRuleset) error {
-	path := "arm.lock"
-	var lockFile config.LockFile
-
-	if data, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(data, &lockFile)
-	}
-
-	if lockFile.Rulesets == nil {
-		lockFile.Rulesets = make(map[string]map[string]config.LockedRuleset)
-	}
-	if lockFile.Rulesets[registry] == nil {
-		lockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
-	}
-
-	// Update with new version but keep other metadata
-	updatedLocked := existingLocked
-	updatedLocked.Version = newVersion
-	updatedLocked.Resolved = "2024-01-15T10:30:00Z" // Would use current time
-	lockFile.Rulesets[registry][name] = *updatedLocked
-
-	lockData, err := json.MarshalIndent(lockFile, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, lockData, 0o600)
-}
-
-func simulateLatestVersion(currentVersion, versionSpec string) string {
-	// Simulate version resolution - in real implementation would query registry
-	if versionSpec == "latest" {
-		return "1.3.0" // Simulate newer version available
-	}
-	if strings.HasPrefix(versionSpec, "^") {
-		return "1.2.1" // Simulate patch update within range
-	}
-	return currentVersion // No update available
 }
 
 func isDirEmpty(path string) (bool, error) {

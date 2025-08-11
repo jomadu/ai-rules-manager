@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -156,7 +158,12 @@ func (g *GitRegistry) ResolveVersion(ctx context.Context, version string) (strin
 
 	// Check if it's a semver pattern
 	if g.isSemverPattern(version) {
-		return version, nil // Let semver resolution happen during checkout
+		return g.resolveSemverPattern(ctx, version)
+	}
+
+	// Check if it looks like a version number (e.g., "1.0.0", "v1.0.0")
+	if g.isVersionNumber(version) {
+		return version, nil // Already a concrete version
 	}
 
 	// Assume it's a branch name and resolve to commit hash
@@ -380,10 +387,36 @@ func (g *GitRegistry) getVersionsAPI(ctx context.Context) ([]string, error) {
 }
 
 // getVersionsClone gets versions using git clone
-func (g *GitRegistry) getVersionsClone(ctx context.Context, name string) ([]string, error) {
-	// For clone mode, we'll just return "latest" for now
-	// Full implementation would require cloning and listing tags
-	return []string{"latest"}, nil
+func (g *GitRegistry) getVersionsClone(ctx context.Context, _ string) ([]string, error) {
+	// Get or create cached repository
+	repoDir, err := g.getCachedRepository(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	repo, err := git.PlainOpen(repoDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	// Get all tags
+	tagRefs, err := repo.Tags()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tags: %w", err)
+	}
+
+	versions := []string{"latest"}
+	err = tagRefs.ForEach(func(ref *plumbing.Reference) error {
+		tagName := ref.Name().Short()
+		versions = append(versions, tagName)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return versions, nil
 }
 
 // parseGitHubURL extracts owner and repo from GitHub URL
@@ -704,8 +737,11 @@ func (g *GitRegistry) getCacheDir() (string, error) {
 
 // cloneRepository clones the repository to the cache directory
 func (g *GitRegistry) cloneRepository(ctx context.Context, repoDir string) (string, error) {
+	// Convert file:// URLs back to local paths for git operations
+	cloneURL := strings.TrimPrefix(g.config.URL, "file://")
+
 	cloneOptions := &git.CloneOptions{
-		URL:      g.config.URL,
+		URL:      cloneURL,
 		Progress: nil,
 	}
 
@@ -902,6 +938,13 @@ func isHexString(s string) bool {
 	return true
 }
 
+// isVersionNumber checks if a string looks like a version number
+func (g *GitRegistry) isVersionNumber(version string) bool {
+	// Match patterns like "1.0.0", "v1.0.0", "2.1.3", etc.
+	matched, _ := regexp.MatchString(`^v?\d+\.\d+\.\d+`, version)
+	return matched
+}
+
 // resolveBranchAPI resolves a branch name to commit hash using GitHub API
 func (g *GitRegistry) resolveBranchAPI(ctx context.Context, branch string) (string, error) {
 	owner, repo, err := g.parseGitHubURL()
@@ -965,6 +1008,47 @@ func (g *GitRegistry) resolveBranchClone(ctx context.Context, branch string) (st
 	}
 
 	return branchRef.Hash().String(), nil
+}
+
+// resolveSemverPattern resolves a semver pattern to the highest matching version
+func (g *GitRegistry) resolveSemverPattern(ctx context.Context, versionSpec string) (string, error) {
+	constraint, err := semver.NewConstraint(versionSpec)
+	if err != nil {
+		return "", fmt.Errorf("invalid semver constraint: %w", err)
+	}
+
+	// Get all available versions
+	versions, err := g.GetVersions(ctx, "")
+	if err != nil {
+		return "", fmt.Errorf("failed to get versions: %w", err)
+	}
+
+	// Parse and filter valid semantic versions
+	var candidates []*semver.Version
+	for _, v := range versions {
+		if v == "latest" {
+			continue
+		}
+		if ver, err := semver.NewVersion(v); err == nil {
+			candidates = append(candidates, ver)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no valid semantic versions found")
+	}
+
+	// Sort versions (highest first)
+	sort.Sort(sort.Reverse(semver.Collection(candidates)))
+
+	// Find the highest version that satisfies the constraint
+	for _, candidate := range candidates {
+		if constraint.Check(candidate) {
+			return candidate.Original(), nil
+		}
+	}
+
+	return "", fmt.Errorf("no versions satisfy constraint: %s", versionSpec)
 }
 
 // downloadFileAPI downloads a single file using GitHub API preserving directory structure
