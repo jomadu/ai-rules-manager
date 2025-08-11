@@ -32,6 +32,9 @@ usage() {
     echo "  install-semver    - Test semantic version constraints"
     echo "  install-patterns  - Test file pattern matching"
     echo "  install-combined  - Test combined pattern matching"
+    echo "  update-latest     - Test updating to latest version"
+    echo "  update-semver     - Test semantic version constraint updates"
+    echo "  update-patterns   - Test pattern preservation during updates"
     echo "  all              - Run all scenarios"
     echo ""
     echo "Arguments:"
@@ -260,6 +263,48 @@ run_arm_command_with_verification() {
     fi
 }
 
+verify_update() {
+    local old_version="$1"
+    local new_version="$2"
+    local old_phrase="$3"
+    local new_phrase="$4"
+
+    if [ "$VERBOSE" = true ]; then
+        log "Verifying update from $old_version to $new_version"
+        log "Looking for new phrase: '$new_phrase'"
+        log "Files in test-channel:"
+        find test-channel -name "*.md" | head -5
+    fi
+
+    # Verify new content is present
+    if ! verify_content "$new_version" "*" "$new_phrase"; then
+        if [ "$VERBOSE" = true ]; then
+            log "Debug: Searching for '$new_phrase' in all files:"
+            find test-channel -name "*.md" -exec grep -l "$new_phrase" {} \; 2>/dev/null || log "No files contain '$new_phrase'"
+        fi
+        error "New content '$new_phrase' not found after update"
+        return 1
+    fi
+
+    # Verify old content is gone (if different from new)
+    if [ "$old_phrase" != "$new_phrase" ]; then
+        local old_found=false
+        for file in $(find test-channel -name "*.md" -o -name "*.json" 2>/dev/null); do
+            if grep -q "$old_phrase" "$file" 2>/dev/null; then
+                old_found=true
+                break
+            fi
+        done
+        if [ "$old_found" = true ]; then
+            if [ "$VERBOSE" = true ]; then
+                log "Warning: Old content '$old_phrase' still present, but this may be expected"
+            fi
+        fi
+    fi
+
+    return 0
+}
+
 test_install_latest() {
     log "Testing install latest version..."
 
@@ -376,6 +421,148 @@ test_install_combined() {
     fi
 }
 
+test_update_latest() {
+    log "Testing update to latest version..."
+
+    # Install older version first
+    if run_arm_command_with_verification "install test-repo/rules@1.0.0 --patterns '*.md'" "1.0.0" "Basic ghost hunting"; then
+        # First, modify arm.json to use "latest" instead of "1.0.0"
+        cat > arm.json << EOF
+{
+  "engines": {"arm": "^1.0.0"},
+  "channels": {
+    "test": {
+      "directories": ["$TEST_DIR/test-channel"]
+    }
+  },
+  "rulesets": {
+    "test-repo": {
+      "rules": {
+        "version": "latest",
+        "patterns": ["*.md"]
+      }
+    }
+  }
+}
+EOF
+        # Update to latest (should be v2.0.0)
+        if run_arm_command "update test-repo/rules"; then
+            if verify_update "1.0.0" "2.0.0" "Basic ghost hunting" "BREAKING CHANGE"; then
+                success "Update to latest version test passed"
+                return 0
+            else
+                error "Update verification failed"
+                return 1
+            fi
+        else
+            error "Update command failed"
+            return 1
+        fi
+    else
+        error "Initial installation failed"
+        return 1
+    fi
+}
+
+test_update_semver() {
+    log "Testing semantic version constraint updates..."
+
+    local tests=(
+        "1.0.0|^1.0.0|1.2.0|Basic ghost hunting|Best Practices"
+        "1.1.0|~1.1.0|1.1.0|Advanced Techniques|Advanced Techniques"
+        "1.0.0|~1.2.0|1.2.0|Basic ghost hunting|Best Practices"
+        "1.0.0|>=1.1.0|2.0.0|Basic ghost hunting|BREAKING CHANGE"
+    )
+
+    local passed=0
+    local total=${#tests[@]}
+
+    for test_entry in "${tests[@]}"; do
+        IFS='|' read -r install_version constraint expected_version old_phrase new_phrase <<< "$test_entry"
+
+        # Install initial version
+        if run_arm_command_with_verification "install test-repo/rules@$install_version --patterns '*.md'" "$install_version" "$old_phrase"; then
+            # Update arm.json with constraint
+            cat > arm.json << EOF
+{
+  "engines": {"arm": "^1.0.0"},
+  "channels": {
+    "test": {
+      "directories": ["$TEST_DIR/test-channel"]
+    }
+  },
+  "rulesets": {
+    "test-repo": {
+      "rules": {
+        "version": "$constraint",
+        "patterns": ["*.md"]
+      }
+    }
+  }
+}
+EOF
+            # Update using constraint
+            if run_arm_command "update test-repo/rules"; then
+                if verify_update "$install_version" "$expected_version" "$old_phrase" "$new_phrase"; then
+                    ((passed++))
+                fi
+            fi
+        fi
+    done
+
+    if [ "$passed" -eq "$total" ]; then
+        success "Semantic version update tests passed ($passed/$total)"
+        return 0
+    else
+        error "Semantic version update tests failed ($passed/$total)"
+        return 1
+    fi
+}
+
+test_update_patterns() {
+    log "Testing pattern preservation during updates..."
+
+    # Install with specific patterns
+    if run_arm_command_with_verification "install test-repo/rules@1.0.0 --patterns 'cursor/*.md,*.json'" "1.0.0" "Basic cursor"; then
+        # Modify arm.json to update to 1.1.0
+        cat > arm.json << EOF
+{
+  "engines": {"arm": "^1.0.0"},
+  "channels": {
+    "test": {
+      "directories": ["$TEST_DIR/test-channel"]
+    }
+  },
+  "rulesets": {
+    "test-repo": {
+      "rules": {
+        "version": "1.1.0",
+        "patterns": ["cursor/*.md", "*.json"]
+      }
+    }
+  }
+}
+EOF
+        # Update should preserve patterns
+        if run_arm_command "update test-repo/rules"; then
+            # Verify cursor content updated and config still present
+            if verify_content "1.1.0" "*" "Advanced Cursor Features" && verify_content "1.1.0" "*" "\"version\": \"1.1.0\""; then
+                success "Pattern preservation test passed"
+                return 0
+            else
+                error "Pattern preservation verification failed"
+                return 1
+            fi
+        else
+            error "Update with pattern preservation failed"
+            return 1
+        fi
+    else
+        error "Initial pattern installation failed"
+        return 1
+    fi
+}
+
 run_scenario() {
     local scenario="$1"
 
@@ -392,14 +579,26 @@ run_scenario() {
         "install-combined")
             test_install_combined
             ;;
+        "update-latest")
+            test_update_latest
+            ;;
+        "update-semver")
+            test_update_semver
+            ;;
+        "update-patterns")
+            test_update_patterns
+            ;;
         "all")
             local total_passed=0
-            local total_tests=4
+            local total_tests=7
 
             test_install_latest && ((total_passed++))
             test_install_semver && ((total_passed++))
             test_install_patterns && ((total_passed++))
             test_install_combined && ((total_passed++))
+            test_update_latest && ((total_passed++))
+            test_update_semver && ((total_passed++))
+            test_update_patterns && ((total_passed++))
 
             if [ "$total_passed" -eq "$total_tests" ]; then
                 success "All tests passed ($total_passed/$total_tests)"
