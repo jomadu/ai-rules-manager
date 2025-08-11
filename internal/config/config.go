@@ -486,7 +486,7 @@ func validateEngines(engines map[string]string) error {
 	// Validate ARM engine version if present
 	if armVersion, exists := engines["arm"]; exists {
 		if armVersion == "" {
-			return fmt.Errorf("ARM engine version cannot be empty")
+			return fmt.Errorf("arm engine version cannot be empty")
 		}
 		// Basic semver pattern validation
 		if !regexp.MustCompile(`^[\^~>=<]?\d+\.\d+\.\d+`).MatchString(armVersion) {

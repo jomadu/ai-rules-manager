@@ -1,12 +1,16 @@
 package cli
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/max-dunn/ai-rules-manager/internal/config"
+	"github.com/max-dunn/ai-rules-manager/internal/update"
 )
 
 func TestHandleConfigSet(t *testing.T) {
@@ -561,4 +565,474 @@ func TestGetTargetRegistries(t *testing.T) {
 			}
 		}
 	}
+}
+
+// Mock update service for testing
+type mockUpdateService struct {
+	updateResults map[string]*update.UpdateResult
+	updateErrors  map[string]error
+}
+
+func (m *mockUpdateService) UpdateRuleset(ctx context.Context, rulesetSpec string) (*update.UpdateResult, error) {
+	if err, exists := m.updateErrors[rulesetSpec]; exists {
+		return nil, err
+	}
+	if result, exists := m.updateResults[rulesetSpec]; exists {
+		return result, nil
+	}
+	return &update.UpdateResult{
+		Registry:        "default",
+		Ruleset:         "unknown",
+		Version:         "1.0.0",
+		PreviousVersion: "1.0.0",
+		Updated:         false,
+	}, nil
+}
+
+// updateServiceInterface allows mocking the update service
+type updateServiceInterface interface {
+	UpdateRuleset(ctx context.Context, rulesetSpec string) (*update.UpdateResult, error)
+}
+
+// NetworkError represents a network-related error for testing
+type NetworkError struct {
+	Message string
+}
+
+func (e *NetworkError) Error() string {
+	return e.Message
+}
+
+func TestHandleOutdated(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupLockFile  func(tempDir string) error
+		mockResults    map[string]*update.UpdateResult
+		mockErrors     map[string]error
+		jsonOutput     bool
+		expectError    bool
+		expectedOutput []string
+	}{
+		{
+			name: "no lock file",
+			setupLockFile: func(tempDir string) error {
+				return nil // Don't create lock file
+			},
+			expectError:    true,
+			expectedOutput: []string{"no lock file found"},
+		},
+		{
+			name: "all rulesets up to date",
+			setupLockFile: func(tempDir string) error {
+				lockFile := config.LockFile{
+					Rulesets: map[string]map[string]config.LockedRuleset{
+						"default": {
+							"my-rules":     {Version: "1.0.0"},
+							"python-rules": {Version: "2.1.0"},
+						},
+					},
+				}
+				data, _ := json.MarshalIndent(lockFile, "", "  ")
+				return os.WriteFile(filepath.Join(tempDir, "arm.lock"), data, 0o600)
+			},
+			mockResults: map[string]*update.UpdateResult{
+				"default/my-rules": {
+					Registry:        "default",
+					Ruleset:         "my-rules",
+					Version:         "1.0.0",
+					PreviousVersion: "1.0.0",
+					Updated:         false,
+				},
+				"default/python-rules": {
+					Registry:        "default",
+					Ruleset:         "python-rules",
+					Version:         "2.1.0",
+					PreviousVersion: "2.1.0",
+					Updated:         false,
+				},
+			},
+			expectedOutput: []string{"All rulesets are up to date"},
+		},
+		{
+			name: "some rulesets outdated - human readable",
+			setupLockFile: func(tempDir string) error {
+				lockFile := config.LockFile{
+					Rulesets: map[string]map[string]config.LockedRuleset{
+						"default": {
+							"my-rules":     {Version: "1.0.0"},
+							"python-rules": {Version: "2.0.0"},
+						},
+						"my-git": {
+							"js-rules": {Version: "abc123"},
+						},
+					},
+				}
+				data, _ := json.MarshalIndent(lockFile, "", "  ")
+				return os.WriteFile(filepath.Join(tempDir, "arm.lock"), data, 0o600)
+			},
+			mockResults: map[string]*update.UpdateResult{
+				"default/my-rules": {
+					Registry:        "default",
+					Ruleset:         "my-rules",
+					Version:         "1.2.0",
+					PreviousVersion: "1.0.0",
+					Updated:         true,
+				},
+				"default/python-rules": {
+					Registry:        "default",
+					Ruleset:         "python-rules",
+					Version:         "2.0.0",
+					PreviousVersion: "2.0.0",
+					Updated:         false,
+				},
+				"my-git/js-rules": {
+					Registry:        "my-git",
+					Ruleset:         "js-rules",
+					Version:         "def456",
+					PreviousVersion: "abc123",
+					Updated:         true,
+				},
+			},
+			expectedOutput: []string{
+				"Found 2 outdated ruleset(s)",
+				"default/my-rules",
+				"Current: 1.0.0",
+				"Latest:  1.2.0",
+				"Update:  arm update default/my-rules",
+				"my-git/js-rules",
+				"Current: abc123",
+				"Latest:  def456",
+				"Update:  arm update my-git/js-rules",
+			},
+		},
+		{
+			name: "network errors ignored",
+			setupLockFile: func(tempDir string) error {
+				lockFile := config.LockFile{
+					Rulesets: map[string]map[string]config.LockedRuleset{
+						"default": {
+							"my-rules":      {Version: "1.0.0"},
+							"failing-rules": {Version: "1.0.0"},
+						},
+					},
+				}
+				data, _ := json.MarshalIndent(lockFile, "", "  ")
+				return os.WriteFile(filepath.Join(tempDir, "arm.lock"), data, 0o600)
+			},
+			mockResults: map[string]*update.UpdateResult{
+				"default/my-rules": {
+					Registry:        "default",
+					Ruleset:         "my-rules",
+					Version:         "1.2.0",
+					PreviousVersion: "1.0.0",
+					Updated:         true,
+				},
+			},
+			mockErrors: map[string]error{
+				"default/failing-rules": &NetworkError{Message: "connection timeout"},
+			},
+			expectedOutput: []string{
+				"Found 1 outdated ruleset(s)",
+				"default/my-rules",
+				"Current: 1.0.0",
+				"Latest:  1.2.0",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp directory
+			tempDir, err := os.MkdirTemp("", "outdated-test")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer func() { _ = os.RemoveAll(tempDir) }()
+
+			// Change to temp directory
+			originalWd, _ := os.Getwd()
+			defer func() { _ = os.Chdir(originalWd) }()
+			_ = os.Chdir(tempDir)
+
+			// Setup test environment
+			if err := tt.setupLockFile(tempDir); err != nil {
+				t.Fatalf("Failed to setup lock file: %v", err)
+			}
+
+			// Create basic configuration
+			armrcContent := `[registries]
+default = https://github.com/user/repo
+my-git = https://github.com/other/repo
+
+[registries.default]
+type = git
+
+[registries.my-git]
+type = git
+`
+			err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+			if err != nil {
+				t.Fatalf("Failed to create .armrc: %v", err)
+			}
+
+			// Test with mock service
+			mockService := &mockUpdateService{
+				updateResults: tt.mockResults,
+				updateErrors:  tt.mockErrors,
+			}
+
+			// Execute the command with mock
+			err = handleOutdatedWithMockService(false, tt.jsonOutput, mockService)
+
+			// Check error expectation
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				} else {
+					// Verify error message contains expected text
+					for _, expected := range tt.expectedOutput {
+						if !strings.Contains(err.Error(), expected) {
+							t.Errorf("Expected error to contain '%s', got: %v", expected, err)
+						}
+					}
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestHandleOutdatedJSONValidation(t *testing.T) {
+	// Create temp directory
+	tempDir, err := os.MkdirTemp("", "outdated-json-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// Change to temp directory
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	// Setup lock file with outdated rulesets
+	lockFile := config.LockFile{
+		Rulesets: map[string]map[string]config.LockedRuleset{
+			"default": {
+				"my-rules": {Version: "1.0.0"},
+			},
+		},
+	}
+	data, _ := json.MarshalIndent(lockFile, "", "  ")
+	err = os.WriteFile("arm.lock", data, 0o600)
+	if err != nil {
+		t.Fatalf("Failed to create lock file: %v", err)
+	}
+
+	// Create basic configuration
+	armrcContent := `[registries]
+default = https://github.com/user/repo
+
+[registries.default]
+type = git
+`
+	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+	if err != nil {
+		t.Fatalf("Failed to create .armrc: %v", err)
+	}
+
+	// Mock service with outdated ruleset
+	mockService := &mockUpdateService{
+		updateResults: map[string]*update.UpdateResult{
+			"default/my-rules": {
+				Registry:        "default",
+				Ruleset:         "my-rules",
+				Version:         "1.2.0",
+				PreviousVersion: "1.0.0",
+				Updated:         true,
+			},
+		},
+	}
+
+	// Execute with JSON output and capture result
+	var capturedOutput string
+	handleOutdatedWithCapture := func(_, jsonOutput bool, updateService updateServiceInterface) (string, error) {
+		// Load configuration
+		cfg, err := config.Load()
+		if err != nil {
+			return "", fmt.Errorf("failed to load configuration: %w", err)
+		}
+
+		// Check if we have a lock file
+		if cfg.LockFile == nil {
+			return "", fmt.Errorf("no lock file found - no rulesets installed")
+		}
+
+		type outdatedInfo struct {
+			Registry       string `json:"registry"`
+			Name           string `json:"name"`
+			CurrentVersion string `json:"current_version"`
+			LatestVersion  string `json:"latest_version"`
+			UpdateCommand  string `json:"update_command"`
+		}
+
+		var outdatedRulesets []outdatedInfo
+
+		// Check each installed ruleset
+		for registry, rulesets := range cfg.LockFile.Rulesets {
+			for name := range rulesets {
+				rulesetSpec := fmt.Sprintf("%s/%s", registry, name)
+				result, err := updateService.UpdateRuleset(context.Background(), rulesetSpec)
+				if err != nil {
+					continue // Skip failed resolutions
+				}
+				if result.Updated {
+					outdatedRulesets = append(outdatedRulesets, outdatedInfo{
+						Registry:       result.Registry,
+						Name:           result.Ruleset,
+						CurrentVersion: result.PreviousVersion,
+						LatestVersion:  result.Version,
+						UpdateCommand:  fmt.Sprintf("arm update %s/%s", result.Registry, result.Ruleset),
+					})
+				}
+			}
+		}
+
+		if jsonOutput {
+			data, _ := json.MarshalIndent(map[string]interface{}{
+				"outdated": outdatedRulesets,
+			}, "", "  ")
+			return string(data), nil
+		}
+
+		return "", nil
+	}
+
+	// Execute with JSON output
+	capturedOutput, err = handleOutdatedWithCapture(false, true, mockService)
+	if err != nil {
+		t.Fatalf("Expected no error but got: %v", err)
+	}
+
+	// Validate JSON structure
+	var result map[string]interface{}
+	err = json.Unmarshal([]byte(capturedOutput), &result)
+	if err != nil {
+		t.Fatalf("Invalid JSON output: %v", err)
+	}
+
+	// Validate JSON schema
+	outdated, exists := result["outdated"]
+	if !exists {
+		t.Error("JSON output missing 'outdated' field")
+	}
+
+	outdatedList, ok := outdated.([]interface{})
+	if !ok {
+		t.Error("'outdated' field is not an array")
+	}
+
+	if len(outdatedList) != 1 {
+		t.Errorf("Expected 1 outdated ruleset, got %d", len(outdatedList))
+	}
+
+	// Validate first outdated ruleset structure
+	firstRuleset, ok := outdatedList[0].(map[string]interface{})
+	if !ok {
+		t.Error("Outdated ruleset is not an object")
+	}
+
+	requiredFields := []string{"registry", "name", "current_version", "latest_version", "update_command"}
+	for _, field := range requiredFields {
+		if _, exists := firstRuleset[field]; !exists {
+			t.Errorf("Missing required field '%s' in JSON output", field)
+		}
+	}
+
+	// Validate field values
+	if firstRuleset["registry"] != "default" {
+		t.Errorf("Expected registry 'default', got %v", firstRuleset["registry"])
+	}
+	if firstRuleset["name"] != "my-rules" {
+		t.Errorf("Expected name 'my-rules', got %v", firstRuleset["name"])
+	}
+	if firstRuleset["current_version"] != "1.0.0" {
+		t.Errorf("Expected current_version '1.0.0', got %v", firstRuleset["current_version"])
+	}
+	if firstRuleset["latest_version"] != "1.2.0" {
+		t.Errorf("Expected latest_version '1.2.0', got %v", firstRuleset["latest_version"])
+	}
+	if firstRuleset["update_command"] != "arm update default/my-rules" {
+		t.Errorf("Expected update_command 'arm update default/my-rules', got %v", firstRuleset["update_command"])
+	}
+}
+
+// handleOutdatedWithMockService is a testable version of handleOutdated that accepts a mock service
+func handleOutdatedWithMockService(_, jsonOutput bool, updateService updateServiceInterface) error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Check if we have a lock file
+	if cfg.LockFile == nil {
+		return fmt.Errorf("no lock file found - no rulesets installed")
+	}
+
+	type outdatedInfo struct {
+		Registry       string `json:"registry"`
+		Name           string `json:"name"`
+		CurrentVersion string `json:"current_version"`
+		LatestVersion  string `json:"latest_version"`
+		UpdateCommand  string `json:"update_command"`
+	}
+
+	var outdatedRulesets []outdatedInfo
+
+	// Check each installed ruleset
+	for registry, rulesets := range cfg.LockFile.Rulesets {
+		for name := range rulesets {
+			rulesetSpec := fmt.Sprintf("%s/%s", registry, name)
+			result, err := updateService.UpdateRuleset(context.Background(), rulesetSpec)
+			if err != nil {
+				continue // Skip failed resolutions
+			}
+			if result.Updated {
+				outdatedRulesets = append(outdatedRulesets, outdatedInfo{
+					Registry:       result.Registry,
+					Name:           result.Ruleset,
+					CurrentVersion: result.PreviousVersion,
+					LatestVersion:  result.Version,
+					UpdateCommand:  fmt.Sprintf("arm update %s/%s", result.Registry, result.Ruleset),
+				})
+			}
+		}
+	}
+
+	if jsonOutput {
+		data, _ := json.MarshalIndent(map[string]interface{}{
+			"outdated": outdatedRulesets,
+		}, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(outdatedRulesets) == 0 {
+		fmt.Println("All rulesets are up to date")
+		return nil
+	}
+
+	fmt.Printf("Found %d outdated ruleset(s):\n\n", len(outdatedRulesets))
+	for _, info := range outdatedRulesets {
+		fmt.Printf("%s/%s\n", info.Registry, info.Name)
+		fmt.Printf("  Current: %s\n", info.CurrentVersion)
+		fmt.Printf("  Latest:  %s\n", info.LatestVersion)
+		fmt.Printf("  Update:  %s\n\n", info.UpdateCommand)
+	}
+
+	return nil
 }
