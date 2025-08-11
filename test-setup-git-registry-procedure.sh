@@ -9,4 +9,4 @@ cd sandbox
 ../bin/arm clean all --force
 ../bin/arm config add registry sdlc-rules https://github.com/jomadu/sdlc-rules --type=git
 ../bin/arm config add channel q --directories ./amazonq/rules
-../bin/arm install sdlc-rules/its-a-me@main --patterns "rules/its-a-me.md"
+../bin/arm install sdlc-rules/its-a-me@main --patterns "rules/its-a-me.md" --channels q

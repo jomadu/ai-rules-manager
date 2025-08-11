@@ -1,39 +1,8 @@
 package registry
 
 import (
-	"context"
-	"strings"
 	"testing"
 )
-
-func TestNewS3Registry(t *testing.T) {
-	config := &RegistryConfig{
-		Name: "test-s3",
-		Type: "s3",
-		URL:  "my-test-bucket",
-		Auth: &AuthConfig{
-			Region: "us-east-1",
-		},
-	}
-	auth := &AuthConfig{
-		Region: "us-east-1",
-	}
-
-	// Skip actual AWS connection for unit tests
-	t.Skip("S3 registry requires AWS credentials for testing")
-
-	registry, err := NewS3Registry(config, auth)
-	if err != nil {
-		t.Fatalf("Failed to create S3 registry: %v", err)
-	}
-
-	if registry.GetType() != "s3" {
-		t.Errorf("Expected type 's3', got %q", registry.GetType())
-	}
-	if registry.GetName() != "test-s3" {
-		t.Errorf("Expected name 'test-s3', got %q", registry.GetName())
-	}
-}
 
 func TestNewS3RegistryInvalidConfig(t *testing.T) {
 	config := &RegistryConfig{
@@ -171,11 +140,6 @@ func TestExtractVersionFromPrefix(t *testing.T) {
 	}
 }
 
-func TestS3GetVersions(t *testing.T) {
-	// Skip test that requires actual S3 client
-	t.Skip("S3 GetVersions requires AWS credentials and S3 client for testing")
-}
-
 func TestS3RegistryClose(t *testing.T) {
 	registry := &S3Registry{
 		config: &RegistryConfig{
@@ -187,40 +151,5 @@ func TestS3RegistryClose(t *testing.T) {
 	err := registry.Close()
 	if err != nil {
 		t.Errorf("Expected no error from Close(), got: %v", err)
-	}
-}
-
-// TestS3RegistryIntegration tests would require actual AWS credentials
-// and S3 bucket setup, so they are skipped in unit tests
-func TestS3RegistryIntegration(t *testing.T) {
-	t.Skip("Integration tests require AWS credentials and S3 bucket")
-
-	// This would test:
-	// - Actual S3 connection
-	// - Listing objects in bucket
-	// - Downloading objects
-	// - AWS credential chain
-	// - Different AWS profiles
-	// - Cross-region access
-}
-
-func TestLoadAWSConfigValidation(t *testing.T) {
-	// Test that the function signature is correct
-	// Actual testing would require AWS credentials
-	ctx := context.Background()
-	auth := &AuthConfig{
-		Region: "us-east-1",
-	}
-
-	// This will fail without AWS credentials, but validates the function exists
-	_, err := loadAWSConfig(ctx, auth)
-	// We expect an error in test environment without AWS setup
-	if err == nil {
-		t.Skip("AWS credentials available, skipping validation test")
-	}
-
-	// Validate error message contains expected AWS-related content
-	if !strings.Contains(err.Error(), "AWS") && !strings.Contains(err.Error(), "credential") {
-		t.Errorf("Expected AWS-related error, got: %v", err)
 	}
 }

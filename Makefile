@@ -33,14 +33,16 @@ install: build
 test:
 	go test -v -race -coverprofile=coverage.out ./...
 
-# Run linter
-lint:
-	golangci-lint run
+
 
 # Format code
 fmt:
 	gofmt -w .
-	goimports -w .
+	$(shell go env GOPATH)/bin/goimports -w .
+
+# Run linter
+lint:
+	$(shell go env GOPATH)/bin/golangci-lint run
 
 # Clean build artifacts
 clean:
