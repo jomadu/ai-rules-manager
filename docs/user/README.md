@@ -8,16 +8,13 @@ Complete guides for using AI Rules Manager (ARM) to manage your AI coding assist
 Get ARM up and running in 5 minutes with step-by-step examples.
 
 ### [Configuration Guide](configuration.md)
-Complete guide to configuring ARM with `.armrc` and `arm.json` files.
+Complete guide to configuring ARM with `.armrc` and `arm.json` files, including GitHub Copilot integration.
 
 ### [Registry Guide](registries.md)
 Set up different types of registries (Git, S3, GitLab, HTTPS, Local) for storing rulesets.
 
 ### [Team Setup Guide](team-setup.md)
 Guide for team leads and platform engineers to distribute rulesets across development teams.
-
-### [GitHub Copilot Integration](copilot.md)
-Configure ARM to manage GitHub Copilot instructions, chat participants, and custom prompts.
 
 ## Quick Reference
 
