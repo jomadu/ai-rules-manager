@@ -43,18 +43,12 @@ func TestGitWorkflow(t *testing.T) {
 
 // setupTestRepository creates a local bare Git repository with test content and versions
 func setupTestRepository(t *testing.T) string {
-	// Create bare repository
-	bareRepoDir := t.TempDir()
-	cmd := exec.Command("git", "init", "--bare", bareRepoDir)
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to create bare repository: %v", err)
-	}
-
-	// Create working directory to populate content
+	// Create working directory first to build the repository
 	workDir := t.TempDir()
-	cmd = exec.Command("git", "clone", bareRepoDir, workDir)
+	cmd := exec.Command("git", "init")
+	cmd.Dir = workDir
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to clone bare repository: %v", err)
+		t.Fatalf("Failed to initialize repository: %v", err)
 	}
 
 	// Configure git in working directory
@@ -67,6 +61,7 @@ func setupTestRepository(t *testing.T) string {
 	}
 	gitConfig("user.name", "Test User")
 	gitConfig("user.email", "test@example.com")
+	gitConfig("init.defaultBranch", "main")
 
 	// Create version history
 	createVersion100(t, workDir)
@@ -81,18 +76,31 @@ func setupTestRepository(t *testing.T) string {
 	createVersion200(t, workDir)
 	gitCommitAndTag(t, workDir, "feat!: restructure repository with breaking changes", "v2.0.0")
 
-	// Set up the main branch and push
+	// Ensure we're on main branch
 	cmd = exec.Command("git", "branch", "-M", "main")
 	cmd.Dir = workDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to set main branch: %v", err)
 	}
 
+	// Create bare repository and push to it
+	bareRepoDir := t.TempDir()
+	cmd = exec.Command("git", "init", "--bare", bareRepoDir)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to create bare repository: %v", err)
+	}
+
+	// Add bare repository as remote and push
+	cmd = exec.Command("git", "remote", "add", "origin", bareRepoDir)
+	cmd.Dir = workDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to add remote: %v", err)
+	}
+
 	// Push all changes and tags
 	cmd = exec.Command("git", "push", "-u", "origin", "main")
 	cmd.Dir = workDir
 	if err := cmd.Run(); err != nil {
-		// Get more detailed error information
 		output, _ := cmd.CombinedOutput()
 		t.Fatalf("Failed to push changes: %v, output: %s", err, string(output))
 	}
@@ -100,7 +108,6 @@ func setupTestRepository(t *testing.T) string {
 	cmd = exec.Command("git", "push", "origin", "--tags")
 	cmd.Dir = workDir
 	if err := cmd.Run(); err != nil {
-		// Get more detailed error information
 		output, _ := cmd.CombinedOutput()
 		t.Fatalf("Failed to push tags: %v, output: %s", err, string(output))
 	}
@@ -114,6 +121,14 @@ func gitCommitAndTag(t *testing.T, workDir, message, tag string) {
 	cmd.Dir = workDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to add files: %v", err)
+	}
+
+	// Check if there are changes to commit
+	cmd = exec.Command("git", "diff", "--cached", "--quiet")
+	cmd.Dir = workDir
+	if err := cmd.Run(); err == nil {
+		// No changes to commit, skip
+		return
 	}
 
 	cmd = exec.Command("git", "commit", "-m", message)
