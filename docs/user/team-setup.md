@@ -1,70 +1,70 @@
 # Team Setup Guide
 
-Guide for team leads and platform engineers to distribute AI coding rulesets across development teams.
+Deploy ARM across your development team for consistent AI coding rules.
 
-## Team Workflow Overview
+## Team Configuration Strategy
 
-1. **Team Lead**: Creates and maintains rulesets in a shared registry
-2. **Team Members**: Install and sync rulesets from the shared registry
-3. **Platform Team**: Manages enterprise-wide registries and policies
-
-## Setting Up Team Registries
-
-### Option 1: Git Repository (Recommended)
-
-Create a shared Git repository for your team's rulesets:
+### Recommended: Security-First Approach
+Commit safe configuration files to your repository for team consistency.
 
 ```bash
-# Team lead sets up the registry
-arm config add registry team-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git --authToken=$GITHUB_TOKEN
+# Files to commit
+arm.json        # Channels and rulesets (safe)
+arm.lock        # Locked versions (for reproducible builds)
 
-# Team members add the same registry
-arm config add registry team-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
+# Files NOT to commit
+.armrc          # May contain sensitive registry configs
+                # Use global ~/.arm/.armrc for team registry setup
 ```
 
-### Option 2: S3 Bucket (Enterprise)
+### Alternative: Global + Local Split
+Use global configuration for team defaults with sensitive data, local for project-specific overrides.
 
-For larger teams with AWS infrastructure:
+## Step-by-Step Team Setup
 
+### 1. Create Team Registry
+
+#### GitHub Organization
 ```bash
-# Platform team creates shared S3 registry
-arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1 --profile=company-aws
+# Create a repository for your team's rules
+# Example: https://github.com/company/ai-coding-rules
 
-# Team members use the same bucket
-arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
+# Structure:
+# ai-coding-rules/
+# ├── standards/
+# │   ├── clean-code.md
+# │   └── security.md
+# ├── guidelines/
+# │   └── best-practices.md
+# └── README.md
 ```
 
-## Standardizing Team Configuration
+#### S3 Bucket (Enterprise)
+```bash
+# Create S3 bucket for team rules
+aws s3 mb s3://company-ai-rules --region us-east-1
 
-### Shared Configuration Template
+# Upload rulesets
+aws s3 sync ./rulesets s3://company-ai-rules/
+```
 
-Create a template `.armrc` for your team:
+### 2. Configure Team Registry
 
+#### Global ~/.arm/.armrc (Team Registry Setup)
 ```ini
-# Team ARM Configuration Template
-
 [registries]
-team-registry = https://github.com/jomadu/ai-rules-manager-test-git-registry
-corp-registry = team-rules-bucket
+team = https://github.com/company/ai-coding-rules
 
-[registries.team-registry]
+[registries.team]
 type = git
-concurrency = 2
-rateLimit = 15/minute
-
-[registries.corp-registry]
-type = s3
-region = us-east-1
-concurrency = 5
-rateLimit = 50/minute
+authToken = $GITHUB_TOKEN
 ```
 
-### Shared arm.json Template
-
+#### arm.json (Project Configuration)
 ```json
 {
   "engines": {
-    "arm": "^1.2.3"
+    "arm": "^1.0.0"
   },
   "channels": {
     "cursor": {
@@ -75,240 +75,148 @@ rateLimit = 50/minute
     }
   },
   "rulesets": {
-    "team-registry": {
-      "rules": {
-        "version": "^2.0.0",
-        "patterns": ["*.md"]
+    "team": {
+      "coding-standards": {
+        "version": "^1.0.0",
+        "patterns": ["standards/*.md", "guidelines/*.md"]
+      },
+      "security-rules": {
+        "version": "latest",
+        "patterns": ["security/*.md"]
       }
     }
   }
 }
 ```
 
-## Team Member Onboarding
+### 3. Team Onboarding Script
 
-### Quick Setup Script
-
-Create an onboarding script for new team members:
+Create `setup-arm.sh` for new team members:
 
 ```bash
 #!/bin/bash
-# team-setup.sh
+set -e
 
-echo "Setting up Team ARM configuration..."
-
-# Add team registries
-arm config add registry team-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
-arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
-
-# Set default registry
-arm config set registries.default team-registry
-
-# Add channels
-arm config add channel cursor --directories .cursor/rules
-arm config add channel q --directories .amazonq/rules
-
-# Install team rulesets
-arm install rules --patterns "*.md"
-
-echo "Team setup complete!"
-```
-
-### Verification
-
-Team members can verify their setup:
-
-```bash
-# Check configuration
-arm config list
-
-# Verify installations
-arm list
-
-# Check for updates
-arm outdated
-```
-
-## Managing Team Rulesets
-
-### Publishing Updates
-
-Team leads publish new versions:
-
-```bash
-# After updating rulesets in Git repository
-git tag v2.1.0
-git push origin v2.1.0
-```
-
-### Team Sync
-
-Team members stay updated:
-
-```bash
-# Check for updates
-arm outdated
-
-# Update all rulesets
-arm update
-
-# Update specific ruleset
-arm update rules
-```
-
-## Enterprise Deployment
-
-### CI/CD Integration
-
-Add ARM to your CI/CD pipeline:
-
-```yaml
-# .github/workflows/setup-arm.yml
-name: Setup ARM
-on: [push, pull_request]
-
-jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install ARM
-        run: curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
-
-      - name: Configure ARM
-        run: |
-          arm config add registry corp-registry team-rules-bucket --type=s3 --region=us-east-1
-          arm config add channel cursor --directories .cursor/rules
-
-      - name: Install rulesets
-        run: arm install
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-```
-
-### Docker Integration
-
-Include ARM in development containers:
-
-```dockerfile
-# Dockerfile
-FROM node:18
+echo "Setting up ARM for team development..."
 
 # Install ARM
-RUN curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
 
-# Copy team configuration
-COPY .armrc /root/.armrc
-COPY arm.json /workspace/arm.json
+# Verify installation
+arm version
 
 # Install team rulesets
-WORKDIR /workspace
-RUN arm install
+echo "Installing team rulesets..."
+arm install
 
-# Continue with your app setup...
+echo "ARM setup complete!"
+echo "Team rulesets installed in .cursor/rules and .amazonq/rules"
 ```
 
-## Governance and Policies
+## Authentication Management
 
-### Version Pinning Strategy
-
-Choose a versioning strategy for your team:
-
+### GitHub Token Setup
 ```bash
-# Conservative: Pin exact versions
-arm install rules@2.0.0
+# Each team member creates a personal access token
+# with 'repo' scope for private repositories
 
-# Flexible: Use semver ranges
-arm install rules@^2.0.0
+# Set in environment (recommended)
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 
-# Latest: Always use newest (not recommended for production)
-arm install rules@latest
+# Or in shell profile
+echo 'export GITHUB_TOKEN=ghp_xxxxxxxxxxxx' >> ~/.bashrc
+
+# Configure in global .armrc (not committed)
+arm config add registry team https://github.com/company/ai-coding-rules --type=git --authToken=$GITHUB_TOKEN
 ```
 
-### Registry Access Control
-
-Control who can publish to team registries:
-
-- **Git**: Use repository permissions and branch protection
-- **S3**: Use IAM policies to control bucket access
-- **GitLab**: Use project/group permissions
-
-### Audit and Compliance
-
-Track ruleset usage across your team:
-
+### AWS Credentials (S3)
 ```bash
-# Generate team usage report
-arm list --json > team-rulesets-$(date +%Y%m%d).json
+# Configure AWS CLI
+aws configure --profile company
 
-# Check for outdated rulesets
-arm outdated --json
+# Or use environment variables
+export AWS_PROFILE=company
+export AWS_REGION=us-east-1
 ```
+
+## Monitoring and Maintenance
+
+### Regular Updates
+```bash
+# Weekly team rule updates
+arm update
+
+# Check for outdated rules
+arm outdated
+```
+
+### Cache Management
+```bash
+# Clean unused cache periodically
+arm clean unused
+
+# Monitor cache size
+du -sh ~/.arm/cache
+```
+
+### Version Tracking
+- Use semantic versioning for rule releases
+- Document changes in team repository
+- Communicate updates to team
 
 ## Troubleshooting Team Issues
 
-### Different Versions Across Team
-
+### Inconsistent Rules
 ```bash
-# Team member has wrong version
-$ arm list
-cursor:
-  team-registry:
-    - rules@1.9.0  # Should be 2.0.0
-```
+# Check effective configuration
+arm config list
 
-**Solution**: Update to latest:
-```bash
-arm update rules
-```
+# Verify lock file consistency
+cat arm.lock | jq .
 
-### Registry Access Issues
-
-```bash
-Error [AUTH]: Access denied to registry 'team-registry'
-Details: HTTP 403 - insufficient permissions
-```
-
-**Solutions**:
-- **Git**: Check if team member has repository access
-- **S3**: Verify AWS credentials and IAM permissions
-- **GitLab**: Check project/group membership
-
-### Configuration Drift
-
-Team members have different configurations:
-
-**Solution**: Use shared configuration templates and setup scripts.
-
-### Lock File Conflicts
-
-```bash
-Error: arm.json changes conflict with arm.lock
-```
-
-**Solution**: Re-run install to regenerate lock file:
-```bash
+# Reinstall if needed
+rm arm.lock
 arm install
+```
+
+### Authentication Issues
+```bash
+# Verify token access
+curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user
+
+# Test registry access
+arm info team/test-ruleset
+```
+
+### Permission Problems
+```bash
+# Check directory permissions
+ls -la .cursor/rules/
+
+# Fix permissions
+chmod -R 755 .cursor/rules .amazonq/rules
 ```
 
 ## Best Practices
 
-### For Team Leads
-- Use semantic versioning for ruleset releases
-- Document changes in release notes
-- Test rulesets before publishing
-- Communicate updates to the team
+### Repository Management
+- Use semantic versioning for rule releases
+- Maintain changelog for rule updates
+- Review rule changes through pull requests
+- Tag stable releases
 
-### For Team Members
-- Run `arm outdated` regularly
-- Don't modify ARM-managed files manually
-- Report issues with rulesets to team leads
-- Keep local configuration minimal
+### Team Communication
+- Announce rule updates in team channels
+- Document rule purposes and usage
+- Provide migration guides for breaking changes
+- Regular team reviews of coding standards
 
-### For Platform Teams
-- Standardize registry types across the organization
-- Provide shared configuration templates
-- Monitor registry usage and performance
-- Implement backup strategies for critical rulesets
+### Security
+- Store tokens in environment variables, not config files
+- Use organization-level GitHub tokens when possible
+- Use HTTPS-only registries in production
+- Regularly rotate authentication tokens
+- Regularly audit team member access
+- Monitor rule repository for unauthorized changes
+- Use branch protection for rule repositories

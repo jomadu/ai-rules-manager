@@ -32,25 +32,9 @@ cache/
 ## Content-Based Storage
 
 ### Hash Generation
-```go
-func GenerateContentHash(content []byte, metadata map[string]string) string {
-    h := sha256.New()
-    h.Write(content)
-
-    // Include metadata for uniqueness
-    keys := make([]string, 0, len(metadata))
-    for k := range metadata {
-        keys = append(keys, k)
-    }
-    sort.Strings(keys)
-
-    for _, k := range keys {
-        h.Write([]byte(k + "=" + metadata[k]))
-    }
-
-    return hex.EncodeToString(h.Sum(nil))
-}
-```
+- Uses SHA-256 hashing of content plus metadata
+- Includes sorted metadata keys for consistent hashing
+- Ensures identical content produces identical hashes
 
 ### Deduplication
 - Identical content shares storage regardless of source
@@ -59,28 +43,13 @@ func GenerateContentHash(content []byte, metadata map[string]string) string {
 
 ## Cache Manager
 
-### Interface
-```go
-type Manager interface {
-    Store(key string, content []byte, metadata Metadata) error
-    Retrieve(key string) ([]byte, Metadata, error)
-    Exists(key string) bool
-    Delete(key string) error
-    Cleanup() error
-    Stats() Stats
-}
-```
-
-### Implementation
-```go
-type Manager struct {
-    basePath        string
-    maxSize         int64
-    defaultTTL      time.Duration
-    cleanupInterval time.Duration
-    mu              sync.RWMutex
-}
-```
+### Core Operations
+- **Store**: Save content with metadata and TTL
+- **Retrieve**: Get cached content and metadata
+- **Exists**: Check cache presence without loading
+- **Delete**: Remove specific cache entries
+- **Cleanup**: Automated maintenance and eviction
+- **Stats**: Cache performance metrics
 
 ## TTL Management
 
@@ -109,23 +78,9 @@ cleanupInterval = 6h           # Cleanup frequency
 4. **Size-based**: Maintain cache under limit
 
 ### Size Calculation
-```go
-func (m *Manager) calculateSize() (int64, error) {
-    var totalSize int64
-
-    err := filepath.Walk(m.basePath, func(path string, info os.FileInfo, err error) error {
-        if err != nil {
-            return err
-        }
-        if !info.IsDir() {
-            totalSize += info.Size()
-        }
-        return nil
-    })
-
-    return totalSize, err
-}
-```
+- Recursive directory traversal for total size
+- Excludes directory entries from size calculation
+- Used for eviction decisions and cache limits
 
 ## Performance Characteristics
 

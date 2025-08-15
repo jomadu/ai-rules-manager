@@ -1,255 +1,179 @@
 # Registry Guide
 
-Complete guide to setting up different types of registries for storing and sharing rulesets.
+Working with different registry types in ARM.
 
-## Registry Types
+## Registry Types Overview
 
-ARM supports five registry types:
-- **Git** - GitHub, GitLab, and other Git repositories
-- **S3** - AWS S3 buckets
-- **GitLab** - GitLab Package Registry
-- **HTTPS** - Generic HTTP servers with manifest.json
-- **Local** - Local file system directories
+| Type | Use Case | Authentication | Versioning | Patterns |
+|------|----------|----------------|------------|----------|
+| Git | GitHub/GitLab repos | Token (private only) | Tags/branches | Yes |
+| Git-Local | Local Git repos | Filesystem | Git tags/branches | Yes |
+| S3 | AWS S3 buckets | IAM | Directory structure | No |
+| HTTPS | Custom APIs | Token | API-defined | No |
+| GitLab | GitLab Package Registry | Token | Package versions | No |
+| Local | Local directories | Filesystem | Directory structure | No |
 
 ## Git Registries
 
-### Setup
-
+### GitHub
 ```bash
 # Public repository
-arm config add registry test-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
+arm config add registry public https://github.com/org/rules --type=git
 
-# Private repository with token
-arm config add registry private-registry https://github.com/user/private-rules --type=git --authToken=$GITHUB_TOKEN
-
-# Enable API mode for faster access
-arm config add registry api-registry https://github.com/user/rules --type=git --authToken=$GITHUB_TOKEN --apiType=github --apiVersion=2022-11-28
+# Private repository
+arm config add registry private https://github.com/org/private-rules --type=git --authToken=$GITHUB_TOKEN
 ```
 
-### Installing from Git
-
-Git registries require patterns to select files:
-
+### GitLab
 ```bash
-# Install with patterns
-arm install rules --patterns "*.md"
-
-# Multiple patterns
-arm install rules --patterns "rules/*.md,cursor/*.md"
+arm config add registry gitlab https://gitlab.com/org/rules --type=git --authToken=$GITLAB_TOKEN --apiType=gitlab
 ```
 
-### Version Targeting
-
+### Version Formats
 ```bash
-# Latest commit on default branch
-arm install rules@latest
+arm install rules@latest        # Latest tag
+arm install rules@main          # Branch
+arm install rules@v1.2.3        # Specific tag
+arm install rules@1.2.3         # Tag without 'v' prefix
+arm install rules@^1.0.0        # Semver constraint
+```
 
-# Specific branch
-arm install rules@main
+### Pattern Usage
+```bash
+# Install specific files
+arm install rules --patterns "standards/*.md,guidelines/*.md"
 
-# Git tag (supports v1.0.0 and 1.0.0 formats)
-arm install rules@^1.0.0
-
-# Specific commit
-arm install rules@abc123def
+# Exclude files
+arm install rules --patterns "**/*.md,!**/drafts/**"
 ```
 
 ## S3 Registries
 
 ### Setup
-
 ```bash
 # Basic S3 registry
-arm config add registry koopa-troopa koopa-castle-rules --type=s3 --region=us-east-1
+arm config add registry s3-rules my-bucket --type=s3 --region=us-east-1
 
-# With custom AWS profile
-arm config add registry lakitu-cloud lakitu-rules-bucket --type=s3 --region=us-west-2 --profile=mario-aws
-
-# With prefix
-arm config add registry goomba-storage goomba-bucket --type=s3 --region=eu-west-1 --prefix=/rulesets/path
+# With custom profile and prefix
+arm config add registry s3-team team-bucket --type=s3 --region=us-west-2 --profile=team --prefix=/rules/
 ```
 
-### S3 Directory Structure
-
-Your S3 bucket should be organized like this:
+### Bucket Structure
 ```
-koopa-castle-rules/
-├── power-up-rules/
-│   ├── 1.0.0/
-│   │   └── ruleset.tar.gz
-│   └── 1.1.0/
-│       └── ruleset.tar.gz
-└── fire-flower-security/
-    └── 2.0.0/
-        └── ruleset.tar.gz
+bucket/
+├── prefix/                    # Optional
+│   └── ruleset-name/
+│       ├── v1.0.0/
+│       │   └── ruleset.tar.gz
+│       └── v1.1.0/
+│           └── ruleset.tar.gz
 ```
 
-### Installing from S3
+Note: "latest" version is resolved by listing all version directories and selecting the most recent one. Only `ruleset.tar.gz` files are used.
 
+### Authentication
 ```bash
-# Install latest version
-arm install power-up-rules
+# AWS CLI configuration
+aws configure --profile team
 
-# Install specific version
-arm install power-up-rules@1.0.0
-```
-
-## GitLab Package Registry
-
-### Setup
-
-```bash
-# Project-level registry
-arm config add registry toad-house https://gitlab.mushroom-kingdom.example/projects/456 --type=gitlab --authToken=$GITLAB_TOKEN
-
-# Group-level registry
-arm config add registry yoshi-group https://gitlab.mushroom-kingdom.example/groups/789 --type=gitlab --authToken=$GITLAB_TOKEN
-```
-
-### Installing from GitLab
-
-```bash
-# Install from GitLab package registry
-arm install star-power-performance@~2.1.0
+# Environment variables
+export AWS_PROFILE=team
+export AWS_REGION=us-east-1
 ```
 
 ## HTTPS Registries
 
 ### Setup
-
 ```bash
-# Generic HTTP registry
-arm config add registry warp-zone https://registry.warp-zone.example/rulesets --type=https
-
-# With authentication
-arm config add registry pipe-world https://registry.pipe-world.example --type=https --authToken=$HTTP_TOKEN
+arm config add registry api https://registry.example.com --type=https --authToken=$REGISTRY_TOKEN
 ```
 
-### Server Requirements
+### API Endpoints
+- `GET /manifest.json` - Get manifest with rulesets and versions
+- `GET /{name}/{version}/ruleset.tar.gz` - Download ruleset tarball
 
-Your HTTPS server needs a `manifest.json` at the root:
-
+### Manifest Format
 ```json
 {
   "rulesets": {
-    "power-up-rules": ["1.0.0", "1.1.0"],
-    "fire-flower-security": ["2.0.0"]
+    "coding-standards": ["v1.0.0", "v1.1.0"],
+    "security-rules": ["v2.0.0"]
   }
 }
 ```
 
+Note: Patterns are ignored for HTTPS registries as they use pre-packaged tar.gz files.
+
 ## Local Registries
 
-### Setup
-
+### Local Directory
 ```bash
-# Absolute path
-arm config add registry dev-rules /home/mario/my-rulesets --type=local
-
-# Relative path
-arm config add registry project-rules ./local-rulesets --type=local
+arm config add registry local-rules /path/to/rules --type=local
 ```
 
-### Local Directory Structure
-
+### Directory Structure
 ```
-/home/mario/my-rulesets/
-├── power-up-rules/
-│   ├── 1.0.0/
+/path/to/rules/
+├── ruleset-1/
+│   ├── v1.0.0/
 │   │   └── ruleset.tar.gz
-│   └── 1.1.0/
+│   └── v1.1.0/
 │       └── ruleset.tar.gz
-└── fire-flower-security/
-    └── 2.0.0/
+└── ruleset-2/
+    └── v2.0.0/
         └── ruleset.tar.gz
 ```
 
-## Registry Performance Tuning
+Note: Local registries expect pre-packaged `ruleset.tar.gz` files in each version directory. "Latest" version is resolved by selecting the most recent version directory. Patterns are ignored.
 
-### Concurrency Settings
-
+### Git-Local
 ```bash
-# Increase parallel operations for fast registries
-arm config set registries.test-registry.concurrency 5
-
-# Reduce for rate-limited APIs
-arm config set registries.bowser-castle.concurrency 1
+arm config add registry local-dev /path/to/git/repo --type=git-local
 ```
 
-### Rate Limiting
+## GitLab Registries
 
+### Setup
 ```bash
-# Adjust rate limits per registry
-arm config set registries.koopa-troopa.rateLimit 50/minute
-arm config set registries.toad-house.rateLimit 100/hour
-
-# Set type defaults
-arm config set git.rateLimit 20/minute
-arm config set s3.rateLimit 200/hour
+arm config add registry gitlab-rules https://gitlab.example.com/projects/123 --type=gitlab --authToken=$GITLAB_TOKEN
 ```
+
+### Implementation
+- Uses GitLab Package Registry API
+- Supports generic packages
+- Requires project ID in URL
+- Patterns are ignored (uses pre-packaged tar.gz files)
 
 ## Registry Management
 
-### List Configured Registries
-
+### List Registries
 ```bash
-arm config list
+arm config list | grep registries
+```
+
+### Test Registry
+```bash
+arm info registry/test-ruleset
 ```
 
 ### Remove Registry
-
 ```bash
 arm config remove registry old-registry
 ```
 
-### Search Across Registries
+## Best Practices
 
-```bash
-# Search all registries
-arm search "power-up"
+### Security
+- Use environment variables for tokens
+- Rotate tokens regularly
+- Use least-privilege IAM policies for S3
 
-# Search specific registries
-arm search "security" --registries test-registry,private-registry
-```
+### Organization
+- Use descriptive registry names
+- Separate dev/staging/prod registries
+- Document registry purposes
 
-## Troubleshooting
-
-### Authentication Failed
-```bash
-Error [AUTH]: Access denied to registry 'private-registry'
-Details: HTTP 403 - invalid or expired token
-```
-**Solution**: Check your authentication token:
-```bash
-# Verify token is set
-echo $GITHUB_TOKEN
-
-# Update token
-arm config set registries.private-registry.authToken $NEW_TOKEN
-```
-
-### Registry Not Found
-```bash
-Error [NETWORK]: Failed to connect to registry 'https://github.com/fake-repo'
-Details: DNS lookup failed
-```
-**Solution**: Verify the registry URL is correct.
-
-### S3 Region Mismatch
-```bash
-Error [REGISTRY]: S3 bucket 'koopa-castle-rules' not found in region 'us-east-1'
-```
-**Solution**: Check the bucket region:
-```bash
-arm config set registries.koopa-troopa.region us-west-2
-```
-
-### Rate Limited
-```bash
-Error [NETWORK]: Rate limit exceeded for registry 'private-registry'
-Details: 60 requests per hour limit reached
-```
-**Solution**: Wait for rate limit reset or reduce rate limit:
-```bash
-arm config set registries.private-registry.rateLimit 50/hour
-```
+### Performance
+- Use local registries for development
+- Configure appropriate cache settings
+- Monitor rate limits for API-based registries

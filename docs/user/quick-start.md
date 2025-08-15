@@ -1,116 +1,205 @@
 # Quick Start Guide
 
-Get ARM up and running in 5 minutes with Mario-themed examples.
+Get ARM up and running in 5 minutes with your first ruleset installation.
+
+## Prerequisites
+
+- macOS, Linux, or Windows
+- Git (for Git-based registries)
+- Internet connection
 
 ## Installation
 
-Download and install ARM:
-
+### Option 1: Install Script (Recommended)
 ```bash
-# Install via script
 curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
-
-# Or download binary manually
-wget https://github.com/jomadu/ai-rules-manager/releases/latest/download/arm-linux-amd64.tar.gz
-tar -xzf arm-linux-amd64.tar.gz
-chmod +x arm-linux-amd64
-sudo mv arm-linux-amd64 /usr/local/bin/arm
 ```
 
-## First Steps
+### Option 2: Manual Download
+1. Download the latest release from [GitHub Releases](https://github.com/jomadu/ai-rules-manager/releases)
+2. Extract and move `arm` to your PATH
+
+### Option 3: Build from Source
+```bash
+git clone https://github.com/jomadu/ai-rules-manager.git
+cd ai-rules-manager
+make build
+sudo mv bin/arm /usr/local/bin/
+```
+
+## Initial Setup
 
 ### 1. Initialize Configuration
-
-Generate starter configuration files:
-
 ```bash
 arm install
 ```
+This creates stub configuration files if they don't exist.
 
-This creates `.armrc` and `arm.json` stub files in your current directory.
-
-### 2. Configure Your First Registry
-
-Add a Git registry:
-
+### 2. Add a Registry
 ```bash
-arm config add registry default https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
+# Add a Git registry
+arm config add registry default https://github.com/your-org/ai-rules-registry --type=git
+
+# Or add an S3 registry
+arm config add registry s3-rules my-rules-bucket --type=s3 --region=us-east-1
 ```
 
-### 3. Configure Channels
-
-Tell ARM where to install rulesets for your AI tools:
-
+### 3. Add Channels for Your AI Tools
 ```bash
 # For Cursor
 arm config add channel cursor --directories .cursor/rules
 
 # For Amazon Q Developer
 arm config add channel q --directories .amazonq/rules
+
+# For both
+arm config add channel cursor --directories .cursor/rules
+arm config add channel q --directories .amazonq/rules
 ```
 
-### 4. Install Your First Ruleset
+## Install Your First Ruleset
 
-Install a ruleset:
-
+### From Git Registry
 ```bash
-arm install rules --patterns "*.md"
+# Install with specific patterns
+arm install my-coding-rules --patterns "rules/*.md,guidelines/*.md"
+
+# Install specific version
+arm install my-coding-rules@v1.2.0 --patterns "rules/*.md"
 ```
 
-### 5. Verify Installation
+### From S3 Registry
+```bash
+# Install latest version
+arm install team-standards
 
-Check what's installed:
+# Install to specific channels
+arm install team-standards --channels cursor,q
+```
 
+## Verify Installation
+
+### Check Installed Rulesets
 ```bash
 arm list
 ```
 
-You should see:
-```
-cursor:
-  default:
-    - rules@2.0.0
-
-q:
-  default:
-    - rules@2.0.0
+### Check Configuration
+```bash
+arm config list
 ```
 
-## What Just Happened?
+### View Ruleset Information
+```bash
+arm info my-coding-rules
+```
 
-1. **ARM created config files** with your registry and channel settings
-2. **Downloaded ruleset files** from the Git repository using your patterns
-3. **Installed files** to both Cursor and Q Developer directories
-4. **Created a lock file** (`arm.lock`) to track installed versions
+## Example Workflow
+
+Here's a complete example setting up ARM for a team:
+
+```bash
+# 1. Install ARM
+curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
+
+# 2. Initialize
+arm install
+
+# 3. Add team registry
+arm config add registry team https://github.com/myteam/ai-rules --type=git
+
+# 4. Add channels for both Cursor and Amazon Q
+arm config add channel cursor --directories .cursor/rules
+arm config add channel q --directories .amazonq/rules
+
+# 5. Install team coding standards
+arm install coding-standards --patterns "standards/*.md,best-practices/*.md"
+
+# 6. Install security rules
+arm install security-rules --patterns "security/*.md"
+
+# 7. Verify installation
+arm list
+```
+
+## File Structure After Setup
+
+```
+your-project/
+├── .armrc                 # Registry configuration
+├── arm.json              # Channels and rulesets
+├── arm.lock              # Locked versions (shows installed versions)
+│   # Example content:
+│   # {
+│   #   "rulesets": {
+│   #     "coding-standards": "latest",
+│   #     "security-rules": "latest"
+│   #   }
+│   # }
+├── .cursor/rules/        # Cursor rules
+│   └── arm/              # ARM namespace
+│       └── team/         # Registry name
+│           ├── coding-standards/
+│           │   └── latest/       # Version
+│           │       ├── standards/
+│           │       │   └── clean-code.md
+│           │       └── best-practices/
+│           │           └── naming-conventions.md
+│           └── security-rules/
+│               └── latest/       # Version
+│                   └── security/
+│                       ├── input-validation.md
+│                       ├── auth-patterns.md
+│                       └── secure-coding.md
+└── .amazonq/rules/       # Amazon Q rules
+    └── arm/              # ARM namespace
+        └── team/         # Registry name
+            ├── coding-standards/
+            │   └── latest/       # Version
+            │       ├── standards/
+            │       │   └── clean-code.md
+            │       └── best-practices/
+            │           └── naming-conventions.md
+            └── security-rules/
+                └── latest/       # Version
+                    └── security/
+                        ├── input-validation.md
+                        ├── auth-patterns.md
+                        └── secure-coding.md
+```
 
 ## Next Steps
 
-- **[Configuration Guide](configuration.md)** - Deep dive into .armrc and arm.json
-- **[Registry Guide](registries.md)** - Set up different registry types
-- **[Team Guide](team-setup.md)** - Share rulesets across your team
+- **[Configuration Guide](configuration.md)** - Learn about advanced configuration options
+- **[Registry Guide](registries.md)** - Set up different types of registries
+- **[Team Setup Guide](team-setup.md)** - Deploy ARM across your development team
+- **[Usage Guide](usage.md)** - Explore all available commands
 
-## Troubleshooting
+## Common Issues
 
 ### Registry Not Found
 ```bash
-$ arm install power-up-rules
-Error [REGISTRY]: Registry 'default' not configured
-```
-**Solution**: Make sure you've added the registry with `arm config add registry`.
+# Check your registry configuration
+arm config get registries.default
 
-### No Channels Configured
-```bash
-$ arm install power-up-rules
-Error: no channels configured
+# List all registries
+arm config list
 ```
-**Solution**: Add at least one channel with `arm config add channel`.
 
 ### Permission Denied
 ```bash
-$ arm install power-up-rules
-Error [FILESYSTEM]: Permission denied writing to .cursor/rules
-```
-**Solution**: Check directory permissions or create the directory manually:
-```bash
+# Check directory permissions
+ls -la .cursor/rules/
+
+# Create directory if it doesn't exist
 mkdir -p .cursor/rules
 ```
+
+### Git Authentication
+```bash
+# Set up GitHub token for private repositories
+export GITHUB_TOKEN=your_token_here
+arm config add registry private https://github.com/org/private-repo --type=git --authToken=$GITHUB_TOKEN
+```
+
+Need help? Check the [Troubleshooting Guide](troubleshooting.md) or open an issue on GitHub.

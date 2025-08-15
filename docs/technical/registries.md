@@ -11,8 +11,13 @@ ARM supports multiple registry types through a unified interface, enabling teams
 ### Core Interface
 ```go
 type Registry interface {
+    GetRulesets(ctx context.Context, patterns []string) ([]RulesetInfo, error)
+    GetRuleset(ctx context.Context, name, version string) (*RulesetInfo, error)
     DownloadRuleset(ctx context.Context, name, version, destDir string) error
-    ListVersions(ctx context.Context, name string) ([]string, error)
+    DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error
+    GetVersions(ctx context.Context, name string) ([]string, error)
+    GetType() string
+    GetName() string
     Close() error
 }
 ```
@@ -21,14 +26,6 @@ type Registry interface {
 ```go
 type Searcher interface {
     Search(ctx context.Context, query string) ([]SearchResult, error)
-}
-
-type PatternDownloader interface {
-    DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error
-}
-
-type VersionResolver interface {
-    ResolveVersion(ctx context.Context, name, constraint string) (string, error)
 }
 ```
 
@@ -45,9 +42,9 @@ default = https://github.com/org/rules-repo
 
 [registries.default]
 type = git
-authToken = $GITHUB_TOKEN      # Optional for private repos
-apiType = github               # Optional: github, gitlab, generic
-apiVersion = 2022-11-28        # Optional: API version
+token = $GITHUB_TOKEN          # Optional for private repos
+api_type = github              # Optional: github, gitlab, generic
+api_version = 2022-11-28       # Optional: API version
 ```
 
 #### Implementation Details
@@ -55,7 +52,7 @@ apiVersion = 2022-11-28        # Optional: API version
 - **Authentication**: Bearer token for API access
 - **Versioning**: Git tags (semver) and branches
 - **Pattern Support**: Yes (glob patterns)
-- **Search Support**: Yes (via API when available)
+- **Search Support**: No (returns error)
 - **Caching**: Content and metadata
 
 #### Version Resolution
@@ -138,25 +135,12 @@ bucket/
 ├── prefix/                    # Optional prefix
 │   └── ruleset-name/
 │       ├── v1.0.0/
-│       │   ├── metadata.json
 │       │   └── ruleset.tar.gz
-│       ├── v1.1.0/
-│       │   ├── metadata.json
-│       │   └── ruleset.tar.gz
-│       └── latest -> v1.1.0
+│       └── v1.1.0/
+│           └── ruleset.tar.gz
 ```
 
-#### Metadata Format
-```json
-{
-  "name": "ruleset-name",
-  "version": "1.1.0",
-  "description": "Team coding standards",
-  "files": ["rules/clean-code.md", "rules/security.md"],
-  "checksum": "sha256:abc123...",
-  "created": "2024-01-15T10:30:00Z"
-}
-```
+Note: Only `ruleset.tar.gz` files are used. No metadata files or symlinks.
 
 ### 4. HTTPS Registry (`https`)
 
@@ -182,11 +166,8 @@ authToken = $REGISTRY_TOKEN    # Optional
 
 #### API Endpoints
 ```
-GET /rulesets                           # List all rulesets
-GET /rulesets/{name}                    # Get ruleset info
-GET /rulesets/{name}/versions           # List versions
-GET /rulesets/{name}/versions/{version} # Download version
-GET /search?q={query}                   # Search rulesets
+GET /manifest.json                      # Get manifest with rulesets and versions
+GET /{name}/{version}/ruleset.tar.gz    # Download ruleset tarball
 ```
 
 ### 5. GitLab Registry (`gitlab`)
@@ -208,8 +189,8 @@ apiVersion = 4                 # Optional
 - **File**: `internal/registry/gitlab.go`
 - **Authentication**: Personal access token or CI token
 - **Versioning**: GitLab releases and tags
-- **Pattern Support**: Yes
-- **Search Support**: Yes (via GitLab API)
+- **Pattern Support**: No (uses pre-packaged tar.gz files)
+- **Search Support**: No
 - **Caching**: API response caching
 
 ### 6. Local Registry (`local`)
@@ -229,7 +210,7 @@ type = local
 - **File**: `internal/registry/local.go`
 - **Authentication**: Filesystem permissions
 - **Versioning**: Directory structure
-- **Pattern Support**: Yes
+- **Pattern Support**: No (uses pre-packaged tar.gz files)
 - **Search Support**: No
 - **Caching**: File modification time
 
@@ -251,20 +232,20 @@ type = local
 
 ### Creation Process
 ```go
-func CreateRegistry(config *RegistryConfig, auth *AuthConfig, cache *cache.Manager) (Registry, error) {
+func CreateRegistry(config *RegistryConfig, auth *AuthConfig) (Registry, error) {
     switch config.Type {
-    case "git":
-        return NewGitRegistry(config, auth, cache)
-    case "git-local":
-        return NewGitLocalRegistry(config, auth, cache)
-    case "s3":
-        return NewS3Registry(config, auth, cache)
-    case "https":
-        return NewHTTPSRegistry(config, auth, cache)
-    case "gitlab":
-        return NewGitLabRegistry(config, auth, cache)
     case "local":
-        return NewLocalRegistry(config, auth, cache)
+        return NewLocalRegistry(config)
+    case "git":
+        return NewGitRegistryWithCache(config, auth, cacheManager)
+    case "git-local":
+        return NewGitLocalRegistry(config, auth)
+    case "https":
+        return NewHTTPSRegistry(config, auth)
+    case "s3":
+        return NewS3Registry(config, auth)
+    case "gitlab":
+        return NewGitLabRegistry(config, auth)
     default:
         return nil, fmt.Errorf("unsupported registry type: %s", config.Type)
     }
@@ -280,12 +261,16 @@ Each registry type validates its specific requirements:
 
 ## Authentication
 
-### Token-Based Authentication
+### Authentication Configuration
 ```go
 type AuthConfig struct {
-    Token    string // Bearer token
-    Region   string // AWS region (S3 only)
-    Profile  string // AWS profile (S3 only)
+    Token      string `json:"token"`
+    Username   string `json:"username"`
+    Password   string `json:"password"`
+    Profile    string `json:"profile"`     // For AWS profiles
+    Region     string `json:"region"`      // For AWS regions
+    APIType    string `json:"api_type"`    // For API-specific auth
+    APIVersion string `json:"api_version"` // For API versioning
 }
 ```
 

@@ -1,226 +1,98 @@
 # Configuration Guide
 
-Complete guide to configuring ARM with `.armrc` and `arm.json` files.
-
 ## Configuration Files
 
-ARM uses two configuration files:
-- **`.armrc`** - Registry settings and defaults (INI format)
-- **`arm.json`** - Channels and rulesets (JSON format)
+- **`.armrc`** - INI format for registries and system settings
+- **`arm.json`** - JSON format for channels and rulesets
+- **`arm.lock`** - Auto-generated locked versions
 
-## File Locations
+**Locations**: Global (`~/.arm/`) and local (project root). Local overrides global at the key level.
 
-### Global vs Local
-- **Global**: `~/.arm/.armrc` and `~/.arm/arm.json`
-- **Local**: `./.armrc` and `./arm.json` (current directory)
+## Registry Configuration
 
-Local settings override global settings at the key level.
+### Adding Registries
 
-### Generating Stubs
+**Git**: `arm config add registry name https://github.com/org/repo --type=git --authToken=$TOKEN`
 
-Create starter configuration files:
+**S3**: `arm config add registry name bucket-name --type=s3 --region=us-east-1`
 
-```bash
-# Generate in current directory
-arm install
+**Local**: `arm config add registry name /path/to/rules --type=local`
 
-# Generate globally
-arm install --global
-```
+### Registry Types
+- **git** - GitHub/GitLab repositories
+- **s3** - AWS S3 buckets
+- **local** - Local directories
+- **https** - HTTP registries
 
-## Registry Configuration (.armrc)
+## Channel Configuration
 
-### Basic Registry Setup
+Channels define where rulesets are installed.
 
-```bash
-# Add different registry types
-arm config add registry test-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
-arm config add registry s3-registry my-rules-bucket --type=s3 --region=us-east-1
-arm config add registry gitlab-registry https://gitlab.example.com/projects/456 --type=gitlab --authToken=$GITLAB_TOKEN
-```
+**Add channels**: `arm config add channel cursor --directories .cursor/rules`
 
-### Registry-Specific Settings
+**Multiple directories**: Use comma-separated paths or add multiple channels.
 
-Override defaults for specific registries:
+## Ruleset Configuration
 
-```bash
-# Increase concurrency for a fast registry
-arm config set registries.test-registry.concurrency 5
+**Install rulesets**: `arm install ruleset-name@version --patterns "*.md"`
 
-# Set custom rate limit
-arm config set registries.s3-registry.rateLimit 20/minute
+**Version constraints**: Use `^1.0.0`, `~1.0.0`, `>=1.0.0`, or `latest`
 
-# Configure S3 profile
-arm config set registries.s3-registry.profile my-aws-profile
-```
+**Specific registry**: `arm install registry/ruleset@version`
 
-### Type Defaults
+## Environment Variables
 
-Set defaults for all registries of a type:
+**Authentication**: Set `GITHUB_TOKEN`, `GITLAB_TOKEN`, `AWS_PROFILE`, etc.
 
-```bash
-# All Git registries
-arm config set git.concurrency 2
-arm config set git.rateLimit 15/minute
+**Network**: Configure timeout, retry attempts, and rate limits in `.armrc`
 
-# All S3 registries
-arm config set s3.concurrency 10
-arm config set s3.rateLimit 100/hour
-```
+**Cache**: Set cache path, size limits, and TTL in `.armrc`
 
-### Environment Variables
+## Engine Configuration
 
-Use environment variables in configuration:
-
-```bash
-arm config add registry private-registry https://github.com/private/repo --type=git --authToken=$GITHUB_TOKEN
-```
-
-## Channel Configuration (arm.json)
-
-### Adding Channels
-
-```bash
-# Single directory
-arm config add channel cursor --directories .cursor/rules
-
-# Multiple directories
-arm config add channel cursor --directories ".cursor/rules,./project-rules"
-
-# Environment variables supported
-arm config add channel q --directories .amazonq/rules
-```
-
-### Manual JSON Editing
-
-You can also edit `arm.json` directly:
-
-```json
-{
-  "engines": {
-    "arm": "^1.2.3"
-  },
-  "channels": {
-    "cursor": {
-      "directories": [".cursor/rules", "./custom-cursor"]
-    },
-    "q": {
-      "directories": [".amazonq/rules"]
-    }
-  },
-  "rulesets": {
-    "default": {
-      "rules": {
-        "version": "^1.0.0",
-        "patterns": ["*.md"]
-      }
-    }
-  }
-}
-```
+Specify ARM version requirements in `arm.json` engines section.
 
 ## Configuration Commands
 
-### View Configuration
+**View**: `arm config list`, `arm config get key`
 
-```bash
-# Show merged configuration
-arm config list
+**Set**: `arm config set key value`
 
-# Show specific value
-arm config get registries.default
+**Remove**: `arm config remove registry name`, `arm config remove channel name`
 
-# Show global only
-arm config list --global
-```
+## Team Configuration
 
-### Modify Configuration
+**Commit to repo**: `arm.json` and `arm.lock` for reproducible builds
 
-```bash
-# Set values
-arm config set registries.default test-registry
-arm config set git.concurrency 3
+**Keep private**: `.armrc` files with sensitive tokens
 
-# Remove registries/channels
-arm config remove registry old-registry
-arm config remove channel unused-channel
-```
-
-## Advanced Configuration
-
-### Network Settings
-
-```bash
-# Increase timeout for slow connections
-arm config set network.timeout 60
-
-# Configure retry behavior
-arm config set network.retry.maxAttempts 5
-arm config set network.retry.backoffMultiplier 2.0
-```
-
-### Cache Configuration
-
-Configure content-based caching to improve performance:
-
-```bash
-# Set cache directory (supports environment variables)
-arm config set cache.path $HOME/.arm/cache
-
-# Set maximum cache size (in bytes, 0 = unlimited)
-arm config set cache.maxSize 1073741824  # 1GB
-
-# Set cache entry time-to-live
-arm config set cache.ttl 24h
-
-# Set cleanup interval
-arm config set cache.cleanupInterval 6h
-```
-
-#### Cache Configuration Examples
-
-Example `.armrc` cache configuration:
-
-```ini
-# Global cache settings
-[cache]
-path = $HOME/.arm/cache
-maxSize = 1073741824    # 1GB
-ttl = 24h
-cleanupInterval = 6h
-```
+**Environment-specific**: Use different `arm.json` files for dev/prod environments
 
 ## Configuration Validation
 
-ARM validates configuration when you run commands:
-
-```bash
-# Check configuration
-arm config list
-```
-
-Common validation errors and fixes are shown automatically.
+ARM automatically validates configuration on load. Test manually with:
+- `arm info ruleset-name` - Test registry connectivity
+- `arm list` - Verify configuration
+- `arm config list` - Check syntax
 
 ## Troubleshooting
 
-### Invalid Registry Type
-```bash
-Error [CONFIG]: Unknown registry type 'invalid' in registry 'my-registry'
-Details: Supported types: git, https, s3, gitlab, local
-```
-**Solution**: Use a supported registry type.
+**Registry issues**: Check with `arm config get registries.name`
 
-### Missing Required Field
-```bash
-Error [CONFIG]: Missing required field 'region' for S3 registry
-```
-**Solution**: Add the required field:
-```bash
-arm config set registries.koopa-troopa.region us-east-1
-```
+**Authentication**: Verify environment variables are set
 
-### Environment Variable Not Found
-If `$GITHUB_TOKEN` is not set, ARM will use an empty string. Set the variable:
-```bash
-export GITHUB_TOKEN=your_token_here
-```
+**Permissions**: Ensure directories exist and are writable
+
+**Version conflicts**: Check `arm.lock` and run `arm update`
+
+**Reset**: Delete config files and run `arm install` to regenerate
+
+## Best Practices
+
+**Security**: Store tokens in environment variables, use HTTPS registries, rotate tokens regularly
+
+**Organization**: Use descriptive names, group related rulesets, document registry purposes
+
+**Performance**: Configure appropriate cache sizes, use local registries for development
+
+**Maintenance**: Update ARM regularly, clean cache, review locked versions

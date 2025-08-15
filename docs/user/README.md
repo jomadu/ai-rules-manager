@@ -1,54 +1,30 @@
 # User Documentation
 
-Complete guides for using AI Rules Manager (ARM) to manage your AI coding assistant rulesets.
+Complete guides for using AI Rules Manager effectively.
 
 ## Getting Started
+1. **[Quick Start Guide](quick-start.md)** - 5-minute setup and first ruleset installation
+2. **[Installation Guide](installation.md)** - Detailed installation for all platforms
+3. **[Configuration Guide](configuration.md)** - Set up registries and channels
 
-### [Quick Start Guide](quick-start.md)
-Get ARM up and running in 5 minutes with step-by-step examples.
+## Core Usage
+4. **[Usage Guide](usage.md)** - Command reference and workflows
+5. **[Registry Guide](registries.md)** - Working with Git, S3, HTTPS, and local registries
+6. **[Team Setup Guide](team-setup.md)** - Deploy ARM across development teams
 
-### [Configuration Guide](configuration.md)
-Complete guide to configuring ARM with `.armrc` and `arm.json` files.
+## Support
+7. **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
 
-### [Registry Guide](registries.md)
-Set up different types of registries (Git, S3, GitLab, HTTPS, Local) for storing rulesets.
+## Key Concepts
 
-### [Team Setup Guide](team-setup.md)
-Guide for team leads and platform engineers to distribute rulesets across development teams.
+### Registries
+Sources of rulesets (Git repos, S3 buckets, HTTPS endpoints, local directories)
 
-## Quick Reference
+### Channels
+Target directories where rulesets are installed (e.g., `.cursor/rules`, `.amazonq/rules`)
 
-### Common Commands
-```bash
-# Install ARM and generate config files
-arm install
+### Rulesets
+Collections of AI coding rules that can be versioned and shared
 
-# Add a registry
-arm config add registry my-registry https://github.com/jomadu/ai-rules-manager-test-git-registry --type=git
-
-# Add a channel
-arm config add channel cursor --directories .cursor/rules
-
-# Install a ruleset
-arm install my-rules --patterns "rules/*.md"
-
-# List installed rulesets
-arm list
-
-# Check for updates
-arm outdated
-
-# Update rulesets
-arm update
-```
-
-### Registry Types
-- **Git** - GitHub, GitLab, and other Git repositories
-- **S3** - AWS S3 buckets
-- **GitLab** - GitLab Package Registry
-- **HTTPS** - Generic HTTP servers
-- **Local** - Local file system directories
-
-## Need Help?
-
-Each guide includes troubleshooting sections for common issues. If you encounter problems not covered in the guides, please check the project issues or create a new one.
+### Patterns
+Glob patterns for selecting specific files from Git-based rulesets
