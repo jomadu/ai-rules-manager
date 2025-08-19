@@ -170,6 +170,18 @@ arm info coding-standards --json
 
 ### `arm outdated`
 
+Show outdated rulesets that have newer versions available.
+
+```bash
+# Check for outdated rulesets
+arm outdated
+
+# JSON output for scripting
+arm outdated --json
+```
+
+### `arm outdated`
+
 Show outdated rulesets.
 
 ```bash
@@ -292,7 +304,7 @@ arm list
 ### Daily Development
 
 ```bash
-# Check for updates
+# Check for outdated rulesets
 arm outdated
 
 # Update all rulesets

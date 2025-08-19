@@ -114,19 +114,16 @@ func TestHandleAddChannel(t *testing.T) {
 	}
 
 	// Verify the file was created and contains the channel
-	content, err := os.ReadFile("arm.json")
+	content, err := os.ReadFile(".armrc")
 	if err != nil {
-		t.Fatalf("Failed to read arm.json: %v", err)
+		t.Fatalf("Failed to read .armrc: %v", err)
 	}
 
-	if !strings.Contains(string(content), "cursor") {
-		t.Error("Expected 'cursor' channel in arm.json")
+	if !strings.Contains(string(content), "[channels.cursor]") {
+		t.Error("Expected '[channels.cursor]' section in .armrc")
 	}
-	if !strings.Contains(string(content), ".cursor/rules") {
-		t.Error("Expected '.cursor/rules' directory in arm.json")
-	}
-	if !strings.Contains(string(content), "custom/cursor") {
-		t.Error("Expected 'custom/cursor' directory in arm.json")
+	if !strings.Contains(string(content), ".cursor/rules,custom/cursor") {
+		t.Error("Expected '.cursor/rules,custom/cursor' directories in .armrc")
 	}
 }
 
@@ -192,13 +189,13 @@ func TestHandleRemoveChannel(t *testing.T) {
 	}
 
 	// Verify the channel was removed
-	content, err := os.ReadFile("arm.json")
+	content, err := os.ReadFile(".armrc")
 	if err != nil {
-		t.Fatalf("Failed to read arm.json: %v", err)
+		t.Fatalf("Failed to read .armrc: %v", err)
 	}
 
 	if strings.Contains(string(content), "test-channel") {
-		t.Error("Expected 'test-channel' to be removed from arm.json")
+		t.Error("Expected 'test-channel' to be removed from .armrc")
 	}
 }
 

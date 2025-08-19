@@ -16,9 +16,9 @@ ARM uses a multi-file, hierarchical configuration system that supports:
 
 | File | Format | Purpose | Location |
 |------|--------|---------|----------|
-| `.armrc` | INI | Registries, network, cache settings | Global/Local |
-| `arm.json` | JSON | Channels, rulesets, engines | Global/Local |
-| `arm.lock` | JSON | Locked versions and metadata | Local only |
+| `.armrc` | INI | Registries, channels, network, cache settings | Global/Local |
+| `arm.json` | JSON | Rulesets, engines | Global/Local |
+| `arm.lock` | JSON | Locked versions, patterns, metadata | Local only |
 
 ### Hierarchy and Merging
 
@@ -134,6 +134,16 @@ type = s3
 region = us-east-1
 profile = production
 
+# Channel configuration
+[channels.cursor]
+directories = .cursor/rules
+
+[channels.q]
+directories = .amazonq/rules
+
+[channels.both]
+directories = .cursor/rules,.amazonq/rules
+
 # Registry type defaults
 [git]
 concurrency = 1
@@ -170,6 +180,9 @@ func (c *Config) processSection(section *ini.Section) error {
         parts := strings.SplitN(sectionName, ".", 2)
         if parts[0] == "registries" {
             return c.processRegistryConfig(parts[1], section)
+        }
+        if parts[0] == "channels" {
+            return c.processChannelConfig(parts[1], section)
         }
         return fmt.Errorf("unsupported nested section: %s", sectionName)
     }
@@ -214,17 +227,6 @@ func expandEnvVars(s string) string {
   "engines": {
     "arm": "^1.0.0"
   },
-  "channels": {
-    "cursor": {
-      "directories": [".cursor/rules"]
-    },
-    "q": {
-      "directories": [".amazonq/rules"]
-    },
-    "both": {
-      "directories": [".cursor/rules", ".amazonq/rules"]
-    }
-  },
   "rulesets": {
     "default": {
       "coding-standards": {
@@ -260,9 +262,6 @@ func (c *Config) loadARMJSON(path string, required bool) error {
     for k, v := range armConfig.Engines {
         c.Engines[k] = v
     }
-    for k, v := range armConfig.Channels {
-        c.Channels[k] = v
-    }
     for registry, rulesets := range armConfig.Rulesets {
         if c.Rulesets[registry] == nil {
             c.Rulesets[registry] = make(map[string]RulesetSpec)
@@ -292,6 +291,7 @@ func (c *Config) loadARMJSON(path string, required bool) error {
       "coding-standards": {
         "version": "1.2.3",
         "resolved": "abc123def456...",
+        "patterns": ["rules/*.md", "guidelines/*.md"],
         "registry": "default",
         "type": "git",
         "installed": "2024-01-15T10:30:00Z"
@@ -318,12 +318,13 @@ type LockFile struct {
 }
 
 type LockedRuleset struct {
-    Version   string `json:"version"`    // Installed version
-    Resolved  string `json:"resolved"`   // Resolved identifier (commit hash, S3 path, etc.)
-    Registry  string `json:"registry"`   // Registry name
-    Type      string `json:"type"`       // Registry type
-    Region    string `json:"region,omitempty"` // AWS region for S3
-    Installed string `json:"installed"`  // Installation timestamp
+    Version   string   `json:"version"`    // Installed version
+    Resolved  string   `json:"resolved"`   // Resolved identifier (commit hash, S3 path, etc.)
+    Patterns  []string `json:"patterns,omitempty"` // Patterns for Git registries
+    Registry  string   `json:"registry"`   // Registry name
+    Type      string   `json:"type"`       // Registry type
+    Region    string   `json:"region,omitempty"` // AWS region for S3
+    Installed string   `json:"installed"`  // Installation timestamp
 }
 ```
 

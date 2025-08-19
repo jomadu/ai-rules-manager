@@ -29,6 +29,9 @@ arm install power-up-rules --patterns "rules/*.md"
 
 # Verify installation
 arm list
+
+# Check for updates
+arm outdated
 ```
 
 ## Features

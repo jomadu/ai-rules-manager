@@ -226,16 +226,7 @@ func TestLoadARMJSON(t *testing.T) {
 		t.Errorf("Expected arm engine '^1.2.3', got %q", cfg.Engines["arm"])
 	}
 
-	// Test channels with environment variable expansion
-	if len(cfg.Channels["cursor"].Directories) != 2 {
-		t.Errorf("Expected 2 cursor directories, got %d", len(cfg.Channels["cursor"].Directories))
-	}
-	if cfg.Channels["cursor"].Directories[0] != "/users/test/.cursor/rules" {
-		t.Errorf("Expected '/users/test/.cursor/rules', got %q", cfg.Channels["cursor"].Directories[0])
-	}
-	if cfg.Channels["cursor"].Directories[1] != "/workspace/project/custom" {
-		t.Errorf("Expected '/workspace/project/custom', got %q", cfg.Channels["cursor"].Directories[1])
-	}
+	// Channels are no longer loaded from JSON - they're in .armrc
 
 	// Test rulesets
 	if cfg.Rulesets["default"]["my-rules"].Version != "^1.0.0" {
@@ -914,9 +905,7 @@ func TestGenerateStubFiles(t *testing.T) {
 	if !strings.Contains(jsonStr, `"arm": "^`) {
 		t.Error("Expected arm.json to contain ARM version with ^ prefix")
 	}
-	if !strings.Contains(jsonStr, `"channels"`) {
-		t.Error("Expected arm.json to contain channels section")
-	}
+	// Channels are now in .armrc, not arm.json
 	if !strings.Contains(jsonStr, `"rulesets"`) {
 		t.Error("Expected arm.json to contain rulesets section")
 	}
@@ -1054,9 +1043,6 @@ func TestGenerateARMJSONStub(t *testing.T) {
 	// Check required sections
 	if armConfig.Engines == nil {
 		t.Error("Expected engines section to be present")
-	}
-	if armConfig.Channels == nil {
-		t.Error("Expected channels section to be present")
 	}
 	if armConfig.Rulesets == nil {
 		t.Error("Expected rulesets section to be present")

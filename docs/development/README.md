@@ -10,6 +10,7 @@ Documentation for contributors and maintainers of AI Rules Manager.
 ## Maintenance
 4. **[Release Process](release.md)** - How to create and publish releases
 5. **[Architecture Decisions](adr/)** - Record of architectural decisions
+   - [ADR-003: Patterns in Lock File](adr/003-patterns-in-lock-file.md) - Git registry pattern storage
 
 ## Development Workflow
 

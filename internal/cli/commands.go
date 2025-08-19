@@ -33,7 +33,8 @@ func NewRootCommand(cfg *config.Config, versionInfo *VersionInfo) *cobra.Command
 		Long: `ARM is a package manager for AI coding assistant rulesets that enables
 developers and teams to install, update, and manage coding rules across
 different AI tools like Cursor and Amazon Q Developer.`,
-		SilenceUsage: true,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	// Add global flags
@@ -515,34 +516,32 @@ func handleAddChannel(name, directories string, global bool) error {
 		return fmt.Errorf("directories are required")
 	}
 
-	path := getConfigPath("arm.json", global)
-	armConfig, err := loadOrCreateJSON(path)
+	path := getConfigPath(".armrc", global)
+	cfg, err := loadOrCreateINI(path)
 	if err != nil {
 		return err
 	}
 
-	dirList := strings.Split(directories, ",")
-	for i, dir := range dirList {
-		dirList[i] = strings.TrimSpace(dir)
-	}
+	// Create channel section
+	sectionName := fmt.Sprintf("channels.%s", name)
+	section := cfg.Section(sectionName)
+	section.Key("directories").SetValue(directories)
 
-	armConfig.Channels[name] = config.ChannelConfig{
-		Directories: dirList,
-	}
-
-	return saveJSON(path, armConfig)
+	return cfg.SaveTo(path)
 }
 
 func handleRemoveChannel(name string, global bool) error {
-	path := getConfigPath("arm.json", global)
-	armConfig, err := loadOrCreateJSON(path)
+	path := getConfigPath(".armrc", global)
+	cfg, err := loadOrCreateINI(path)
 	if err != nil {
 		return err
 	}
 
-	delete(armConfig.Channels, name)
+	// Remove channel section
+	sectionName := fmt.Sprintf("channels.%s", name)
+	cfg.DeleteSection(sectionName)
 
-	return saveJSON(path, armConfig)
+	return cfg.SaveTo(path)
 }
 
 // Helper functions
@@ -573,7 +572,6 @@ func loadOrCreateJSON(path string) (*config.ARMConfig, error) {
 		}
 		return &config.ARMConfig{
 			Engines:  make(map[string]string),
-			Channels: make(map[string]config.ChannelConfig),
 			Rulesets: make(map[string]map[string]config.RulesetSpec),
 		}, nil
 	}
@@ -591,9 +589,6 @@ func loadOrCreateJSON(path string) (*config.ARMConfig, error) {
 	// Initialize maps if nil
 	if armConfig.Engines == nil {
 		armConfig.Engines = make(map[string]string)
-	}
-	if armConfig.Channels == nil {
-		armConfig.Channels = make(map[string]config.ChannelConfig)
 	}
 	if armConfig.Rulesets == nil {
 		armConfig.Rulesets = make(map[string]map[string]config.RulesetSpec)
@@ -641,7 +636,7 @@ func getConfigValue(cfg *config.Config, key string) string {
 
 // Install command handlers
 
-func handleInstallFromManifest(global, dryRun bool, _ string) error {
+func handleInstallFromManifest(global, dryRun bool, channels string) error {
 	// Load configuration to check for existing manifest
 	cfg, err := config.Load()
 	if err != nil {
@@ -659,18 +654,11 @@ func handleInstallFromManifest(global, dryRun bool, _ string) error {
 		return nil
 	}
 
-	if dryRun {
-		fmt.Println("Would install the following rulesets:")
-		for registry, rulesets := range cfg.Rulesets {
-			for name, spec := range rulesets {
-				fmt.Printf("  %s/%s@%s\n", registry, name, spec.Version)
-			}
-		}
-		return nil
+	// Use lock file if available, otherwise resolve from manifest
+	if cfg.LockFile != nil && len(cfg.LockFile.Rulesets) > 0 {
+		return installFromLockFile(cfg, dryRun, channels)
 	}
-
-	// TODO: Implement actual installation from manifest
-	return fmt.Errorf("manifest installation not yet implemented")
+	return installFromManifest(cfg, dryRun, channels)
 }
 
 func handleInstallRuleset(rulesetSpec string, global, dryRun bool, channels, patterns string) error {
@@ -1620,6 +1608,7 @@ func performGitInstallation(cfg *config.Config, registryName, rulesetName, versi
 		ResolvedVersion: result.ResolvedVersion, // Actual commit hash
 		SourceFiles:     result.Files,
 		Channels:        targetChannels,
+		Patterns:        patternList,
 	}
 
 	installResult, err := installer.Install(req)
@@ -1808,4 +1797,61 @@ func findDownloadedFiles(tempDir string) ([]string, error) {
 	}
 
 	return sourceFiles, nil
+}
+
+// installFromLockFile installs exact versions from the lock file
+func installFromLockFile(cfg *config.Config, dryRun bool, channels string) error {
+	if dryRun {
+		fmt.Println("Would install the following rulesets from lock file:")
+		for registry, rulesets := range cfg.LockFile.Rulesets {
+			for name, locked := range rulesets {
+				fmt.Printf("  %s/%s@%s (resolved: %s)\n", registry, name, locked.Version, locked.Resolved)
+			}
+		}
+		return nil
+	}
+
+	for registry, rulesets := range cfg.LockFile.Rulesets {
+		for name, locked := range rulesets {
+			// Use patterns from lock file for git registries, otherwise empty
+			var patterns string
+			if locked.Type == "git" && locked.Patterns != nil {
+				patterns = strings.Join(locked.Patterns, ",")
+			}
+
+			// Install using resolved version from lock file
+			if err := performInstallation(cfg, registry, name, locked.Resolved, channels, patterns); err != nil {
+				return fmt.Errorf("failed to install %s/%s: %w", registry, name, err)
+			}
+		}
+	}
+	return nil
+}
+
+// installFromManifest resolves versions from manifest and creates/updates lock file
+func installFromManifest(cfg *config.Config, dryRun bool, channels string) error {
+	if dryRun {
+		fmt.Println("Would install the following rulesets from manifest:")
+		for registry, rulesets := range cfg.Rulesets {
+			for name, spec := range rulesets {
+				fmt.Printf("  %s/%s@%s\n", registry, name, spec.Version)
+			}
+		}
+		return nil
+	}
+
+	for registry, rulesets := range cfg.Rulesets {
+		for name, spec := range rulesets {
+			patterns := ""
+			if spec.Patterns != nil {
+				patterns = strings.Join(spec.Patterns, ",")
+			}
+
+			// Install and let performInstallation handle lock file updates
+			if err := performInstallation(cfg, registry, name, spec.Version, channels, patterns); err != nil {
+				return fmt.Errorf("failed to install %s/%s: %w", registry, name, err)
+			}
+		}
+	}
+	return nil
 }

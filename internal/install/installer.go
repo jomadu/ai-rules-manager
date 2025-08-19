@@ -28,6 +28,7 @@ type InstallRequest struct {
 	ResolvedVersion string   // Actual resolved version (e.g., commit hash)
 	SourceFiles     []string // Files to install from cache/extraction
 	Channels        []string // Target channels (empty = all channels)
+	Patterns        []string // Patterns for git registries
 }
 
 // InstallResult represents the result of an installation
@@ -102,7 +103,7 @@ func (i *Installer) Install(req *InstallRequest) (*InstallResult, error) {
 	if resolvedVersion == "" {
 		resolvedVersion = req.Version // Fallback to version if no resolved version provided
 	}
-	if err := i.updateLockFile(req.Registry, req.Ruleset, req.Version, resolvedVersion); err != nil {
+	if err := i.updateLockFile(req, resolvedVersion); err != nil {
 		return nil, fmt.Errorf("failed to update lock file: %w", err)
 	}
 
@@ -344,7 +345,7 @@ func expandPath(path string) string {
 }
 
 // updateLockFile updates the lock file with a new ruleset entry
-func (i *Installer) updateLockFile(registry, ruleset, version, resolvedVersion string) error {
+func (i *Installer) updateLockFile(req *InstallRequest, resolvedVersion string) error {
 	i.lockMu.Lock()
 	defer i.lockMu.Unlock()
 
@@ -354,12 +355,12 @@ func (i *Installer) updateLockFile(registry, ruleset, version, resolvedVersion s
 	}
 
 	// Initialize registry map if needed
-	if lockFile.Rulesets[registry] == nil {
-		lockFile.Rulesets[registry] = make(map[string]config.LockedRuleset)
+	if lockFile.Rulesets[req.Registry] == nil {
+		lockFile.Rulesets[req.Registry] = make(map[string]config.LockedRuleset)
 	}
 
 	// Get registry config for metadata
-	registryConfig := i.config.RegistryConfigs[registry]
+	registryConfig := i.config.RegistryConfigs[req.Registry]
 	registryType := ""
 	region := ""
 	if registryConfig != nil {
@@ -368,13 +369,20 @@ func (i *Installer) updateLockFile(registry, ruleset, version, resolvedVersion s
 	}
 
 	// Update entry
-	lockFile.Rulesets[registry][ruleset] = config.LockedRuleset{
-		Version:  version,
+	lockEntry := config.LockedRuleset{
+		Version:  req.Version,
 		Resolved: resolvedVersion,
-		Registry: i.config.Registries[registry],
+		Registry: i.config.Registries[req.Registry],
 		Type:     registryType,
 		Region:   region,
 	}
+
+	// Add patterns for git registries (passed from install request)
+	if registryType == "git" && len(req.Patterns) > 0 {
+		lockEntry.Patterns = req.Patterns
+	}
+
+	lockFile.Rulesets[req.Registry][req.Ruleset] = lockEntry
 
 	return i.saveLockFile(lockFile)
 }

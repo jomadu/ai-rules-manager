@@ -84,6 +84,11 @@ arm install team-standards --channels cursor,q
 arm list
 ```
 
+### Check for Updates
+```bash
+arm outdated
+```
+
 ### Check Configuration
 ```bash
 arm config list
@@ -126,14 +131,20 @@ arm list
 
 ```
 your-project/
-├── .armrc                 # Registry configuration
-├── arm.json              # Channels and rulesets
-├── arm.lock              # Locked versions (shows installed versions)
+├── .armrc                 # Registry and channel configuration
+├── arm.json              # Rulesets and engines
+├── arm.lock              # Locked versions with patterns for Git registries
 │   # Example content:
 │   # {
 │   #   "rulesets": {
-│   #     "coding-standards": "latest",
-│   #     "security-rules": "latest"
+│   #     "team": {
+│   #       "coding-standards": {
+│   #         "version": "latest",
+│   #         "resolved": "abc123...",
+│   #         "patterns": ["standards/*.md"],
+│   #         "type": "git"
+│   #       }
+│   #     }
 │   #   }
 │   # }
 ├── .cursor/rules/        # Cursor rules

@@ -69,7 +69,6 @@ func (m *ManifestManager) loadOrCreate() (*ARMConfig, error) {
 		}
 		return &ARMConfig{
 			Engines:  make(map[string]string),
-			Channels: make(map[string]ChannelConfig),
 			Rulesets: make(map[string]map[string]RulesetSpec),
 		}, nil
 	}
@@ -87,9 +86,6 @@ func (m *ManifestManager) loadOrCreate() (*ARMConfig, error) {
 	// Initialize maps if nil
 	if armConfig.Engines == nil {
 		armConfig.Engines = make(map[string]string)
-	}
-	if armConfig.Channels == nil {
-		armConfig.Channels = make(map[string]ChannelConfig)
 	}
 	if armConfig.Rulesets == nil {
 		armConfig.Rulesets = make(map[string]map[string]RulesetSpec)

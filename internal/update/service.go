@@ -46,19 +46,38 @@ func (s *Service) CheckOutdated(ctx context.Context, rulesetSpec string) (*Updat
 
 	locked := s.config.LockFile.Rulesets[registry][name]
 	currentVersion := locked.Version
+	currentResolved := locked.Resolved
 
-	// Always resolve against latest available version for outdated check
-	latestVersion, err := s.resolveLatestVersion(ctx, registry, name, currentVersion, "latest")
+	// Get version constraint from manifest
+	var versionSpec string
+	if s.config.Rulesets[registry] != nil && s.config.Rulesets[registry][name].Version != "" {
+		versionSpec = s.config.Rulesets[registry][name].Version
+	} else {
+		versionSpec = currentVersion
+	}
+
+	// Resolve latest version for the same version spec
+	latestResolved, err := s.resolveLatestVersion(ctx, registry, name, currentResolved, versionSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve latest version: %w", err)
+	}
+
+	// For Git registries, compare resolved hashes, not version specs
+	isOutdated := false
+	if regConfig := s.config.RegistryConfigs[registry]; regConfig != nil && regConfig["type"] == "git" {
+		// Compare resolved hashes for Git registries
+		isOutdated = currentResolved != latestResolved
+	} else {
+		// Compare versions for other registry types
+		isOutdated = currentVersion != latestResolved
 	}
 
 	result := &UpdateResult{
 		Registry:        registry,
 		Ruleset:         name,
-		Version:         latestVersion,
+		Version:         latestResolved,
 		PreviousVersion: currentVersion,
-		Updated:         latestVersion != currentVersion,
+		Updated:         isOutdated,
 	}
 
 	// Don't perform actual update for outdated check

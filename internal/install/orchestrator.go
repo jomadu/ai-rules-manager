@@ -106,8 +106,9 @@ func (o *InstallOrchestrator) InstallMultiple(ctx context.Context, req *MultiIns
 // groupByRegistry groups install requests by registry
 func (o *InstallOrchestrator) groupByRegistry(requests []InstallRequest) map[string][]InstallRequest {
 	groups := make(map[string][]InstallRequest)
-	for _, req := range requests {
-		groups[req.Registry] = append(groups[req.Registry], req)
+	for i := range requests {
+		req := &requests[i]
+		groups[req.Registry] = append(groups[req.Registry], *req)
 	}
 	return groups
 }
@@ -201,9 +202,9 @@ func (o *InstallOrchestrator) processRegistryGroup(registry string, requests []I
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 
-	for _, req := range requests {
+	for i := range requests {
 		wg.Add(1)
-		go func(request InstallRequest) {
+		go func(request *InstallRequest) {
 			defer wg.Done()
 
 			// Acquire semaphore
@@ -223,7 +224,7 @@ func (o *InstallOrchestrator) processRegistryGroup(registry string, requests []I
 			}
 
 			// Perform installation
-			result, err := o.installer.Install(&request)
+			result, err := o.installer.Install(request)
 			if err != nil {
 				errorChan <- InstallError{
 					Registry: request.Registry,
@@ -233,7 +234,7 @@ func (o *InstallOrchestrator) processRegistryGroup(registry string, requests []I
 			} else {
 				resultChan <- *result
 			}
-		}(req)
+		}(&requests[i])
 	}
 
 	wg.Wait()

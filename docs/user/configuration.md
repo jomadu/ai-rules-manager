@@ -2,9 +2,9 @@
 
 ## Configuration Files
 
-- **`.armrc`** - INI format for registries and system settings
-- **`arm.json`** - JSON format for channels and rulesets
-- **`arm.lock`** - Auto-generated locked versions
+- **`.armrc`** - INI format for registries, channels, and system settings
+- **`arm.json`** - JSON format for rulesets and engines
+- **`arm.lock`** - Auto-generated locked versions with patterns for Git registries
 
 **Locations**: Global (`~/.arm/`) and local (project root). Local overrides global at the key level.
 
@@ -26,11 +26,11 @@
 
 ## Channel Configuration
 
-Channels define where rulesets are installed.
+Channels define where rulesets are installed and are stored in `.armrc`.
 
 **Add channels**: `arm config add channel cursor --directories .cursor/rules`
 
-**Multiple directories**: Use comma-separated paths or add multiple channels.
+**Multiple directories**: Use comma-separated paths: `arm config add channel both --directories ".cursor/rules,.amazonq/rules"`
 
 ## Ruleset Configuration
 

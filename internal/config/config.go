@@ -43,7 +43,6 @@ type RulesetSpec struct {
 // ARMConfig represents the arm.json file structure
 type ARMConfig struct {
 	Engines  map[string]string                 `json:"engines"`
-	Channels map[string]ChannelConfig          `json:"channels"`
 	Rulesets map[string]map[string]RulesetSpec `json:"rulesets"`
 }
 
@@ -54,11 +53,12 @@ type LockFile struct {
 
 // LockedRuleset represents a locked ruleset entry
 type LockedRuleset struct {
-	Version  string `json:"version"`
-	Resolved string `json:"resolved"`
-	Registry string `json:"registry"`
-	Type     string `json:"type"`
-	Region   string `json:"region,omitempty"`
+	Version  string   `json:"version"`
+	Resolved string   `json:"resolved"`
+	Patterns []string `json:"patterns,omitempty"` // Only for git registries
+	Registry string   `json:"registry"`
+	Type     string   `json:"type"`
+	Region   string   `json:"region,omitempty"`
 }
 
 // Load loads the ARM configuration from files with hierarchical merging
@@ -155,11 +155,14 @@ func (c *Config) loadINIFile(path string, required bool) error {
 func (c *Config) processSection(section *ini.Section) error {
 	sectionName := section.Name()
 
-	// Handle nested sections like [registries.my-registry]
+	// Handle nested sections like [registries.my-registry] and [channels.name]
 	if strings.Contains(sectionName, ".") {
 		parts := strings.SplitN(sectionName, ".", 2)
 		if parts[0] == "registries" {
 			return c.processRegistryConfig(parts[1], section)
+		}
+		if parts[0] == "channels" {
+			return c.processChannelConfig(parts[1], section)
 		}
 
 		return fmt.Errorf("unsupported nested section: %s", sectionName)
@@ -174,6 +177,10 @@ func (c *Config) processSection(section *ini.Section) error {
 	case "network":
 		return c.processNetworkConfig(section)
 	default:
+		// Handle channels.* sections
+		if strings.HasPrefix(sectionName, "channels.") {
+			return c.processChannelConfig(strings.TrimPrefix(sectionName, "channels."), section)
+		}
 		return fmt.Errorf("unknown section: %s", sectionName)
 	}
 }
@@ -249,7 +256,7 @@ func mergeConfigs(global, local *Config) *Config {
 	// Merge engines (key-level merge)
 	mergeStringMaps(merged.Engines, global.Engines, local.Engines)
 
-	// Merge channels (key-level merge)
+	// Merge channels (key-level merge) - from INI only
 	mergeChannelMaps(merged.Channels, global.Channels, local.Channels)
 
 	// Merge rulesets (nested map merge)
@@ -350,9 +357,6 @@ func (c *Config) loadARMJSON(path string, required bool) error {
 	// Merge into config (local overrides global)
 	for k, v := range armConfig.Engines {
 		c.Engines[k] = v
-	}
-	for k, v := range armConfig.Channels {
-		c.Channels[k] = v
 	}
 	for registry, rulesets := range armConfig.Rulesets {
 		if c.Rulesets[registry] == nil {
@@ -620,6 +624,16 @@ func generateARMRCStub(path string) error {
 # ttl = 24h                      # Time-to-live for cache entries
 # cleanupInterval = 6h           # How often to run cleanup
 
+# Channel configuration (where to install rulesets)
+# [channels.cursor]
+# directories = .cursor/rules
+
+# [channels.q]
+# directories = .amazonq/rules
+
+# [channels.custom]
+# directories = ./ai-rules,./shared-rules
+
 `
 
 	return os.WriteFile(path, []byte(stubContent), 0o600)
@@ -634,7 +648,6 @@ func generateARMJSONStub(path string) error {
   "engines": {
     "arm": "^%s"
   },
-  "channels": {},
   "rulesets": {}
 }
 `, armVersion)
@@ -686,4 +699,36 @@ func expandEnvVars(s string) string {
 		// Return environment variable value or empty string if not found
 		return os.Getenv(varName)
 	})
+}
+
+// processChannelConfig processes [channels.name] sections
+func (c *Config) processChannelConfig(name string, section *ini.Section) error {
+	directoriesKey := section.Key("directories")
+	if directoriesKey == nil {
+		return fmt.Errorf("channel '%s' missing required 'directories' field", name)
+	}
+
+	directoriesStr := expandEnvVars(directoriesKey.String())
+	if directoriesStr == "" {
+		return fmt.Errorf("channel '%s' directories cannot be empty", name)
+	}
+
+	// Parse comma-separated directories
+	var directories []string
+	for _, dir := range strings.Split(directoriesStr, ",") {
+		dir = strings.TrimSpace(dir)
+		if dir != "" {
+			directories = append(directories, dir)
+		}
+	}
+
+	if len(directories) == 0 {
+		return fmt.Errorf("channel '%s' must have at least one directory", name)
+	}
+
+	c.Channels[name] = ChannelConfig{
+		Directories: directories,
+	}
+
+	return nil
 }
