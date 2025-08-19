@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/max-dunn/ai-rules-manager/internal/cache"
 	"github.com/max-dunn/ai-rules-manager/internal/config"
 	"github.com/max-dunn/ai-rules-manager/internal/install"
 	"github.com/max-dunn/ai-rules-manager/internal/registry"
@@ -948,9 +947,6 @@ func performSearch(cfg *config.Config, targetRegistries []string, query string, 
 	var allResults []registry.SearchResult
 	searchErrors := make(map[string]string)
 
-	// Create cache manager
-	cacheManager := cache.NewManager(cfg.CacheConfig.Path)
-
 	for _, registryName := range targetRegistries {
 		// Create registry instance
 		registryConfig := &registry.RegistryConfig{
@@ -968,7 +964,7 @@ func performSearch(cfg *config.Config, targetRegistries []string, query string, 
 		}
 
 		// Create registry instance
-		reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cacheManager, cfg.CacheConfig, registryName)
+		reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cfg.CacheConfig, registryName)
 		if err != nil {
 			searchErrors[registryName] = fmt.Sprintf("failed to create registry: %v", err)
 			continue
@@ -1550,11 +1546,8 @@ func performGitInstallation(cfg *config.Config, registryName, rulesetName, versi
 		authConfig.Profile = regConfig["profile"]
 	}
 
-	// Create cache manager with configured path
-	cacheManager := cache.NewManager(cfg.CacheConfig.Path)
-
 	// Create Git registry instance with cache
-	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cacheManager, cfg.CacheConfig, registryName)
+	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cfg.CacheConfig, registryName)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
@@ -1646,11 +1639,8 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 		authConfig.Profile = regConfig["profile"]
 	}
 
-	// Create cache manager with configured path
-	cacheManager := cache.NewManager(cfg.CacheConfig.Path)
-
 	// Create registry instance with cache
-	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cacheManager, cfg.CacheConfig, registryName)
+	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cfg.CacheConfig, registryName)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}

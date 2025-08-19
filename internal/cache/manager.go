@@ -117,9 +117,7 @@ func normalizeURL(url string) string {
 	normalized := strings.TrimSpace(url)
 
 	// Remove trailing slash for consistency
-	if strings.HasSuffix(normalized, "/") {
-		normalized = strings.TrimSuffix(normalized, "/")
-	}
+	normalized = strings.TrimSuffix(normalized, "/")
 
 	return normalized
 }

@@ -12,14 +12,12 @@ import (
 
 // VersionResolver handles version resolution for different registry types
 type VersionResolver struct {
-	cacheManager Manager
+	// No cache manager needed - this is a stateless utility
 }
 
 // NewVersionResolver creates a new version resolver
-func NewVersionResolver(cacheManager Manager) *VersionResolver {
-	return &VersionResolver{
-		cacheManager: cacheManager,
-	}
+func NewVersionResolver() *VersionResolver {
+	return &VersionResolver{}
 }
 
 // GitOperations interface for git operations needed by version resolver

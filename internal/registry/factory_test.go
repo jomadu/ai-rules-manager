@@ -4,13 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/max-dunn/ai-rules-manager/internal/cache"
 	"github.com/max-dunn/ai-rules-manager/internal/config"
 )
 
 func TestCreateRegistryWithCacheConfig(t *testing.T) {
-	// Mock cache manager
-	cacheManager := cache.NewManager("/tmp/test-cache")
 
 	// Test registry config
 	registryConfig := &RegistryConfig{
@@ -43,8 +40,8 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 			name:         "nil cache config",
 			cacheConfig:  nil,
 			registryName: "test-registry",
-			expectCache:  true,
-			description:  "Should pass through cache manager when no cache config",
+			expectCache:  false,
+			description:  "Should not create cache manager when no cache config",
 		},
 	}
 
@@ -53,7 +50,6 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 			registry, err := CreateRegistryWithCacheConfig(
 				registryConfig,
 				auth,
-				cacheManager,
 				tt.cacheConfig,
 				tt.registryName,
 			)
@@ -79,7 +75,6 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 }
 
 func TestCreateRegistryWithCacheConfigInvalidRegistry(t *testing.T) {
-	cacheManager := cache.NewManager("/tmp/test-cache")
 	cacheConfig := &config.CacheConfig{
 		Path: "/tmp/cache",
 		TTL:  24 * time.Hour,
@@ -96,7 +91,6 @@ func TestCreateRegistryWithCacheConfigInvalidRegistry(t *testing.T) {
 	_, err := CreateRegistryWithCacheConfig(
 		registryConfig,
 		auth,
-		cacheManager,
 		cacheConfig,
 		"test-registry",
 	)

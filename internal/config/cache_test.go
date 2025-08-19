@@ -139,51 +139,17 @@ func TestCachePathConfigurationRespected(t *testing.T) {
 	}
 
 	// Test that cache manager uses the configured path
-	manager := cache.NewManager(cacheConfig.Path)
+	manager := cache.NewGitRegistryCacheManager(cacheConfig.Path)
 
-	registryType := "git"
 	registryURL := "https://github.com/test/repo"
 
-	// Get cache path and verify it uses the custom path
-	cachePath, err := manager.GetCachePath(registryType, registryURL)
+	// Get repository path and verify it uses the custom path
+	repoPath, err := manager.GetRepositoryPath(registryURL)
 	if err != nil {
-		t.Fatalf("Failed to get cache path: %v", err)
+		t.Fatalf("Failed to get repository path: %v", err)
 	}
 
-	if !strings.HasPrefix(cachePath, customCachePath) {
-		t.Errorf("Cache path %s does not start with configured path %s", cachePath, customCachePath)
-	}
-
-	// Test cache directory creation
-	err = manager.EnsureCacheDir(registryType, registryURL)
-	if err != nil {
-		t.Fatalf("Failed to ensure cache dir: %v", err)
-	}
-
-	// Verify directory was created at the correct location
-	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
-		t.Errorf("Cache directory was not created at expected path: %s", cachePath)
-	}
-
-	// Test cache info update
-	err = manager.UpdateCacheInfo(registryType, registryURL, "v1.0.0")
-	if err != nil {
-		t.Fatalf("Failed to update cache info: %v", err)
-	}
-
-	// Verify cache-info.json exists in the correct location
-	infoPath := filepath.Join(cachePath, "cache-info.json")
-	if _, err := os.Stat(infoPath); os.IsNotExist(err) {
-		t.Errorf("Cache info file was not created at expected path: %s", infoPath)
-	}
-
-	// Test cache validation with custom TTL
-	valid, err := manager.IsCacheValid(registryType, registryURL, cacheConfig.TTL)
-	if err != nil {
-		t.Fatalf("Failed to check cache validity: %v", err)
-	}
-
-	if !valid {
-		t.Error("Expected cache to be valid immediately after creation")
+	if !strings.HasPrefix(repoPath, customCachePath) {
+		t.Errorf("Repository path %s does not start with configured path %s", repoPath, customCachePath)
 	}
 }

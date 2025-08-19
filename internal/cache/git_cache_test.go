@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -91,7 +92,7 @@ func TestGitCacheManager_StoreAndGetRuleset(t *testing.T) {
 	for filename, expectedContent := range files {
 		if retrievedContent, exists := retrievedFiles[filename]; !exists {
 			t.Errorf("File %s not found in retrieved files", filename)
-		} else if string(retrievedContent) != string(expectedContent) {
+		} else if !bytes.Equal(retrievedContent, expectedContent) {
 			t.Errorf("File %s content mismatch: expected %s, got %s", filename, expectedContent, retrievedContent)
 		}
 	}

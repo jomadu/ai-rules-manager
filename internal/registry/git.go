@@ -19,7 +19,7 @@ type DownloadResult struct {
 type GitRegistry struct {
 	*BaseGitRegistry
 	operations   GitOperations
-	cacheManager cache.Manager
+	cacheManager cache.GitRegistryCacheManager
 }
 
 // NewGitRegistry creates a new Git registry instance
@@ -28,7 +28,7 @@ func NewGitRegistry(config *RegistryConfig, auth *AuthConfig) (*GitRegistry, err
 }
 
 // NewGitRegistryWithCache creates a new Git registry instance with cache manager
-func NewGitRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheManager cache.Manager) (*GitRegistry, error) {
+func NewGitRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheManager cache.GitRegistryCacheManager) (*GitRegistry, error) {
 	base, err := NewBaseGitRegistry(config, auth)
 	if err != nil {
 		return nil, err
@@ -67,13 +67,11 @@ func (g *GitRegistry) DownloadRuleset(ctx context.Context, name, version, destDi
 
 // DownloadRulesetWithPatterns downloads a ruleset with pattern matching
 func (g *GitRegistry) DownloadRulesetWithPatterns(ctx context.Context, name, version, destDir string, patterns []string) error {
-	// Use cache if cache manager is available (enabled check already done in factory)
+	// Use cache if cache manager is available
 	if g.cacheManager != nil {
-		repositoryPath, err := g.getRepositoryPath()
+		repositoryPath, err := g.cacheManager.GetRepositoryPath(g.GetConfig().URL)
 		if err == nil {
-			if err := g.cacheManager.EnsureCacheDir(g.GetType(), g.GetConfig().URL); err == nil {
-				return g.BaseGitRegistry.DownloadRulesetWithPatterns(ctx, g.operations, version, repositoryPath, patterns)
-			}
+			return g.BaseGitRegistry.DownloadRulesetWithPatterns(ctx, g.operations, version, repositoryPath, patterns)
 		}
 	}
 	return g.BaseGitRegistry.DownloadRulesetWithPatterns(ctx, g.operations, version, destDir, patterns)
@@ -90,15 +88,7 @@ func (g *GitRegistry) DownloadRulesetWithResult(ctx context.Context, name, versi
 
 // GetVersions returns available versions for a ruleset
 func (g *GitRegistry) GetVersions(ctx context.Context, name string) ([]string, error) {
-	// Try to get versions from cache first
-	if g.cacheManager != nil {
-		metadataManager := g.cacheManager.GetMetadataManager()
-		if versions, _, err := metadataManager.GetVersions(g.GetType(), g.GetConfig().URL, name); err == nil {
-			return versions, nil
-		}
-	}
-
-	// Fallback to git operations
+	// For Git registries, versions are commit hashes, so we get them from git operations
 	return g.operations.ListVersions(ctx)
 }
 
@@ -158,46 +148,16 @@ func (g *GitRegistry) getRulesetClone(ctx context.Context, name, version string)
 	return g.FindRulesetByName(rulesets, name, version)
 }
 
-// getCachePath returns the content-based cache path for this registry
-// getCachePath is deprecated, use cache manager directly
-/*
-func (g *GitRegistry) getCachePath() (string, error) {
-	if g.cacheManager == nil {
-		return "", fmt.Errorf("cache manager not available")
-	}
-	return g.cacheManager.GetCachePath(g.GetType(), g.GetConfig().URL)
-}
-*/
-
-// getRepositoryPath returns the repository subdirectory path for git clones
-func (g *GitRegistry) getRepositoryPath() (string, error) {
-	if g.cacheManager == nil {
-		return "", fmt.Errorf("cache manager not available")
-	}
-	return g.cacheManager.GetRepositoryPath(g.GetType(), g.GetConfig().URL)
-}
-
-// downloadWithCache downloads a ruleset using the enhanced cache structure
-func (g *GitRegistry) downloadWithCache(ctx context.Context, rulesetName, versionSpec, destDir string, patterns []string) (*DownloadResult, error) {
-	// Ensure cache directory structure exists
-	if err := g.cacheManager.EnsureCacheDir(g.GetType(), g.GetConfig().URL); err != nil {
-		return nil, fmt.Errorf("failed to ensure cache directory: %w", err)
-	}
-
-	// Create version resolver
-	versionResolver := cache.NewVersionResolver(g.cacheManager)
-
+// downloadWithCache downloads a ruleset using the new cache structure
+func (g *GitRegistry) downloadWithCache(ctx context.Context, _, versionSpec, destDir string, patterns []string) (*DownloadResult, error) {
 	// Resolve git version to commit hash
-	resolvedCommit, mappings, err := versionResolver.ResolveGitVersion(ctx, g.operations, versionSpec)
+	resolvedCommit, err := g.operations.ResolveVersion(ctx, versionSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve git version: %w", err)
 	}
 
-	// Get ruleset storage manager
-	rulesetStorage := g.cacheManager.GetRulesetStorage()
-
 	// Check if this commit is already cached
-	cachedFiles, err := rulesetStorage.GetRulesetFiles(g.GetType(), g.GetConfig().URL, rulesetName, resolvedCommit, patterns)
+	cachedFiles, err := g.cacheManager.GetRuleset(g.GetConfig().URL, patterns, resolvedCommit)
 	if err == nil && len(cachedFiles) > 0 {
 		// Files are cached, copy to destination if needed
 		if !strings.Contains(destDir, "/repository") {
@@ -209,7 +169,7 @@ func (g *GitRegistry) downloadWithCache(ctx context.Context, rulesetName, versio
 	}
 
 	// Files not cached, download from repository
-	repositoryPath, err := g.getRepositoryPath()
+	repositoryPath, err := g.cacheManager.GetRepositoryPath(g.GetConfig().URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repository path: %w", err)
 	}
@@ -220,15 +180,9 @@ func (g *GitRegistry) downloadWithCache(ctx context.Context, rulesetName, versio
 		return nil, fmt.Errorf("failed to download files from git: %w", err)
 	}
 
-	// Store files in cache with ruleset/version structure
-	if err := rulesetStorage.StoreRulesetFiles(g.GetType(), g.GetConfig().URL, rulesetName, resolvedCommit, files, patterns); err != nil {
+	// Store files in cache
+	if err := g.cacheManager.StoreRuleset(g.GetConfig().URL, patterns, resolvedCommit, files); err != nil {
 		return nil, fmt.Errorf("failed to store files in cache: %w", err)
-	}
-
-	// Update metadata
-	if err := g.updateCacheMetadata(rulesetName, resolvedCommit, mappings, files); err != nil {
-		// Log error but don't fail the download
-		_ = err
 	}
 
 	// Write files to destination if needed
@@ -237,9 +191,6 @@ func (g *GitRegistry) downloadWithCache(ctx context.Context, rulesetName, versio
 			return nil, fmt.Errorf("failed to write files to destination: %w", err)
 		}
 	}
-
-	// Update cache info
-	_ = g.cacheManager.UpdateCacheInfo(g.GetType(), g.GetConfig().URL, resolvedCommit)
 
 	return g.BaseGitRegistry.CreateDownloadResult(versionSpec, resolvedCommit, files, destDir), nil
 }
@@ -257,53 +208,4 @@ func (g *GitRegistry) downloadFilesFromGit(ctx context.Context, repositoryPath, 
 
 	// Fallback to regular operations
 	return g.operations.GetFiles(ctx, version, patterns)
-}
-
-// updateCacheMetadata updates versions.json and metadata.json
-func (g *GitRegistry) updateCacheMetadata(rulesetName, resolvedCommit string, mappings map[string]string, files map[string][]byte) error {
-	metadataManager := g.cacheManager.GetMetadataManager()
-
-	// Calculate file stats
-	fileCount := len(files)
-	var totalSize int64
-	for _, content := range files {
-		totalSize += int64(len(content))
-	}
-
-	// Get existing versions or create new list
-	existingVersions, existingMappings, err := metadataManager.GetVersions(g.GetType(), g.GetConfig().URL, rulesetName)
-	if err != nil {
-		// First time caching this ruleset
-		existingVersions = []string{}
-		existingMappings = make(map[string]string)
-	}
-
-	// Add resolved commit if not already present
-	commitExists := false
-	for _, version := range existingVersions {
-		if version == resolvedCommit {
-			commitExists = true
-			break
-		}
-	}
-	if !commitExists {
-		existingVersions = append(existingVersions, resolvedCommit)
-	}
-
-	// Merge mappings
-	for versionSpec, commit := range mappings {
-		existingMappings[versionSpec] = commit
-	}
-
-	// Update versions.json
-	if err := metadataManager.UpdateVersions(g.GetType(), g.GetConfig().URL, rulesetName, existingVersions, existingMappings); err != nil {
-		return fmt.Errorf("failed to update versions cache: %w", err)
-	}
-
-	// Update metadata.json
-	if err := metadataManager.UpdateMetadata(g.GetType(), g.GetConfig().URL, rulesetName, resolvedCommit, fileCount, totalSize); err != nil {
-		return fmt.Errorf("failed to update metadata cache: %w", err)
-	}
-
-	return nil
 }

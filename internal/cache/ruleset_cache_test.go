@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func TestRulesetCacheManager_StoreAndGetRuleset(t *testing.T) {
 		if !exists {
 			t.Fatalf("File %s not found in retrieved files", filename)
 		}
-		if string(actualContent) != string(expectedContent) {
+		if !bytes.Equal(actualContent, expectedContent) {
 			t.Fatalf("File %s content mismatch. Expected: %s, Got: %s", filename, expectedContent, actualContent)
 		}
 	}

@@ -24,7 +24,7 @@ func TestGitCacheManager_Cleanup_TTL(t *testing.T) {
 	// Manually update access time to be old
 	registryKey := GenerateRegistryKey("git", "https://github.com/test/repo")
 	registryPath := filepath.Join(cacheRoot, "registries", registryKey)
-	
+
 	index, err := LoadRegistryIndex(registryPath)
 	if err != nil {
 		t.Fatalf("Failed to load registry index: %v", err)
@@ -38,7 +38,7 @@ func TestGitCacheManager_Cleanup_TTL(t *testing.T) {
 			versionCache.LastAccessedOn = oldTime
 		}
 	}
-	
+
 	err = SaveRegistryIndex(registryPath, index)
 	if err != nil {
 		t.Fatalf("Failed to save registry index: %v", err)
@@ -107,7 +107,7 @@ func TestRulesetCacheManager_Cleanup_TTL(t *testing.T) {
 	// Manually update access time to be old
 	registryKey := GenerateRegistryKey("ruleset", "https://registry.example.com")
 	registryPath := filepath.Join(cacheRoot, "registries", registryKey)
-	
+
 	index, err := LoadRegistryIndex(registryPath)
 	if err != nil {
 		t.Fatalf("Failed to load registry index: %v", err)
@@ -121,7 +121,7 @@ func TestRulesetCacheManager_Cleanup_TTL(t *testing.T) {
 			versionCache.LastAccessedOn = oldTime
 		}
 	}
-	
+
 	err = SaveRegistryIndex(registryPath, index)
 	if err != nil {
 		t.Fatalf("Failed to save registry index: %v", err)
@@ -280,7 +280,7 @@ func TestGitCacheManager_CleanupPartialVersions(t *testing.T) {
 	// Manually set old version access time
 	registryKey := GenerateRegistryKey("git", "https://github.com/test/repo")
 	registryPath := filepath.Join(cacheRoot, "registries", registryKey)
-	
+
 	index, err := LoadRegistryIndex(registryPath)
 	if err != nil {
 		t.Fatalf("Failed to load registry index: %v", err)
@@ -288,11 +288,11 @@ func TestGitCacheManager_CleanupPartialVersions(t *testing.T) {
 
 	patternsKey := GeneratePatternsKey(patterns)
 	rulesetCache := index.Rulesets[patternsKey]
-	
+
 	// Set old version access time to 2 hours ago
 	oldTime := time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)
 	rulesetCache.Versions["old123"].LastAccessedOn = oldTime
-	
+
 	err = SaveRegistryIndex(registryPath, index)
 	if err != nil {
 		t.Fatalf("Failed to save registry index: %v", err)

@@ -9,11 +9,11 @@ import (
 
 // CreateRegistry creates a registry instance based on configuration
 func CreateRegistry(config *RegistryConfig, auth *AuthConfig) (Registry, error) {
-	return CreateRegistryWithCache(config, auth, nil)
+	return CreateRegistryWithCache(config, auth, "")
 }
 
 // CreateRegistryWithCache creates a registry instance with cache manager injection
-func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheManager cache.Manager) (Registry, error) {
+func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheRoot string) (Registry, error) {
 	if err := ValidateRegistryConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
@@ -22,7 +22,11 @@ func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheMana
 	case "local":
 		return NewLocalRegistry(config)
 	case "git":
-		return NewGitRegistryWithCache(config, auth, cacheManager)
+		if cacheRoot != "" {
+			cacheManager := cache.NewGitRegistryCacheManager(cacheRoot)
+			return NewGitRegistryWithCache(config, auth, cacheManager)
+		}
+		return NewGitRegistry(config, auth)
 	case "git-local":
 		return NewGitLocalRegistry(config, auth)
 	case "https":
@@ -37,15 +41,11 @@ func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheMana
 }
 
 // CreateRegistryWithCacheConfig creates a registry instance with cache configuration
-func CreateRegistryWithCacheConfig(registryConfig *RegistryConfig, auth *AuthConfig, cacheManager cache.Manager, cacheConfig *config.CacheConfig, registryName string) (Registry, error) {
-	// Perform cache cleanup if cache manager is available
-	if cacheManager != nil && cacheConfig != nil {
-		// Clean up expired entries
-		_ = cacheManager.CleanupExpired(cacheConfig.TTL)
-
-		// Clean up oversized cache
-		_ = cacheManager.CleanupOversized(cacheConfig.MaxSize)
+func CreateRegistryWithCacheConfig(registryConfig *RegistryConfig, auth *AuthConfig, cacheConfig *config.CacheConfig, registryName string) (Registry, error) {
+	cacheRoot := ""
+	if cacheConfig != nil {
+		cacheRoot = cacheConfig.Path
 	}
 
-	return CreateRegistryWithCache(registryConfig, auth, cacheManager)
+	return CreateRegistryWithCache(registryConfig, auth, cacheRoot)
 }
