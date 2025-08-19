@@ -83,7 +83,7 @@ func Load() (*Config, error) {
 	mergedCfg := mergeConfigs(globalCfg, localCfg)
 
 	// Validate merged configuration
-	if err := validateConfig(mergedCfg); err != nil {
+	if err := validateConfig(mergedCfg, globalCfg.TypeDefaults["cache"]); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
@@ -247,7 +247,7 @@ func mergeConfigs(global, local *Config) *Config {
 	// Merge registry configs (nested map merge)
 	mergeNestedStringMaps(merged.RegistryConfigs, global.RegistryConfigs, local.RegistryConfigs)
 
-	// Merge type defaults (nested map merge) - exclude cache settings
+	// Merge type defaults (nested map merge) - exclude cache settings (global only)
 	mergeNestedStringMapsExcluding(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults, []string{"cache"})
 
 	// Merge network config (key-level merge)
@@ -405,7 +405,7 @@ func expandEnvVarsInJSON(jsonContent string) string {
 }
 
 // validateConfig validates the merged configuration
-func validateConfig(cfg *Config) error {
+func validateConfig(cfg *Config, globalCacheSettings map[string]string) error {
 	// Validate registries
 	for name, url := range cfg.Registries {
 		if err := validateRegistry(name, url, cfg.RegistryConfigs[name]); err != nil {
@@ -423,8 +423,8 @@ func validateConfig(cfg *Config) error {
 		return fmt.Errorf("channels: %w", err)
 	}
 
-	// Load cache configuration
-	cfg.CacheConfig = LoadCacheConfig()
+	// Load cache configuration from global settings only (not overridable by local)
+	cfg.CacheConfig = LoadCacheConfig(globalCacheSettings)
 
 	return nil
 }
@@ -626,10 +626,9 @@ func generateARMRCStub(path string) error {
 # retry.backoffMultiplier = 2.0
 # retry.maxBackoff = 30
 
-# Cache configuration (GLOBAL ONLY - configure in ~/.arm/.armrc)
+# Cache configuration (GLOBAL ONLY - configure in ~/.arm/.armrc, cannot be overridden by local .armrc)
 # [cache]
-# path = $HOME/.arm/cache        # Cache root directory
-# maxSize = 1073741824           # Max cache size in bytes (1GB)
+# maxSize = 1GB                  # Max cache size (supports GB, MB, KB, or bytes)
 # ttl = 24h                      # Time-to-live for cache entries
 # cleanupInterval = 6h           # How often to run cleanup
 

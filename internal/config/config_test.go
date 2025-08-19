@@ -831,7 +831,7 @@ func TestValidateConfig(t *testing.T) {
 		},
 	}
 
-	err := validateConfig(validCfg)
+	err := validateConfig(validCfg, nil)
 	if err != nil {
 		t.Errorf("Expected valid config to pass validation, got: %v", err)
 	}
@@ -846,7 +846,7 @@ func TestValidateConfig(t *testing.T) {
 		},
 	}
 
-	err = validateConfig(invalidCfg)
+	err = validateConfig(invalidCfg, nil)
 	if err == nil {
 		t.Error("Expected invalid config to fail validation")
 	} else if !strings.Contains(err.Error(), "unknown registry type") {

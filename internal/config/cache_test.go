@@ -7,33 +7,19 @@ import (
 	"time"
 )
 
-func TestCacheConfigFromFile(t *testing.T) {
-	// Create temporary directory for test
-	tempDir, err := os.MkdirTemp("", "arm-cache-test-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
-
-	cacheConfigPath := filepath.Join(tempDir, "config.json")
-	cacheContent := `{
-  "maxSize": 2000000000,
-  "ttl": "12h",
-  "cleanupInterval": "3h"
-}`
-	if err := os.WriteFile(cacheConfigPath, []byte(cacheContent), 0o600); err != nil {
-		t.Fatal(err)
+func TestCacheConfigFromINI(t *testing.T) {
+	// Test cache configuration from INI settings
+	cacheSettings := map[string]string{
+		"maxSize":         "2GB",
+		"ttl":             "12h",
+		"cleanupInterval": "3h",
 	}
 
-	// Load configuration from file
-	cfg, err := LoadCacheConfigFromFile(cacheConfigPath)
-	if err != nil {
-		t.Fatalf("Failed to load cache config: %v", err)
-	}
+	cfg := LoadCacheConfig(cacheSettings)
 
 	// Verify values
-	if cfg.MaxSize != 2000000000 {
-		t.Errorf("Expected maxSize 2000000000, got %d", cfg.MaxSize)
+	if cfg.MaxSize != 2*1024*1024*1024 {
+		t.Errorf("Expected maxSize 2GB (2147483648 bytes), got %d", cfg.MaxSize)
 	}
 	if time.Duration(cfg.TTL) != 12*time.Hour {
 		t.Errorf("Expected TTL 12h, got %v", cfg.TTL)
@@ -80,41 +66,36 @@ func TestCacheConfigDefaults(t *testing.T) {
 	}
 }
 
-func TestSaveCacheConfigToFile(t *testing.T) {
-	// Create temporary directory for test
-	tempDir, err := os.MkdirTemp("", "arm-save-cache-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
-
-	configPath := filepath.Join(tempDir, "cache", "config.json")
-	cfg := &CacheConfig{
-		MaxSize:         5000000000,
-		TTL:             Duration(8 * time.Hour),
-		CleanupInterval: Duration(2 * time.Hour),
-	}
-
-	// Save config
-	if err := SaveCacheConfigToFile(configPath, cfg); err != nil {
-		t.Fatalf("Failed to save cache config: %v", err)
+func TestParseSizeFunction(t *testing.T) {
+	tests := []struct {
+		input     string
+		expected  int64
+		shouldErr bool
+	}{
+		{"1GB", 1024 * 1024 * 1024, false},
+		{"500MB", 500 * 1024 * 1024, false},
+		{"2048KB", 2048 * 1024, false},
+		{"1073741824", 1073741824, false},
+		{"0", 0, false},
+		{"", 0, false},
+		{"invalid", 0, true},
+		{"1XB", 0, true},
 	}
 
-	// Load it back
-	loadedCfg, err := LoadCacheConfigFromFile(configPath)
-	if err != nil {
-		t.Fatalf("Failed to load saved config: %v", err)
-	}
-
-	// Verify values
-	if loadedCfg.MaxSize != 5000000000 {
-		t.Errorf("Expected maxSize 5000000000, got %d", loadedCfg.MaxSize)
-	}
-	if time.Duration(loadedCfg.TTL) != 8*time.Hour {
-		t.Errorf("Expected TTL 8h, got %v", loadedCfg.TTL)
-	}
-	if time.Duration(loadedCfg.CleanupInterval) != 2*time.Hour {
-		t.Errorf("Expected cleanup interval 2h, got %v", loadedCfg.CleanupInterval)
+	for _, test := range tests {
+		result, err := parseSize(test.input)
+		if test.shouldErr {
+			if err == nil {
+				t.Errorf("Expected error for input %s, but got none", test.input)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("Unexpected error for input %s: %v", test.input, err)
+			}
+			if result != test.expected {
+				t.Errorf("For input %s, expected %d, got %d", test.input, test.expected, result)
+			}
+		}
 	}
 }
 
@@ -173,12 +154,17 @@ func TestGetCachePath(t *testing.T) {
 	}
 }
 
-func TestLoadCacheConfigFromNonexistentFile(t *testing.T) {
-	cfg, err := LoadCacheConfigFromFile("/nonexistent/config.json")
-	if err == nil {
-		t.Error("Expected error when loading nonexistent file")
+func TestCacheConfigWithNilSettings(t *testing.T) {
+	cfg := LoadCacheConfig(nil)
+
+	// Should return default configuration
+	if cfg.MaxSize != 0 {
+		t.Errorf("Expected default MaxSize 0, got %d", cfg.MaxSize)
 	}
-	if cfg != nil {
-		t.Error("Expected nil config when file doesn't exist")
+	if time.Duration(cfg.TTL) != 24*time.Hour {
+		t.Errorf("Expected default TTL 24h, got %v", cfg.TTL)
+	}
+	if time.Duration(cfg.CleanupInterval) != 6*time.Hour {
+		t.Errorf("Expected default CleanupInterval 6h, got %v", cfg.CleanupInterval)
 	}
 }

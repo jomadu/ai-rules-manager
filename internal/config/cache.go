@@ -2,8 +2,10 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -64,52 +66,62 @@ func DefaultCacheConfig() *CacheConfig {
 	}
 }
 
-// LoadCacheConfig loads cache configuration from dedicated cache/config.json file
-func LoadCacheConfig() *CacheConfig {
+// LoadCacheConfig loads cache configuration from INI configuration
+func LoadCacheConfig(cacheSettings map[string]string) *CacheConfig {
 	cfg := DefaultCacheConfig()
 
-	// Load from dedicated cache config file
-	cacheConfigPath := filepath.Join(GetCachePath(), "config.json")
-	if loadedCfg, err := LoadCacheConfigFromFile(cacheConfigPath); err == nil {
-		return loadedCfg
+	// Apply settings from INI [cache] section
+	if cacheSettings != nil {
+		if maxSizeStr, exists := cacheSettings["maxSize"]; exists {
+			if maxSize, err := parseSize(maxSizeStr); err == nil {
+				cfg.MaxSize = maxSize
+			}
+		}
+
+		if ttlStr, exists := cacheSettings["ttl"]; exists {
+			if ttl, err := time.ParseDuration(ttlStr); err == nil {
+				cfg.TTL = Duration(ttl)
+			}
+		}
+
+		if cleanupStr, exists := cacheSettings["cleanupInterval"]; exists {
+			if cleanup, err := time.ParseDuration(cleanupStr); err == nil {
+				cfg.CleanupInterval = Duration(cleanup)
+			}
+		}
 	}
 
 	return cfg
 }
 
-// LoadCacheConfigFromFile loads cache configuration from specified JSON file
-func LoadCacheConfigFromFile(path string) (*CacheConfig, error) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, err // Config file doesn't exist
+// parseSize parses size strings like "1GB", "500MB", "1073741824" (bytes)
+func parseSize(sizeStr string) (int64, error) {
+	if sizeStr == "" {
+		return 0, nil
 	}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+	// Try parsing as plain number (bytes)
+	if size, err := json.Number(sizeStr).Int64(); err == nil {
+		return size, nil
 	}
 
-	// Expand environment variables in JSON content
-	expandedData := os.ExpandEnv(string(data))
-
-	var cfg CacheConfig
-	if err := json.Unmarshal([]byte(expandedData), &cfg); err != nil {
-		return nil, err
+	// Parse size with units (GB, MB, KB)
+	var size int64
+	var unit string
+	if _, err := fmt.Sscanf(strings.ToUpper(sizeStr), "%d%s", &size, &unit); err != nil {
+		return 0, fmt.Errorf("invalid size format: %s", sizeStr)
 	}
 
-	return &cfg, nil
-}
-
-// SaveCacheConfigToFile saves cache configuration to specified JSON file
-func SaveCacheConfigToFile(path string, cfg *CacheConfig) error {
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+	switch unit {
+	case "GB":
+		return size * 1024 * 1024 * 1024, nil
+	case "MB":
+		return size * 1024 * 1024, nil
+	case "KB":
+		return size * 1024, nil
+	case "B", "":
+		return size, nil
+	default:
+		return 0, fmt.Errorf("unknown size unit: %s", unit)
 	}
-
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, data, 0o600)
 }
