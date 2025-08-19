@@ -3,153 +3,157 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/max-dunn/ai-rules-manager/internal/cache"
 )
 
-func TestDefaultCacheConfig(t *testing.T) {
-	cfg := DefaultCacheConfig()
+func TestCacheConfigFromFile(t *testing.T) {
+	// Create temporary directory for test
+	tempDir, err := os.MkdirTemp("", "arm-cache-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
 
-	// Should have reasonable defaults
-	if cfg.MaxSize != 0 {
-		t.Errorf("Expected unlimited max size (0), got %d", cfg.MaxSize)
+	// Set up fake HOME directory
+	originalHome := os.Getenv("HOME")
+	fakeHome := filepath.Join(tempDir, "home")
+	os.Setenv("HOME", fakeHome)
+	defer os.Setenv("HOME", originalHome)
+
+	// Create cache directory and config file
+	cacheDir := filepath.Join(fakeHome, ".arm", "cache")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatal(err)
 	}
 
-	if cfg.TTL != 24*time.Hour {
-		t.Errorf("Expected 24h TTL, got %v", cfg.TTL)
+	cacheConfigPath := filepath.Join(cacheDir, "config.json")
+	cacheContent := `{
+  "path": "/test/cache",
+  "maxSize": 2000000000,
+  "ttl": "12h",
+  "cleanupInterval": "3h"
+}`
+	if err := os.WriteFile(cacheConfigPath, []byte(cacheContent), 0o600); err != nil {
+		t.Fatal(err)
 	}
 
-	if cfg.CleanupInterval != 6*time.Hour {
-		t.Errorf("Expected 6h cleanup interval, got %v", cfg.CleanupInterval)
+	// Load configuration from file
+	cfg, err := LoadCacheConfigFromFile(cacheConfigPath)
+	if err != nil {
+		t.Fatalf("Failed to load cache config: %v", err)
 	}
 
-	// Path should be in home directory
-	homeDir := os.Getenv("HOME")
-	if homeDir == "" {
-		homeDir = "."
+	// Verify values
+	if cfg.Path != "/test/cache" {
+		t.Errorf("Expected path '/test/cache', got '%s'", cfg.Path)
 	}
-	expectedPath := filepath.Join(homeDir, ".arm", "cache")
-	if cfg.Path != expectedPath {
-		t.Errorf("Expected path %s, got %s", expectedPath, cfg.Path)
+	if cfg.MaxSize != 2000000000 {
+		t.Errorf("Expected maxSize 2000000000, got %d", cfg.MaxSize)
 	}
-
-}
-
-func TestLoadCacheConfig(t *testing.T) {
-	tests := []struct {
-		name     string
-		config   *Config
-		expected *CacheConfig
-	}{
-		{
-			name: "default config",
-			config: &Config{
-				TypeDefaults: make(map[string]map[string]string),
-			},
-			expected: DefaultCacheConfig(),
-		},
-		{
-			name: "custom cache settings",
-			config: &Config{
-				TypeDefaults: map[string]map[string]string{
-					"cache": {
-						"path":            "/custom/cache/path",
-						"maxSize":         "1073741824", // 1GB
-						"ttl":             "12h",
-						"cleanupInterval": "3h",
-					},
-				},
-			},
-			expected: &CacheConfig{
-				Path:            "/custom/cache/path",
-				MaxSize:         1073741824,
-				TTL:             12 * time.Hour,
-				CleanupInterval: 3 * time.Hour,
-			},
-		},
+	if time.Duration(cfg.TTL) != 12*time.Hour {
+		t.Errorf("Expected TTL 12h, got %v", cfg.TTL)
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.config.LoadCacheConfig()
-
-			if result.Path != tt.expected.Path {
-				t.Errorf("Expected path %s, got %s", tt.expected.Path, result.Path)
-			}
-
-			if result.MaxSize != tt.expected.MaxSize {
-				t.Errorf("Expected max size %d, got %d", tt.expected.MaxSize, result.MaxSize)
-			}
-
-			if result.TTL != tt.expected.TTL {
-				t.Errorf("Expected TTL %v, got %v", tt.expected.TTL, result.TTL)
-			}
-
-			if result.CleanupInterval != tt.expected.CleanupInterval {
-				t.Errorf("Expected cleanup interval %v, got %v", tt.expected.CleanupInterval, result.CleanupInterval)
-			}
-
-		})
+	if time.Duration(cfg.CleanupInterval) != 3*time.Hour {
+		t.Errorf("Expected cleanup interval 3h, got %v", cfg.CleanupInterval)
 	}
 }
 
-func TestCachePathConfigurationRespected(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "arm-cache-path-test-*")
+func TestCacheConfigDefaults(t *testing.T) {
+	// Create temporary directory for test
+	tempDir, err := os.MkdirTemp("", "arm-cache-defaults-*")
 	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
+		t.Fatal(err)
 	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	defer os.RemoveAll(tempDir)
 
-	customCachePath := filepath.Join(tempDir, "custom-cache")
+	// Set up fake HOME directory
+	originalHome := os.Getenv("HOME")
+	fakeHome := filepath.Join(tempDir, "home")
+	os.Setenv("HOME", fakeHome)
+	defer os.Setenv("HOME", originalHome)
 
-	// Create a config with custom cache path and other settings
-	cfg := &Config{
-		TypeDefaults: map[string]map[string]string{
-			"cache": {
-				"path":            customCachePath,
-				"ttl":             "12h",
-				"maxSize":         "2147483648", // 2GB
-				"cleanupInterval": "3h",
-			},
-		},
+	// Create project directory (no cache config)
+	projectDir := filepath.Join(tempDir, "project")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
 	}
 
-	// Load cache configuration
-	cacheConfig := cfg.LoadCacheConfig()
+	// Change to project directory
+	originalWd, _ := os.Getwd()
+	os.Chdir(projectDir)
+	defer os.Chdir(originalWd)
 
-	// Verify all custom settings are respected
-	if cacheConfig.Path != customCachePath {
-		t.Errorf("Expected cache path %s, got %s", customCachePath, cacheConfig.Path)
-	}
-
-	if cacheConfig.TTL != 12*time.Hour {
-		t.Errorf("Expected TTL 12h, got %v", cacheConfig.TTL)
-	}
-
-	if cacheConfig.MaxSize != 2147483648 {
-		t.Errorf("Expected max size 2147483648, got %d", cacheConfig.MaxSize)
-	}
-
-	if cacheConfig.CleanupInterval != 3*time.Hour {
-		t.Errorf("Expected cleanup interval 3h, got %v", cacheConfig.CleanupInterval)
-	}
-
-	// Test that cache manager uses the configured path
-	manager := cache.NewGitRegistryCacheManager(cacheConfig.Path)
-
-	registryURL := "https://github.com/test/repo"
-
-	// Get repository path and verify it uses the custom path
-	repoPath, err := manager.GetRepositoryPath(registryURL)
+	// Load configuration (should use defaults)
+	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Failed to get repository path: %v", err)
+		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	if !strings.HasPrefix(repoPath, customCachePath) {
-		t.Errorf("Repository path %s does not start with configured path %s", repoPath, customCachePath)
+	// Verify cache config uses defaults
+	expectedPath := filepath.Join(fakeHome, ".arm", "cache")
+	if cfg.CacheConfig.Path != expectedPath {
+		t.Errorf("Expected default cache path '%s', got '%s'", expectedPath, cfg.CacheConfig.Path)
+	}
+	if cfg.CacheConfig.MaxSize != 0 {
+		t.Errorf("Expected default cache maxSize 0, got %d", cfg.CacheConfig.MaxSize)
+	}
+	if time.Duration(cfg.CacheConfig.TTL) != 24*time.Hour {
+		t.Errorf("Expected default cache TTL 24h, got %v", cfg.CacheConfig.TTL)
+	}
+	if time.Duration(cfg.CacheConfig.CleanupInterval) != 6*time.Hour {
+		t.Errorf("Expected default cache cleanup interval 6h, got %v", cfg.CacheConfig.CleanupInterval)
+	}
+}
+
+func TestSaveCacheConfigToFile(t *testing.T) {
+	// Create temporary directory for test
+	tempDir, err := os.MkdirTemp("", "arm-save-cache-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	configPath := filepath.Join(tempDir, "cache", "config.json")
+	cfg := &CacheConfig{
+		Path:            "/custom/cache",
+		MaxSize:         5000000000,
+		TTL:             Duration(8 * time.Hour),
+		CleanupInterval: Duration(2 * time.Hour),
+	}
+
+	// Save config
+	if err := SaveCacheConfigToFile(configPath, cfg); err != nil {
+		t.Fatalf("Failed to save cache config: %v", err)
+	}
+
+	// Load it back
+	loadedCfg, err := LoadCacheConfigFromFile(configPath)
+	if err != nil {
+		t.Fatalf("Failed to load saved config: %v", err)
+	}
+
+	// Verify values
+	if loadedCfg.Path != "/custom/cache" {
+		t.Errorf("Expected path '/custom/cache', got '%s'", loadedCfg.Path)
+	}
+	if loadedCfg.MaxSize != 5000000000 {
+		t.Errorf("Expected maxSize 5000000000, got %d", loadedCfg.MaxSize)
+	}
+	if time.Duration(loadedCfg.TTL) != 8*time.Hour {
+		t.Errorf("Expected TTL 8h, got %v", loadedCfg.TTL)
+	}
+	if time.Duration(loadedCfg.CleanupInterval) != 2*time.Hour {
+		t.Errorf("Expected cleanup interval 2h, got %v", loadedCfg.CleanupInterval)
+	}
+}
+
+func TestLoadCacheConfigFromNonexistentFile(t *testing.T) {
+	cfg, err := LoadCacheConfigFromFile("/nonexistent/config.json")
+	if err == nil {
+		t.Error("Expected error when loading nonexistent file")
+	}
+	if cfg != nil {
+		t.Error("Expected nil config when file doesn't exist")
 	}
 }

@@ -29,7 +29,7 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 			name: "cache enabled globally",
 			cacheConfig: &config.CacheConfig{
 				Path:    "/tmp/cache",
-				TTL:     24 * time.Hour,
+				TTL:     config.Duration(24 * time.Hour),
 				MaxSize: 0,
 			},
 			registryName: "test-registry",
@@ -77,7 +77,7 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 func TestCreateRegistryWithCacheConfigInvalidRegistry(t *testing.T) {
 	cacheConfig := &config.CacheConfig{
 		Path: "/tmp/cache",
-		TTL:  24 * time.Hour,
+		TTL:  config.Duration(24 * time.Hour),
 	}
 
 	// Invalid registry config (missing required fields)

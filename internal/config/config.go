@@ -247,8 +247,8 @@ func mergeConfigs(global, local *Config) *Config {
 	// Merge registry configs (nested map merge)
 	mergeNestedStringMaps(merged.RegistryConfigs, global.RegistryConfigs, local.RegistryConfigs)
 
-	// Merge type defaults (nested map merge)
-	mergeNestedStringMaps(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults)
+	// Merge type defaults (nested map merge) - exclude cache settings
+	mergeNestedStringMapsExcluding(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults, []string{"cache"})
 
 	// Merge network config (key-level merge)
 	mergeStringMaps(merged.NetworkConfig, global.NetworkConfig, local.NetworkConfig)
@@ -282,6 +282,11 @@ func mergeStringMaps(dest, global, local map[string]string) {
 
 // mergeNestedStringMaps merges nested string maps with local taking precedence
 func mergeNestedStringMaps(dest, global, local map[string]map[string]string) {
+	mergeNestedStringMapsExcluding(dest, global, local, nil)
+}
+
+// mergeNestedStringMapsExcluding merges nested string maps excluding specified keys
+func mergeNestedStringMapsExcluding(dest, global, local map[string]map[string]string, exclude []string) {
 	// Copy global values first
 	for k, v := range global {
 		dest[k] = make(map[string]string)
@@ -291,6 +296,10 @@ func mergeNestedStringMaps(dest, global, local map[string]map[string]string) {
 	}
 	// Merge with local values (key-level merge within each nested map)
 	for k, v := range local {
+		// Skip excluded keys
+		if contains(exclude, k) {
+			continue
+		}
 		if dest[k] == nil {
 			dest[k] = make(map[string]string)
 		}
@@ -415,7 +424,7 @@ func validateConfig(cfg *Config) error {
 	}
 
 	// Load cache configuration
-	cfg.CacheConfig = cfg.LoadCacheConfig()
+	cfg.CacheConfig = LoadCacheConfig()
 
 	return nil
 }
@@ -617,7 +626,7 @@ func generateARMRCStub(path string) error {
 # retry.backoffMultiplier = 2.0
 # retry.maxBackoff = 30
 
-# Cache configuration
+# Cache configuration (GLOBAL ONLY - configure in ~/.arm/.armrc)
 # [cache]
 # path = $HOME/.arm/cache        # Cache root directory
 # maxSize = 1073741824           # Max cache size in bytes (1GB)

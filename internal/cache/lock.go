@@ -164,11 +164,7 @@ func InitializeCache(cacheRoot string) error {
 		}
 	}
 
-	// Load or create cache configuration
-	_, err := LoadCacheConfig(cacheRoot)
-	if err != nil {
-		return fmt.Errorf("failed to initialize cache config: %w", err)
-	}
+	// Cache configuration is now managed separately
 
 	return nil
 }

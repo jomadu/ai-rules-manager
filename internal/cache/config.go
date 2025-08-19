@@ -8,16 +8,6 @@ import (
 	"time"
 )
 
-// CacheConfig represents the global cache configuration
-type CacheConfig struct {
-	Version        string `json:"version"`
-	CreatedOn      string `json:"created_on"`
-	LastUpdatedOn  string `json:"last_updated_on"`
-	TTLHours       int    `json:"ttl_hours"`
-	MaxSizeMB      int    `json:"max_size_mb"`
-	CleanupEnabled bool   `json:"cleanup_enabled"`
-}
-
 // RegistryIndex represents the index file for a registry cache
 type RegistryIndex struct {
 	CreatedOn              string                   `json:"created_on"`
@@ -44,54 +34,6 @@ type VersionCache struct {
 	CreatedOn      string `json:"created_on"`
 	LastUpdatedOn  string `json:"last_updated_on"`
 	LastAccessedOn string `json:"last_accessed_on"`
-}
-
-// LoadCacheConfig loads the global cache configuration
-func LoadCacheConfig(cacheRoot string) (*CacheConfig, error) {
-	configPath := filepath.Join(cacheRoot, "config.json")
-
-	// Create default config if it doesn't exist
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		defaultConfig := &CacheConfig{
-			Version:        "1.0",
-			CreatedOn:      time.Now().UTC().Format(time.RFC3339),
-			LastUpdatedOn:  time.Now().UTC().Format(time.RFC3339),
-			TTLHours:       24,
-			MaxSizeMB:      1024,
-			CleanupEnabled: true,
-		}
-		if err := SaveCacheConfig(cacheRoot, defaultConfig); err != nil {
-			return nil, fmt.Errorf("failed to create default config: %w", err)
-		}
-		return defaultConfig, nil
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var config CacheConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	return &config, nil
-}
-
-// SaveCacheConfig saves the global cache configuration
-func SaveCacheConfig(cacheRoot string, config *CacheConfig) error {
-	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
-		return fmt.Errorf("failed to create cache directory: %w", err)
-	}
-
-	configPath := filepath.Join(cacheRoot, "config.json")
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	return os.WriteFile(configPath, data, 0o644)
 }
 
 // LoadRegistryIndex loads the registry index file
@@ -180,19 +122,7 @@ func (v *VersionCache) UpdateAccessTime() {
 }
 
 // CleanupCache performs TTL-based and size-based cleanup across all cache managers
-func CleanupCache(cacheRoot string) error {
-	config, err := LoadCacheConfig(cacheRoot)
-	if err != nil {
-		return fmt.Errorf("failed to load cache config: %w", err)
-	}
-
-	if !config.CleanupEnabled {
-		return nil
-	}
-
-	ttl := time.Duration(config.TTLHours) * time.Hour
-	maxSize := int64(config.MaxSizeMB) * 1024 * 1024 // Convert MB to bytes
-
+func CleanupCache(cacheRoot string, ttl time.Duration, maxSize int64) error {
 	// Cleanup Git registries
 	gitManager := NewGitCacheManager(cacheRoot)
 	if err := gitManager.Cleanup(ttl, maxSize); err != nil {
@@ -205,9 +135,7 @@ func CleanupCache(cacheRoot string) error {
 		return fmt.Errorf("failed to cleanup ruleset cache: %w", err)
 	}
 
-	// Update config last updated time
-	config.LastUpdatedOn = time.Now().UTC().Format(time.RFC3339)
-	return SaveCacheConfig(cacheRoot, config)
+	return nil
 }
 
 // GetCacheStats returns statistics about cache usage

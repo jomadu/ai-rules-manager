@@ -1,9 +1,9 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -13,13 +13,40 @@ type CacheConfig struct {
 	Path string `json:"path"`
 
 	// MaxSize is the maximum cache size in bytes (0 = unlimited)
-	MaxSize int64 `json:"max_size"`
+	MaxSize int64 `json:"maxSize"`
 
 	// TTL is the time-to-live for cache entries (0 = no expiration)
-	TTL time.Duration `json:"ttl"`
+	TTL Duration `json:"ttl"`
 
 	// CleanupInterval is how often to run cache cleanup
-	CleanupInterval time.Duration `json:"cleanup_interval"`
+	CleanupInterval Duration `json:"cleanupInterval"`
+}
+
+// Duration wraps time.Duration to provide JSON marshaling
+type Duration time.Duration
+
+// MarshalJSON implements json.Marshaler
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String())
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (d *Duration) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	dur, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	*d = Duration(dur)
+	return nil
+}
+
+// String returns the duration as a string
+func (d Duration) String() string {
+	return time.Duration(d).String()
 }
 
 // DefaultCacheConfig returns the default cache configuration
@@ -31,40 +58,61 @@ func DefaultCacheConfig() *CacheConfig {
 
 	return &CacheConfig{
 		Path:            filepath.Join(homeDir, ".arm", "cache"),
-		MaxSize:         0,              // Unlimited by default
-		TTL:             24 * time.Hour, // 24 hours default
-		CleanupInterval: 6 * time.Hour,  // Cleanup every 6 hours
+		MaxSize:         0,                        // Unlimited by default
+		TTL:             Duration(24 * time.Hour), // 24 hours default
+		CleanupInterval: Duration(6 * time.Hour),  // Cleanup every 6 hours
 	}
 }
 
-// LoadCacheConfig loads cache configuration from the config sections
-func (c *Config) LoadCacheConfig() *CacheConfig {
+// LoadCacheConfig loads cache configuration from dedicated cache/config.json file
+func LoadCacheConfig() *CacheConfig {
 	cfg := DefaultCacheConfig()
 
-	// Load from [cache] section in INI file
-	if cacheSection, exists := c.TypeDefaults["cache"]; exists {
-		if path, ok := cacheSection["path"]; ok && path != "" {
-			cfg.Path = expandEnvVars(path)
-		}
-
-		if maxSizeStr, ok := cacheSection["maxSize"]; ok && maxSizeStr != "" {
-			if maxSize, err := strconv.ParseInt(maxSizeStr, 10, 64); err == nil {
-				cfg.MaxSize = maxSize
-			}
-		}
-
-		if ttlStr, ok := cacheSection["ttl"]; ok && ttlStr != "" {
-			if ttl, err := time.ParseDuration(ttlStr); err == nil {
-				cfg.TTL = ttl
-			}
-		}
-
-		if cleanupStr, ok := cacheSection["cleanupInterval"]; ok && cleanupStr != "" {
-			if cleanup, err := time.ParseDuration(cleanupStr); err == nil {
-				cfg.CleanupInterval = cleanup
-			}
-		}
+	// Load from dedicated cache config file
+	cacheConfigPath := filepath.Join(cfg.Path, "config.json")
+	if loadedCfg, err := LoadCacheConfigFromFile(cacheConfigPath); err == nil {
+		return loadedCfg
 	}
 
 	return cfg
+}
+
+// LoadCacheConfigFromFile loads cache configuration from specified JSON file
+func LoadCacheConfigFromFile(path string) (*CacheConfig, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, err // Config file doesn't exist
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Expand environment variables in JSON content
+	expandedData := os.ExpandEnv(string(data))
+
+	var cfg CacheConfig
+	if err := json.Unmarshal([]byte(expandedData), &cfg); err != nil {
+		return nil, err
+	}
+
+	// Expand environment variables in path
+	cfg.Path = os.ExpandEnv(cfg.Path)
+
+	return &cfg, nil
+}
+
+// SaveCacheConfigToFile saves cache configuration to specified JSON file
+func SaveCacheConfigToFile(path string, cfg *CacheConfig) error {
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0o600)
 }

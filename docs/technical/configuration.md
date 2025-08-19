@@ -39,6 +39,31 @@ ARM uses a multi-file, hierarchical configuration system that supports:
    └── --global, --dry-run, etc.
 ```
 
+## Cache Configuration
+
+### Dedicated Cache Config File
+Cache configuration is stored in `~/.arm/cache/config.json` to prevent conflicts between projects:
+
+```json
+{
+  "path": "$HOME/.arm/cache",
+  "maxSize": 1073741824,
+  "ttl": "24h",
+  "cleanupInterval": "6h"
+}
+```
+
+### Cache Config Fields
+- `path`: Root directory for cache storage (supports environment variables)
+- `maxSize`: Maximum cache size in bytes (0 = unlimited)
+- `ttl`: Time-to-live for cache entries (duration string)
+- `cleanupInterval`: How often to run cache cleanup (duration string)
+
+### Why Separate Cache Config?
+- **Global scope**: Cache is shared across all projects
+- **Conflict prevention**: No local project can override global cache settings
+- **Clean separation**: Cache management is independent of project configuration
+
 ## Configuration Loading
 
 ### Loading Process
@@ -64,8 +89,11 @@ func Load() (*Config, error) {
 
 ### Merging Strategy
 
+#### Cache Configuration Exception
+Cache settings are **GLOBAL ONLY** and are never merged from local configurations to prevent conflicts between projects sharing the same cache directory.
+
 #### Key-Level Merging
-Local configuration overrides global at the individual key level:
+Local configuration overrides global at the individual key level (except cache):
 
 ```ini
 # Global ~/.arm/.armrc
@@ -160,7 +188,7 @@ retry.maxAttempts = 3
 retry.backoffMultiplier = 2.0
 retry.maxBackoff = 30
 
-# Cache configuration
+# Cache configuration (GLOBAL ONLY - not merged from local configs)
 [cache]
 path = $HOME/.arm/cache
 maxSize = 1073741824
