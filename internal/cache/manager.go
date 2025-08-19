@@ -60,20 +60,17 @@ func NewGitRegistryCacheManager(cacheRoot string) GitRegistryCacheManager {
 
 // NewS3RegistryCacheManager creates a new S3 registry cache manager
 func NewS3RegistryCacheManager(cacheRoot string) RulesetRegistryCacheManager {
-	// Implementation will be added in ruleset_cache.go
-	return nil
+	return NewRulesetCacheManager(cacheRoot)
 }
 
 // NewHTTPSRegistryCacheManager creates a new HTTPS registry cache manager
 func NewHTTPSRegistryCacheManager(cacheRoot string) RulesetRegistryCacheManager {
-	// Implementation will be added in ruleset_cache.go
-	return nil
+	return NewRulesetCacheManager(cacheRoot)
 }
 
 // NewLocalRegistryCacheManager creates a new Local registry cache manager
 func NewLocalRegistryCacheManager(cacheRoot string) RulesetRegistryCacheManager {
-	// Implementation will be added in ruleset_cache.go
-	return nil
+	return NewRulesetCacheManager(cacheRoot)
 }
 
 // Utility functions for cache key generation
