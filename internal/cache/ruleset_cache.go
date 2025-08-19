@@ -40,10 +40,10 @@ func (r *RulesetCacheManager) GetPath(registryURL string, identifier []string, v
 	if len(identifier) == 0 {
 		return "", fmt.Errorf("ruleset name is required for non-Git registries")
 	}
-	
+
 	registryKey := GenerateRegistryKey("ruleset", registryURL)
 	rulesetKey := GenerateRulesetKey(identifier[0])
-	
+
 	return filepath.Join(r.cacheRoot, "registries", registryKey, "rulesets", rulesetKey, version), nil
 }
 
@@ -55,7 +55,7 @@ func (r *RulesetCacheManager) IsValid(registryURL string, ttl time.Duration) (bo
 
 	registryKey := GenerateRegistryKey("ruleset", registryURL)
 	registryPath := filepath.Join(r.cacheRoot, "registries", registryKey)
-	
+
 	index, err := LoadRegistryIndex(registryPath)
 	if err != nil {
 		return false, nil
@@ -79,10 +79,10 @@ func (r *RulesetCacheManager) Cleanup(ttl time.Duration, maxSize int64) error {
 func (r *RulesetCacheManager) StoreRuleset(registryURL, rulesetName, version string, files map[string][]byte) error {
 	registryKey := GenerateRegistryKey("ruleset", registryURL)
 	rulesetKey := GenerateRulesetKey(rulesetName)
-	
+
 	registryPath := filepath.Join(r.cacheRoot, "registries", registryKey)
 	versionPath := filepath.Join(registryPath, "rulesets", rulesetKey, version)
-	
+
 	// Create directory structure
 	if err := os.MkdirAll(versionPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create version directory: %w", err)
@@ -140,7 +140,7 @@ func (r *RulesetCacheManager) GetRuleset(registryURL, rulesetName, version strin
 
 	// Update access time
 	r.updateAccessTime(registryURL, rulesetName, version)
-	
+
 	return files, nil
 }
 
@@ -148,7 +148,7 @@ func (r *RulesetCacheManager) GetRuleset(registryURL, rulesetName, version strin
 func (r *RulesetCacheManager) updateRegistryIndex(registryURL, rulesetName, version string) error {
 	registryKey := GenerateRegistryKey("ruleset", registryURL)
 	registryPath := filepath.Join(r.cacheRoot, "registries", registryKey)
-	
+
 	// Load or create registry index
 	index, err := LoadRegistryIndex(registryPath)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *RulesetCacheManager) updateRegistryIndex(registryURL, rulesetName, vers
 	}
 
 	rulesetKey := GenerateRulesetKey(rulesetName)
-	
+
 	// Get or create ruleset cache
 	rulesetCache, exists := index.Rulesets[rulesetKey]
 	if !exists {
@@ -177,21 +177,21 @@ func (r *RulesetCacheManager) updateRegistryIndex(registryURL, rulesetName, vers
 func (r *RulesetCacheManager) updateAccessTime(registryURL, rulesetName, version string) {
 	registryKey := GenerateRegistryKey("ruleset", registryURL)
 	registryPath := filepath.Join(r.cacheRoot, "registries", registryKey)
-	
+
 	index, err := LoadRegistryIndex(registryPath)
 	if err != nil {
 		return
 	}
 
 	rulesetKey := GenerateRulesetKey(rulesetName)
-	
+
 	if rulesetCache, exists := index.Rulesets[rulesetKey]; exists {
 		if versionCache, exists := rulesetCache.Versions[version]; exists {
 			versionCache.UpdateAccessTime()
 		}
 		rulesetCache.UpdateAccessTime()
 	}
-	
+
 	index.UpdateAccessTime()
 	SaveRegistryIndex(registryPath, index)
 }
