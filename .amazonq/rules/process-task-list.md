@@ -10,6 +10,7 @@ Guidelines for managing task lists in markdown files to track progress on comple
     - **Run tests**: Run relevant tests for the subtask (`pytest path/to/test`, `npm test -- path/to/test`, etc.)
     - **Only if tests pass**: Stage changes (`git add .`)
     - **Clean up**: Remove any temporary files and temporary code before committing
+    - **Document**: Update any relevant development (`/docs/development`), technical (`/docs/technical`), or user (`/docs/user`) documentation.
     - **Commit**: Use a descriptive commit message that:
       - Uses conventional commit format (`feat:`, `fix:`, `refactor:`, etc.)
       - Summarizes what was accomplished in the subtask
