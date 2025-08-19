@@ -71,7 +71,32 @@ func (r *RulesetCacheManager) IsValid(registryURL string, ttl time.Duration) (bo
 
 // Cleanup removes expired cache entries based on TTL and size limits
 func (r *RulesetCacheManager) Cleanup(ttl time.Duration, maxSize int64) error {
-	// Implementation will be added in task 4.2
+	registriesPath := filepath.Join(r.cacheRoot, "registries")
+
+	// Check if registries directory exists
+	if _, err := os.Stat(registriesPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	entries, err := os.ReadDir(registriesPath)
+	if err != nil {
+		return fmt.Errorf("failed to read registries directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			registryPath := filepath.Join(registriesPath, entry.Name())
+			if err := r.cleanupRegistry(registryPath, ttl); err != nil {
+				continue // Log error but continue with other registries
+			}
+		}
+	}
+
+	// Check cache size and cleanup if needed
+	if maxSize > 0 {
+		return r.cleanupBySize(maxSize)
+	}
+
 	return nil
 }
 
@@ -194,4 +219,149 @@ func (r *RulesetCacheManager) updateAccessTime(registryURL, rulesetName, version
 
 	index.UpdateAccessTime()
 	SaveRegistryIndex(registryPath, index)
+}
+
+// cleanupRegistry removes expired entries from a single registry
+func (r *RulesetCacheManager) cleanupRegistry(registryPath string, ttl time.Duration) error {
+	index, err := LoadRegistryIndex(registryPath)
+	if err != nil {
+		return err
+	}
+
+	changed := false
+	for rulesetKey, rulesetCache := range index.Rulesets {
+		lastAccessed, err := time.Parse(time.RFC3339, rulesetCache.LastAccessedOn)
+		if err != nil || time.Since(lastAccessed) > ttl {
+			// Remove entire ruleset if expired
+			rulesetPath := filepath.Join(registryPath, "rulesets", rulesetKey)
+			os.RemoveAll(rulesetPath)
+			delete(index.Rulesets, rulesetKey)
+			changed = true
+			continue
+		}
+
+		// Check individual versions
+		for version, versionCache := range rulesetCache.Versions {
+			lastAccessed, err := time.Parse(time.RFC3339, versionCache.LastAccessedOn)
+			if err != nil || time.Since(lastAccessed) > ttl {
+				versionPath := filepath.Join(registryPath, "rulesets", rulesetKey, version)
+				os.RemoveAll(versionPath)
+				delete(rulesetCache.Versions, version)
+				changed = true
+			}
+		}
+
+		// Remove ruleset if no versions left
+		if len(rulesetCache.Versions) == 0 {
+			rulesetPath := filepath.Join(registryPath, "rulesets", rulesetKey)
+			os.RemoveAll(rulesetPath)
+			delete(index.Rulesets, rulesetKey)
+			changed = true
+		}
+	}
+
+	if changed {
+		return SaveRegistryIndex(registryPath, index)
+	}
+	return nil
+}
+
+// cleanupBySize removes oldest entries until cache is under size limit
+func (r *RulesetCacheManager) cleanupBySize(maxSize int64) error {
+	currentSize, err := r.getCacheSize()
+	if err != nil {
+		return err
+	}
+
+	if currentSize <= maxSize {
+		return nil
+	}
+
+	// Get all version entries with access times
+	type versionEntry struct {
+		path       string
+		accessTime time.Time
+		size       int64
+	}
+
+	var entries []versionEntry
+	registriesPath := filepath.Join(r.cacheRoot, "registries")
+
+	err = filepath.Walk(registriesPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() {
+			return err
+		}
+
+		// Check if this is a version directory (has files)
+		hasFiles := false
+		filepath.Walk(path, func(subPath string, subInfo os.FileInfo, subErr error) error {
+			if subErr == nil && !subInfo.IsDir() {
+				hasFiles = true
+			}
+			return nil
+		})
+
+		if hasFiles {
+			size := r.getDirSize(path)
+			accessTime := info.ModTime() // Use modification time as fallback
+			entries = append(entries, versionEntry{
+				path:       path,
+				accessTime: accessTime,
+				size:       size,
+			})
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// Sort by access time (oldest first)
+	for i := 0; i < len(entries)-1; i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[i].accessTime.After(entries[j].accessTime) {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+
+	// Remove oldest entries until under size limit
+	for _, entry := range entries {
+		if currentSize <= maxSize {
+			break
+		}
+		os.RemoveAll(entry.path)
+		currentSize -= entry.size
+	}
+
+	return nil
+}
+
+// getCacheSize returns the total size of the cache in bytes
+func (r *RulesetCacheManager) getCacheSize() (int64, error) {
+	var size int64
+	err := filepath.Walk(r.cacheRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
+
+// getDirSize returns the size of a directory in bytes
+func (r *RulesetCacheManager) getDirSize(dirPath string) int64 {
+	var size int64
+	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size
 }

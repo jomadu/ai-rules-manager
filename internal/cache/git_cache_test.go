@@ -10,11 +10,11 @@ import (
 func TestNewGitCacheManager(t *testing.T) {
 	cacheRoot := "/tmp/test-cache"
 	manager := NewGitCacheManager(cacheRoot)
-	
+
 	if manager == nil {
 		t.Fatal("NewGitCacheManager() returned nil")
 	}
-	
+
 	if manager.cacheRoot != cacheRoot {
 		t.Errorf("Expected cache root %s, got %s", cacheRoot, manager.cacheRoot)
 	}
@@ -40,7 +40,7 @@ func TestGitCacheManager_GetPath(t *testing.T) {
 	registryKey := GenerateRegistryKey("git", registryURL)
 	patternsKey := GeneratePatternsKey(patterns)
 	expectedPath := filepath.Join(tempDir, "registries", registryKey, "rulesets", patternsKey, commitHash)
-	
+
 	if path != expectedPath {
 		t.Errorf("Expected path %s, got %s", expectedPath, path)
 	}
@@ -57,10 +57,10 @@ func TestGitCacheManager_StoreAndGetRuleset(t *testing.T) {
 	registryURL := "https://github.com/user/repo"
 	patterns := []string{"*.md"}
 	commitHash := "abc123def456"
-	
+
 	files := map[string][]byte{
-		"README.md":       []byte("# Test README"),
-		"rules/test.md":   []byte("# Test Rule"),
+		"README.md":     []byte("# Test README"),
+		"rules/test.md": []byte("# Test Rule"),
 	}
 
 	// Test StoreRuleset
@@ -114,7 +114,7 @@ func TestGitCacheManager_GetRepositoryPath(t *testing.T) {
 
 	registryKey := GenerateRegistryKey("git", registryURL)
 	expectedPath := filepath.Join(tempDir, "registries", registryKey, "repository")
-	
+
 	if path != expectedPath {
 		t.Errorf("Expected path %s, got %s", expectedPath, path)
 	}
@@ -152,7 +152,7 @@ func TestGitCacheManager_IsValid(t *testing.T) {
 	patterns := []string{"*.md"}
 	commitHash := "abc123"
 	files := map[string][]byte{"test.md": []byte("test")}
-	
+
 	err = manager.StoreRuleset(registryURL, patterns, commitHash, files)
 	if err != nil {
 		t.Fatalf("StoreRuleset() failed: %v", err)
@@ -179,7 +179,7 @@ func TestGitCacheManager_Store(t *testing.T) {
 	registryURL := "https://github.com/user/repo"
 	patterns := []string{"*.md"}
 	commitHash := "abc123def456"
-	
+
 	files := map[string][]byte{
 		"test.md": []byte("# Test"),
 	}
@@ -212,7 +212,7 @@ func TestGitCacheManager_EmptyPatterns(t *testing.T) {
 	registryURL := "https://github.com/user/repo"
 	patterns := []string{} // Empty patterns
 	commitHash := "abc123def456"
-	
+
 	files := map[string][]byte{
 		"test.md": []byte("# Test"),
 	}

@@ -178,3 +178,67 @@ func (r *RulesetCache) UpdateAccessTime() {
 func (v *VersionCache) UpdateAccessTime() {
 	v.LastAccessedOn = time.Now().UTC().Format(time.RFC3339)
 }
+
+// CleanupCache performs TTL-based and size-based cleanup across all cache managers
+func CleanupCache(cacheRoot string) error {
+	config, err := LoadCacheConfig(cacheRoot)
+	if err != nil {
+		return fmt.Errorf("failed to load cache config: %w", err)
+	}
+
+	if !config.CleanupEnabled {
+		return nil
+	}
+
+	ttl := time.Duration(config.TTLHours) * time.Hour
+	maxSize := int64(config.MaxSizeMB) * 1024 * 1024 // Convert MB to bytes
+
+	// Cleanup Git registries
+	gitManager := NewGitCacheManager(cacheRoot)
+	if err := gitManager.Cleanup(ttl, maxSize); err != nil {
+		return fmt.Errorf("failed to cleanup Git cache: %w", err)
+	}
+
+	// Cleanup non-Git registries
+	rulesetManager := NewRulesetCacheManager(cacheRoot)
+	if err := rulesetManager.Cleanup(ttl, maxSize); err != nil {
+		return fmt.Errorf("failed to cleanup ruleset cache: %w", err)
+	}
+
+	// Update config last updated time
+	config.LastUpdatedOn = time.Now().UTC().Format(time.RFC3339)
+	return SaveCacheConfig(cacheRoot, config)
+}
+
+// GetCacheStats returns statistics about cache usage
+func GetCacheStats(cacheRoot string) (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	// Get total cache size
+	var totalSize int64
+	err := filepath.Walk(cacheRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			totalSize += info.Size()
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate cache size: %w", err)
+	}
+
+	stats["total_size_bytes"] = totalSize
+	stats["total_size_mb"] = totalSize / (1024 * 1024)
+
+	// Count registries
+	registriesPath := filepath.Join(cacheRoot, "registries")
+	if entries, err := os.ReadDir(registriesPath); err == nil {
+		stats["registry_count"] = len(entries)
+	} else {
+		stats["registry_count"] = 0
+	}
+
+	return stats, nil
+}

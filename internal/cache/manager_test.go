@@ -215,25 +215,25 @@ func TestFactoryFunctions(t *testing.T) {
 
 	t.Run("NewS3RegistryCacheManager", func(t *testing.T) {
 		manager := NewS3RegistryCacheManager(cacheRoot)
-		// Currently returns nil as implementation is not yet complete
-		if manager != nil {
-			t.Errorf("NewS3RegistryCacheManager() should return nil until implementation is complete")
+		// Should now return a valid implementation
+		if manager == nil {
+			t.Errorf("NewS3RegistryCacheManager() should return a valid implementation")
 		}
 	})
 
 	t.Run("NewHTTPSRegistryCacheManager", func(t *testing.T) {
 		manager := NewHTTPSRegistryCacheManager(cacheRoot)
-		// Currently returns nil as implementation is not yet complete
-		if manager != nil {
-			t.Errorf("NewHTTPSRegistryCacheManager() should return nil until implementation is complete")
+		// Should now return a valid implementation
+		if manager == nil {
+			t.Errorf("NewHTTPSRegistryCacheManager() should return a valid implementation")
 		}
 	})
 
 	t.Run("NewLocalRegistryCacheManager", func(t *testing.T) {
 		manager := NewLocalRegistryCacheManager(cacheRoot)
-		// Currently returns nil as implementation is not yet complete
-		if manager != nil {
-			t.Errorf("NewLocalRegistryCacheManager() should return nil until implementation is complete")
+		// Should now return a valid implementation
+		if manager == nil {
+			t.Errorf("NewLocalRegistryCacheManager() should return a valid implementation")
 		}
 	})
 }
