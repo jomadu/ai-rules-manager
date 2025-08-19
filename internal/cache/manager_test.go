@@ -207,9 +207,9 @@ func TestFactoryFunctions(t *testing.T) {
 
 	t.Run("NewGitRegistryCacheManager", func(t *testing.T) {
 		manager := NewGitRegistryCacheManager(cacheRoot)
-		// Currently returns nil as implementation is not yet complete
-		if manager != nil {
-			t.Errorf("NewGitRegistryCacheManager() should return nil until implementation is complete")
+		// Should now return a valid implementation
+		if manager == nil {
+			t.Errorf("NewGitRegistryCacheManager() should return a valid implementation")
 		}
 	})
 

@@ -55,8 +55,7 @@ type RulesetRegistryCacheManager interface {
 
 // NewGitRegistryCacheManager creates a new Git registry cache manager
 func NewGitRegistryCacheManager(cacheRoot string) GitRegistryCacheManager {
-	// Implementation will be added in git_cache.go
-	return nil
+	return NewGitCacheManager(cacheRoot)
 }
 
 // NewS3RegistryCacheManager creates a new S3 registry cache manager
