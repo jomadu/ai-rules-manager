@@ -569,10 +569,14 @@ func loadOrCreateJSON(path string) (*config.ARMConfig, error) {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return nil, err
 		}
-		return &config.ARMConfig{
+		// Create new config with current ARM version
+		armConfig := &config.ARMConfig{
 			Engines:  make(map[string]string),
 			Rulesets: make(map[string]map[string]config.RulesetSpec),
-		}, nil
+		}
+		// Set current ARM version
+		armConfig.Engines["arm"] = "^" + config.GetCurrentARMVersion()
+		return armConfig, nil
 	}
 
 	data, err := os.ReadFile(path)
@@ -591,6 +595,11 @@ func loadOrCreateJSON(path string) (*config.ARMConfig, error) {
 	}
 	if armConfig.Rulesets == nil {
 		armConfig.Rulesets = make(map[string]map[string]config.RulesetSpec)
+	}
+
+	// Ensure ARM version is set if missing
+	if armConfig.Engines["arm"] == "" {
+		armConfig.Engines["arm"] = "^" + config.GetCurrentARMVersion()
 	}
 
 	return &armConfig, nil

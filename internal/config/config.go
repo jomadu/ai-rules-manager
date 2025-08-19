@@ -651,7 +651,7 @@ func generateARMRCStub(path string) error {
 // generateARMJSONStub generates a stub arm.json file
 func generateARMJSONStub(path string) error {
 	// Get current ARM version (will be injected by build system)
-	armVersion := getCurrentARMVersion()
+	armVersion := GetCurrentARMVersion()
 
 	stubContent := fmt.Sprintf(`{
   "engines": {
@@ -664,8 +664,8 @@ func generateARMJSONStub(path string) error {
 	return os.WriteFile(path, []byte(stubContent), 0o600)
 }
 
-// getCurrentARMVersion returns the current ARM version
-func getCurrentARMVersion() string {
+// GetCurrentARMVersion returns the current ARM version
+func GetCurrentARMVersion() string {
 	currentVersion := version.GetVersion()
 	// Clean up version string (remove 'v' prefix and git info if present)
 	currentVersion = strings.TrimPrefix(currentVersion, "v")

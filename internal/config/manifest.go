@@ -67,10 +67,14 @@ func (m *ManifestManager) loadOrCreate() (*ARMConfig, error) {
 		if err := os.MkdirAll(filepath.Dir(m.path), 0o755); err != nil {
 			return nil, err
 		}
-		return &ARMConfig{
+		// Create new config with current ARM version
+		armConfig := &ARMConfig{
 			Engines:  make(map[string]string),
 			Rulesets: make(map[string]map[string]RulesetSpec),
-		}, nil
+		}
+		// Set current ARM version
+		armConfig.Engines["arm"] = "^" + GetCurrentARMVersion()
+		return armConfig, nil
 	}
 
 	data, err := os.ReadFile(m.path)
@@ -89,6 +93,11 @@ func (m *ManifestManager) loadOrCreate() (*ARMConfig, error) {
 	}
 	if armConfig.Rulesets == nil {
 		armConfig.Rulesets = make(map[string]map[string]RulesetSpec)
+	}
+
+	// Ensure ARM version is set if missing
+	if armConfig.Engines["arm"] == "" {
+		armConfig.Engines["arm"] = "^" + GetCurrentARMVersion()
 	}
 
 	return &armConfig, nil
