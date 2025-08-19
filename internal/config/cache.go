@@ -9,9 +9,6 @@ import (
 
 // CacheConfig represents cache configuration settings
 type CacheConfig struct {
-	// Path is the root directory for cache storage
-	Path string `json:"path"`
-
 	// MaxSize is the maximum cache size in bytes (0 = unlimited)
 	MaxSize int64 `json:"maxSize"`
 
@@ -49,15 +46,18 @@ func (d Duration) String() string {
 	return time.Duration(d).String()
 }
 
-// DefaultCacheConfig returns the default cache configuration
-func DefaultCacheConfig() *CacheConfig {
+// GetCachePath returns the cache directory path
+func GetCachePath() string {
 	homeDir := os.Getenv("HOME")
 	if homeDir == "" {
 		homeDir = "."
 	}
+	return filepath.Join(homeDir, ".arm", "cache")
+}
 
+// DefaultCacheConfig returns the default cache configuration
+func DefaultCacheConfig() *CacheConfig {
 	return &CacheConfig{
-		Path:            filepath.Join(homeDir, ".arm", "cache"),
 		MaxSize:         0,                        // Unlimited by default
 		TTL:             Duration(24 * time.Hour), // 24 hours default
 		CleanupInterval: Duration(6 * time.Hour),  // Cleanup every 6 hours
@@ -69,7 +69,7 @@ func LoadCacheConfig() *CacheConfig {
 	cfg := DefaultCacheConfig()
 
 	// Load from dedicated cache config file
-	cacheConfigPath := filepath.Join(cfg.Path, "config.json")
+	cacheConfigPath := filepath.Join(GetCachePath(), "config.json")
 	if loadedCfg, err := LoadCacheConfigFromFile(cacheConfigPath); err == nil {
 		return loadedCfg
 	}
@@ -95,9 +95,6 @@ func LoadCacheConfigFromFile(path string) (*CacheConfig, error) {
 	if err := json.Unmarshal([]byte(expandedData), &cfg); err != nil {
 		return nil, err
 	}
-
-	// Expand environment variables in path
-	cfg.Path = os.ExpandEnv(cfg.Path)
 
 	return &cfg, nil
 }

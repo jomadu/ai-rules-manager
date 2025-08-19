@@ -26,7 +26,7 @@ func TestGitCacheManager_GetPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"
@@ -52,7 +52,7 @@ func TestGitCacheManager_StoreAndGetRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"
@@ -103,7 +103,7 @@ func TestGitCacheManager_GetRepositoryPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"
@@ -126,7 +126,7 @@ func TestGitCacheManager_IsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"
@@ -174,7 +174,7 @@ func TestGitCacheManager_Store(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"
@@ -207,7 +207,7 @@ func TestGitCacheManager_EmptyPatterns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"
@@ -239,7 +239,7 @@ func TestGitCacheManager_GetNonExistentRuleset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	manager := NewGitCacheManager(tempDir)
 	registryURL := "https://github.com/user/repo"

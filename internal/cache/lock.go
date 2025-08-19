@@ -101,7 +101,7 @@ func (l *RegistryLock) tryAcquire(operation string) error {
 	}
 
 	if err := os.Rename(tempPath, l.lockPath); err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath) // Ignore cleanup error
 		return fmt.Errorf("failed to create lock file: %w", err)
 	}
 

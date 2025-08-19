@@ -78,7 +78,7 @@ func TestRegistryLock_AcquireTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to acquire first lock: %v", err)
 	}
-	defer lock1.Release()
+	defer func() { _ = lock1.Release() }()
 
 	// Try to acquire second lock (should timeout)
 	lock2 := NewRegistryLock(cacheRoot, registryKey, timeout)
@@ -132,7 +132,7 @@ func TestRegistryLock_CleanupStaleLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to acquire lock after stale cleanup: %v", err)
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 
 	if !lock.acquired {
 		t.Error("Expected lock to be acquired after stale cleanup")
@@ -174,7 +174,7 @@ func TestRegistryLock_CleanupRecentLock(t *testing.T) {
 	err = lock.Acquire("new-operation")
 	if err == nil {
 		t.Error("Expected lock acquisition to fail for recent lock")
-		lock.Release()
+		_ = lock.Release()
 	}
 }
 

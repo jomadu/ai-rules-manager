@@ -44,7 +44,7 @@ func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheRoot
 func CreateRegistryWithCacheConfig(registryConfig *RegistryConfig, auth *AuthConfig, cacheConfig *config.CacheConfig, registryName string) (Registry, error) {
 	cacheRoot := ""
 	if cacheConfig != nil {
-		cacheRoot = cacheConfig.Path
+		cacheRoot = config.GetCachePath()
 	}
 
 	return CreateRegistryWithCache(registryConfig, auth, cacheRoot)

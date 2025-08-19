@@ -214,7 +214,7 @@ func (g *GitCacheManager) updateAccessTime(registryURL string, patterns []string
 	}
 
 	index.UpdateAccessTime()
-	SaveRegistryIndex(registryPath, index)
+	_ = SaveRegistryIndex(registryPath, index) // Ignore error for access time update
 }
 
 // cleanupRegistry removes expired entries from a single registry
@@ -230,7 +230,7 @@ func (g *GitCacheManager) cleanupRegistry(registryPath string, ttl time.Duration
 		if err != nil || time.Since(lastAccessed) > ttl {
 			// Remove entire ruleset if expired
 			rulesetPath := filepath.Join(registryPath, "rulesets", rulesetKey)
-			os.RemoveAll(rulesetPath)
+			_ = os.RemoveAll(rulesetPath) // Ignore cleanup errors
 			delete(index.Rulesets, rulesetKey)
 			changed = true
 			continue
@@ -241,7 +241,7 @@ func (g *GitCacheManager) cleanupRegistry(registryPath string, ttl time.Duration
 			lastAccessed, err := time.Parse(time.RFC3339, versionCache.LastAccessedOn)
 			if err != nil || time.Since(lastAccessed) > ttl {
 				versionPath := filepath.Join(registryPath, "rulesets", rulesetKey, version)
-				os.RemoveAll(versionPath)
+				_ = os.RemoveAll(versionPath) // Ignore cleanup errors
 				delete(rulesetCache.Versions, version)
 				changed = true
 			}
@@ -250,7 +250,7 @@ func (g *GitCacheManager) cleanupRegistry(registryPath string, ttl time.Duration
 		// Remove ruleset if no versions left
 		if len(rulesetCache.Versions) == 0 {
 			rulesetPath := filepath.Join(registryPath, "rulesets", rulesetKey)
-			os.RemoveAll(rulesetPath)
+			_ = os.RemoveAll(rulesetPath) // Ignore cleanup errors
 			delete(index.Rulesets, rulesetKey)
 			changed = true
 		}
@@ -290,7 +290,7 @@ func (g *GitCacheManager) cleanupBySize(maxSize int64) error {
 
 		// Check if this is a version directory (has files)
 		hasFiles := false
-		filepath.Walk(path, func(subPath string, subInfo os.FileInfo, subErr error) error {
+		_ = filepath.Walk(path, func(subPath string, subInfo os.FileInfo, subErr error) error {
 			if subErr == nil && !subInfo.IsDir() {
 				hasFiles = true
 			}
@@ -328,7 +328,7 @@ func (g *GitCacheManager) cleanupBySize(maxSize int64) error {
 		if currentSize <= maxSize {
 			break
 		}
-		os.RemoveAll(entry.path)
+		_ = os.RemoveAll(entry.path) // Ignore cleanup errors
 		currentSize -= entry.size
 	}
 
@@ -353,7 +353,7 @@ func (g *GitCacheManager) getCacheSize() (int64, error) {
 // getDirSize returns the size of a directory in bytes
 func (g *GitCacheManager) getDirSize(dirPath string) int64 {
 	var size int64
-	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() {
 			size += info.Size()
 		}

@@ -101,7 +101,7 @@ func TestRulesetCacheManager_GetPath(t *testing.T) {
 
 	// Verify path structure: no repository subdirectory
 	expectedPattern := filepath.Join(tempDir, "registries")
-	if !filepath.HasPrefix(path, expectedPattern) {
+	if !strings.HasPrefix(path, expectedPattern) {
 		t.Fatalf("Path should start with %s, got %s", expectedPattern, path)
 	}
 

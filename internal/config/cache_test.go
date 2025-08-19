@@ -13,23 +13,10 @@ func TestCacheConfigFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
-	// Set up fake HOME directory
-	originalHome := os.Getenv("HOME")
-	fakeHome := filepath.Join(tempDir, "home")
-	os.Setenv("HOME", fakeHome)
-	defer os.Setenv("HOME", originalHome)
-
-	// Create cache directory and config file
-	cacheDir := filepath.Join(fakeHome, ".arm", "cache")
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	cacheConfigPath := filepath.Join(cacheDir, "config.json")
+	cacheConfigPath := filepath.Join(tempDir, "config.json")
 	cacheContent := `{
-  "path": "/test/cache",
   "maxSize": 2000000000,
   "ttl": "12h",
   "cleanupInterval": "3h"
@@ -45,9 +32,6 @@ func TestCacheConfigFromFile(t *testing.T) {
 	}
 
 	// Verify values
-	if cfg.Path != "/test/cache" {
-		t.Errorf("Expected path '/test/cache', got '%s'", cfg.Path)
-	}
 	if cfg.MaxSize != 2000000000 {
 		t.Errorf("Expected maxSize 2000000000, got %d", cfg.MaxSize)
 	}
@@ -65,13 +49,7 @@ func TestCacheConfigDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
-
-	// Set up fake HOME directory
-	originalHome := os.Getenv("HOME")
-	fakeHome := filepath.Join(tempDir, "home")
-	os.Setenv("HOME", fakeHome)
-	defer os.Setenv("HOME", originalHome)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create project directory (no cache config)
 	projectDir := filepath.Join(tempDir, "project")
@@ -81,8 +59,8 @@ func TestCacheConfigDefaults(t *testing.T) {
 
 	// Change to project directory
 	originalWd, _ := os.Getwd()
-	os.Chdir(projectDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(projectDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	// Load configuration (should use defaults)
 	cfg, err := Load()
@@ -91,10 +69,6 @@ func TestCacheConfigDefaults(t *testing.T) {
 	}
 
 	// Verify cache config uses defaults
-	expectedPath := filepath.Join(fakeHome, ".arm", "cache")
-	if cfg.CacheConfig.Path != expectedPath {
-		t.Errorf("Expected default cache path '%s', got '%s'", expectedPath, cfg.CacheConfig.Path)
-	}
 	if cfg.CacheConfig.MaxSize != 0 {
 		t.Errorf("Expected default cache maxSize 0, got %d", cfg.CacheConfig.MaxSize)
 	}
@@ -112,11 +86,10 @@ func TestSaveCacheConfigToFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	configPath := filepath.Join(tempDir, "cache", "config.json")
 	cfg := &CacheConfig{
-		Path:            "/custom/cache",
 		MaxSize:         5000000000,
 		TTL:             Duration(8 * time.Hour),
 		CleanupInterval: Duration(2 * time.Hour),
@@ -134,9 +107,6 @@ func TestSaveCacheConfigToFile(t *testing.T) {
 	}
 
 	// Verify values
-	if loadedCfg.Path != "/custom/cache" {
-		t.Errorf("Expected path '/custom/cache', got '%s'", loadedCfg.Path)
-	}
 	if loadedCfg.MaxSize != 5000000000 {
 		t.Errorf("Expected maxSize 5000000000, got %d", loadedCfg.MaxSize)
 	}
@@ -145,6 +115,61 @@ func TestSaveCacheConfigToFile(t *testing.T) {
 	}
 	if time.Duration(loadedCfg.CleanupInterval) != 2*time.Hour {
 		t.Errorf("Expected cleanup interval 2h, got %v", loadedCfg.CleanupInterval)
+	}
+}
+
+func TestDurationJSONMarshaling(t *testing.T) {
+	d := Duration(2 * time.Hour)
+
+	// Test marshaling
+	data, err := d.MarshalJSON()
+	if err != nil {
+		t.Fatalf("Failed to marshal duration: %v", err)
+	}
+
+	expected := `"2h0m0s"`
+	if string(data) != expected {
+		t.Errorf("Expected %s, got %s", expected, string(data))
+	}
+
+	// Test unmarshaling
+	var d2 Duration
+	if err := d2.UnmarshalJSON(data); err != nil {
+		t.Fatalf("Failed to unmarshal duration: %v", err)
+	}
+
+	if time.Duration(d2) != time.Duration(d) {
+		t.Errorf("Duration mismatch after round-trip: expected %v, got %v", d, d2)
+	}
+}
+
+func TestDefaultCacheConfigIsolated(t *testing.T) {
+	cfg := DefaultCacheConfig()
+
+	if cfg.MaxSize != 0 {
+		t.Errorf("Expected default MaxSize 0, got %d", cfg.MaxSize)
+	}
+
+	if time.Duration(cfg.TTL) != 24*time.Hour {
+		t.Errorf("Expected default TTL 24h, got %v", cfg.TTL)
+	}
+
+	if time.Duration(cfg.CleanupInterval) != 6*time.Hour {
+		t.Errorf("Expected default CleanupInterval 6h, got %v", cfg.CleanupInterval)
+	}
+}
+
+func TestGetCachePath(t *testing.T) {
+	// Set up fake HOME
+	originalHome := os.Getenv("HOME")
+	defer func() { _ = os.Setenv("HOME", originalHome) }()
+
+	_ = os.Setenv("HOME", "/test/home")
+
+	path := GetCachePath()
+	expectedPath := "/test/home/.arm/cache"
+	if path != expectedPath {
+		t.Errorf("Expected cache path %s, got %s", expectedPath, path)
 	}
 }
 
