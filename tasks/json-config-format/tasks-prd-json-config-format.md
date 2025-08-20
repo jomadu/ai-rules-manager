@@ -35,26 +35,26 @@
   - [x] 1.4 Update loadConfigFromPaths to only load .armrc.json files, ignore .armrc files
   - [x] 1.5 Refactor mergeConfigs to work with JSON-only configuration data
   - [x] 1.6 Update validateConfig to validate JSON configuration structure
-- [ ] 2.0 Implement JSON Schema Validation
+- [x] 2.0 Implement JSON Schema Validation
   - [x] 2.1 Define JSON schema for ARM configuration with all current INI sections
   - [x] 2.2 Implement schema validation function with descriptive error messages
   - [x] 2.3 Add validation for registry URLs, types, and channel directories per schema
   - [x] 2.4 Integrate schema validation into configuration loading process
   - [x] 2.5 Add malformed JSON error handling with helpful messages
-- [ ] 3.0 Update CLI Configuration Commands for JSON Format
-  - [ ] 3.1 Update getConfigPath to return .armrc.json instead of .armrc
-  - [ ] 3.2 Replace loadOrCreateINI with loadOrCreateJSON for all config commands
-  - [ ] 3.3 Update handleConfigSet to modify JSON structure instead of INI sections
-  - [ ] 3.4 Update handleAddRegistry to write to JSON registries section
-  - [ ] 3.5 Update handleAddChannel to write to JSON channels section
-  - [ ] 3.6 Update handleRemoveRegistry and handleRemoveChannel for JSON format
-- [ ] 4.0 Update Configuration File Generation and Stub Creation
-  - [ ] 4.1 Update GenerateStubFiles to create .armrc.json instead of .armrc
-  - [ ] 4.2 Replace generateARMRCStub with generateARMRCJSONStub function
-  - [ ] 4.3 Create JSON stub content with all current configuration sections
-  - [ ] 4.4 Update ensureConfigFiles to check for .armrc.json existence
-- [ ] 5.0 Update Documentation and Examples
+- [x] 3.0 Update CLI Configuration Commands for JSON Format
+  - [x] 3.1 Update getConfigPath to return .armrc.json instead of .armrc
+  - [x] 3.2 Replace loadOrCreateINI with loadOrCreateJSON for all config commands
+  - [x] 3.3 Update handleConfigSet to modify JSON structure instead of INI sections
+  - [x] 3.4 Update handleAddRegistry to write to JSON registries section
+  - [x] 3.5 Update handleAddChannel to write to JSON channels section
+  - [x] 3.6 Update handleRemoveRegistry and handleRemoveChannel for JSON format
+- [x] 4.0 Update Configuration File Generation and Stub Creation
+  - [x] 4.1 Update GenerateStubFiles to create .armrc.json instead of .armrc
+  - [x] 4.2 Replace generateARMRCStub with generateARMRCJSONStub function
+  - [x] 4.3 Create JSON stub content with all current configuration sections
+  - [x] 4.4 Update ensureConfigFiles to check for .armrc.json existence
+- [x] 5.0 Update Documentation and Examples
   - [ ] 5.1 Update README.md examples to show .armrc.json instead of .armrc
   - [ ] 5.2 Create or update configuration documentation with JSON examples
-  - [ ] 5.3 Update sandbox configuration files to use JSON format
-  - [ ] 5.4 Update any integration tests to use JSON configuration format
+  - [x] 5.3 Update sandbox configuration files to use JSON format
+  - [x] 5.4 Update any integration tests to use JSON configuration format

@@ -586,7 +586,7 @@ func validateChannels(channels map[string]ChannelConfig) error {
 
 // GenerateStubFiles generates stub configuration files if they don't exist
 func GenerateStubFiles(global bool) error {
-	var armrcPath, jsonPath string
+	var armrcJSONPath, jsonPath string
 
 	if global {
 		homeDir := os.Getenv("HOME")
@@ -594,17 +594,17 @@ func GenerateStubFiles(global bool) error {
 		if err := os.MkdirAll(armDir, 0o755); err != nil {
 			return fmt.Errorf("failed to create .arm directory: %w", err)
 		}
-		armrcPath = filepath.Join(armDir, ".armrc")
+		armrcJSONPath = filepath.Join(armDir, ".armrc.json")
 		jsonPath = filepath.Join(armDir, "arm.json")
 	} else {
-		armrcPath = ".armrc"
+		armrcJSONPath = ".armrc.json"
 		jsonPath = "arm.json"
 	}
 
-	// Generate .armrc stub if it doesn't exist
-	if _, err := os.Stat(armrcPath); os.IsNotExist(err) {
-		if err := generateARMRCStub(armrcPath); err != nil {
-			return fmt.Errorf("failed to generate .armrc stub: %w", err)
+	// Generate .armrc.json stub if it doesn't exist
+	if _, err := os.Stat(armrcJSONPath); os.IsNotExist(err) {
+		if err := generateARMRCJSONStub(armrcJSONPath); err != nil {
+			return fmt.Errorf("failed to generate .armrc.json stub: %w", err)
 		}
 	}
 
@@ -618,93 +618,60 @@ func GenerateStubFiles(global bool) error {
 	return nil
 }
 
-// generateARMRCStub generates a stub .armrc file
-func generateARMRCStub(path string) error {
-	stubContent := `# ARM Configuration File
-# Configure registries and default settings
-
-[registries]
-# Default registry used when no source is specified
-# default = github.com/user/registry
-
-# Named registries
-# my-git-registry = https://github.com/user/repo
-# my-s3-registry = my-bucket
-# my-gitlab-registry = https://gitlab.example.com/projects/123
-# my-https-registry = https://example.com/registry
-# my-local-registry = /path/to/local/registry
-
-# Required type configuration for all registries
-# [registries.default]
-# type = git
-
-# [registries.my-git-registry]
-# type = git
-# authToken = $GITHUB_TOKEN  # optional, for API mode
-# apiType = github           # optional, enables API mode
-# apiVersion = 2022-11-28    # optional, API version
-
-# [registries.my-s3-registry]
-# type = s3
-# region = us-east-1         # required for S3 registries
-# profile = my-aws-profile   # optional, uses default AWS profile if omitted
-# prefix = /registries/path  # optional prefix within bucket
-
-# [registries.my-gitlab-registry]
-# type = gitlab
-# authToken = $GITLAB_TOKEN
-# apiVersion = 4
-
-# [registries.my-https-registry]
-# type = https
-
-# [registries.my-local-registry]
-# type = local
-
-# Type-based defaults (optional - ARM has built-in defaults)
-# [git]
-# concurrency = 1
-# rateLimit = 10/minute
-
-# [https]
-# concurrency = 5
-# rateLimit = 30/minute
-
-# [s3]
-# concurrency = 10
-# rateLimit = 100/hour
-
-# [gitlab]
-# concurrency = 2
-# rateLimit = 60/hour
-
-# [local]
-# concurrency = 20
-# rateLimit = 1000/second
-
-# Network configuration
-# [network]
-# timeout = 30
-# retry.maxAttempts = 3
-# retry.backoffMultiplier = 2.0
-# retry.maxBackoff = 30
-
-# Cache configuration (GLOBAL ONLY - configure in ~/.arm/.armrc, cannot be overridden by local .armrc)
-# [cache]
-# maxSize = 1GB                  # Max cache size (supports GB, MB, KB, or bytes)
-# ttl = 24h                      # Time-to-live for cache entries
-# cleanupInterval = 6h           # How often to run cleanup
-
-# Channel configuration (where to install rulesets)
-# [channels.cursor]
-# directories = .cursor/rules
-
-# [channels.q]
-# directories = .amazonq/rules
-
-# [channels.custom]
-# directories = ./ai-rules,./shared-rules
-
+// generateARMRCJSONStub generates a stub .armrc.json file
+func generateARMRCJSONStub(path string) error {
+	stubContent := `{
+  "registries": {
+    "my-git-registry": {
+      "url": "https://github.com/user/repo",
+      "type": "git",
+      "authToken": "$GITHUB_TOKEN"
+    },
+    "my-s3-registry": {
+      "url": "my-bucket",
+      "type": "s3",
+      "region": "us-east-1"
+    },
+    "my-gitlab-registry": {
+      "url": "https://gitlab.com/user/repo",
+      "type": "gitlab",
+      "authToken": "$GITLAB_TOKEN"
+    }
+  },
+  "channels": {
+    "cursor": {
+      "directories": [".cursor/rules"]
+    },
+    "q": {
+      "directories": [".amazonq/rules"]
+    }
+  },
+  "git": {
+    "concurrency": "1",
+    "rateLimit": "10/minute"
+  },
+  "https": {
+    "concurrency": "5",
+    "rateLimit": "50/minute"
+  },
+  "s3": {
+    "concurrency": "10",
+    "rateLimit": "100/minute"
+  },
+  "gitlab": {
+    "concurrency": "2",
+    "rateLimit": "20/minute"
+  },
+  "local": {
+    "concurrency": "1"
+  },
+  "network": {
+    "timeout": "30",
+    "retry.maxAttempts": "3",
+    "retry.backoffMultiplier": "2",
+    "retry.maxBackoff": "60"
+  }
+}
 `
 
 	return os.WriteFile(path, []byte(stubContent), 0o600)

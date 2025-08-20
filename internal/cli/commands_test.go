@@ -33,16 +33,16 @@ func TestHandleConfigSet(t *testing.T) {
 	}
 
 	// Verify the file was created and contains the value
-	content, err := os.ReadFile(".armrc")
+	content, err := os.ReadFile(".armrc.json")
 	if err != nil {
-		t.Fatalf("Failed to read .armrc: %v", err)
+		t.Fatalf("Failed to read .armrc.json: %v", err)
 	}
 
-	if !strings.Contains(string(content), "[git]") {
-		t.Error("Expected [git] section in .armrc")
+	if !strings.Contains(string(content), `"git"`) {
+		t.Error("Expected git section in .armrc.json")
 	}
-	if !strings.Contains(string(content), "concurrency = 5") {
-		t.Error("Expected concurrency = 5 in .armrc")
+	if !strings.Contains(string(content), `"concurrency": "5"`) {
+		t.Error("Expected concurrency = 5 in .armrc.json")
 	}
 }
 
@@ -69,27 +69,23 @@ func TestHandleAddRegistry(t *testing.T) {
 	}
 
 	// Verify the file was created and contains the registry
-	content, err := os.ReadFile(".armrc")
+	content, err := os.ReadFile(".armrc.json")
 	if err != nil {
-		t.Fatalf("Failed to read .armrc: %v", err)
+		t.Fatalf("Failed to read .armrc.json: %v", err)
 	}
 
 	expectedContent := []string{
-		"[registries]",
-		"my-git",
-		"https://github.com/user/repo",
-		"[registries.my-git]",
-		"type",
-		"git",
-		"authToken",
-		"test-token",
-		"apiType",
-		"github",
+		`"registries"`,
+		`"my-git"`,
+		`"url": "https://github.com/user/repo"`,
+		`"type": "git"`,
+		`"authToken": "test-token"`,
+		`"apiType": "github"`,
 	}
 
 	for _, expected := range expectedContent {
 		if !strings.Contains(string(content), expected) {
-			t.Errorf("Expected '%s' in .armrc, got:\n%s", expected, string(content))
+			t.Errorf("Expected '%s' in .armrc.json, got:\n%s", expected, string(content))
 		}
 	}
 }
@@ -114,16 +110,16 @@ func TestHandleAddChannel(t *testing.T) {
 	}
 
 	// Verify the file was created and contains the channel
-	content, err := os.ReadFile(".armrc")
+	content, err := os.ReadFile(".armrc.json")
 	if err != nil {
-		t.Fatalf("Failed to read .armrc: %v", err)
+		t.Fatalf("Failed to read .armrc.json: %v", err)
 	}
 
-	if !strings.Contains(string(content), "[channels.cursor]") {
-		t.Error("Expected '[channels.cursor]' section in .armrc")
+	if !strings.Contains(string(content), `"cursor"`) {
+		t.Error("Expected 'cursor' channel in .armrc.json")
 	}
-	if !strings.Contains(string(content), ".cursor/rules,custom/cursor") {
-		t.Error("Expected '.cursor/rules,custom/cursor' directories in .armrc")
+	if !strings.Contains(string(content), `".cursor/rules"`) && !strings.Contains(string(content), `"custom/cursor"`) {
+		t.Error("Expected '.cursor/rules' and 'custom/cursor' directories in .armrc.json")
 	}
 }
 
@@ -153,13 +149,13 @@ func TestHandleRemoveRegistry(t *testing.T) {
 	}
 
 	// Verify the registry was removed
-	content, err := os.ReadFile(".armrc")
+	content, err := os.ReadFile(".armrc.json")
 	if err != nil {
-		t.Fatalf("Failed to read .armrc: %v", err)
+		t.Fatalf("Failed to read .armrc.json: %v", err)
 	}
 
 	if strings.Contains(string(content), "test-registry") {
-		t.Error("Expected 'test-registry' to be removed from .armrc")
+		t.Error("Expected 'test-registry' to be removed from .armrc.json")
 	}
 }
 
@@ -189,13 +185,13 @@ func TestHandleRemoveChannel(t *testing.T) {
 	}
 
 	// Verify the channel was removed
-	content, err := os.ReadFile(".armrc")
+	content, err := os.ReadFile(".armrc.json")
 	if err != nil {
-		t.Fatalf("Failed to read .armrc: %v", err)
+		t.Fatalf("Failed to read .armrc.json: %v", err)
 	}
 
 	if strings.Contains(string(content), "test-channel") {
-		t.Error("Expected 'test-channel' to be removed from .armrc")
+		t.Error("Expected 'test-channel' to be removed from .armrc.json")
 	}
 }
 
@@ -245,14 +241,14 @@ func TestGetConfigValue(t *testing.T) {
 
 func TestGetConfigPath(t *testing.T) {
 	// Test local path
-	localPath := getConfigPath(".armrc", false)
-	if localPath != ".armrc" {
-		t.Errorf("Expected '.armrc', got %s", localPath)
+	localPath := getConfigPath(".armrc.json", false)
+	if localPath != ".armrc.json" {
+		t.Errorf("Expected '.armrc.json', got %s", localPath)
 	}
 
 	// Test global path
-	globalPath := getConfigPath(".armrc", true)
-	expectedGlobal := filepath.Join(os.Getenv("HOME"), ".arm", ".armrc")
+	globalPath := getConfigPath(".armrc.json", true)
+	expectedGlobal := filepath.Join(os.Getenv("HOME"), ".arm", ".armrc.json")
 	if globalPath != expectedGlobal {
 		t.Errorf("Expected %s, got %s", expectedGlobal, globalPath)
 	}
@@ -305,8 +301,8 @@ func TestHandleInstallFromManifest(t *testing.T) {
 	}
 
 	// Verify stub files were created
-	if _, err := os.Stat(".armrc"); os.IsNotExist(err) {
-		t.Error("Expected .armrc to be created")
+	if _, err := os.Stat(".armrc.json"); os.IsNotExist(err) {
+		t.Error("Expected .armrc.json to be created")
 	}
 	if _, err := os.Stat("arm.json"); os.IsNotExist(err) {
 		t.Error("Expected arm.json to be created")
@@ -327,15 +323,18 @@ func TestHandleInstallRuleset(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Create basic configuration
-	armrcContent := `[registries]
-default = https://github.com/user/repo
-
-[registries.default]
-type = git
-`
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+	armrcContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git"
+    }
+  },
+  "channels": {}
+}`
+	err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
 	if err != nil {
-		t.Fatalf("Failed to create .armrc: %v", err)
+		t.Fatalf("Failed to create .armrc.json: %v", err)
 	}
 
 	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
@@ -377,19 +376,22 @@ func TestHandleSearch(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Create basic configuration
-	armrcContent := `[registries]
-default = https://github.com/user/repo
-my-git = https://github.com/other/repo
-
-[registries.default]
-type = git
-
-[registries.my-git]
-type = git
-`
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+	armrcContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git"
+    },
+    "my-git": {
+      "url": "https://github.com/other/repo",
+      "type": "git"
+    }
+  },
+  "channels": {}
+}`
+	err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
 	if err != nil {
-		t.Fatalf("Failed to create .armrc: %v", err)
+		t.Fatalf("Failed to create .armrc.json: %v", err)
 	}
 
 	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
@@ -431,15 +433,18 @@ func TestHandleInfo(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Create basic configuration
-	armrcContent := `[registries]
-default = https://github.com/user/repo
-
-[registries.default]
-type = git
-`
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+	armrcContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git"
+    }
+  },
+  "channels": {}
+}`
+	err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
 	if err != nil {
-		t.Fatalf("Failed to create .armrc: %v", err)
+		t.Fatalf("Failed to create .armrc.json: %v", err)
 	}
 
 	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
@@ -481,15 +486,18 @@ func TestHandleList(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Create configuration with rulesets
-	armrcContent := `[registries]
-default = https://github.com/user/repo
-
-[registries.default]
-type = git
-`
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+	armrcContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git"
+    }
+  },
+  "channels": {}
+}`
+	err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
 	if err != nil {
-		t.Fatalf("Failed to create .armrc: %v", err)
+		t.Fatalf("Failed to create .armrc.json: %v", err)
 	}
 
 	armJSONContent := `{
@@ -754,19 +762,22 @@ func TestHandleOutdated(t *testing.T) {
 			}
 
 			// Create basic configuration
-			armrcContent := `[registries]
-default = https://github.com/user/repo
-my-git = https://github.com/other/repo
-
-[registries.default]
-type = git
-
-[registries.my-git]
-type = git
-`
-			err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+			armrcContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git"
+    },
+    "my-git": {
+      "url": "https://github.com/other/repo",
+      "type": "git"
+    }
+  },
+  "channels": {}
+}`
+			err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
 			if err != nil {
-				t.Fatalf("Failed to create .armrc: %v", err)
+				t.Fatalf("Failed to create .armrc.json: %v", err)
 			}
 
 			// Test with mock service
@@ -827,15 +838,18 @@ func TestHandleOutdatedJSONValidation(t *testing.T) {
 	}
 
 	// Create basic configuration
-	armrcContent := `[registries]
-default = https://github.com/user/repo
-
-[registries.default]
-type = git
-`
-	err = os.WriteFile(".armrc", []byte(armrcContent), 0o600)
+	armrcContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git"
+    }
+  },
+  "channels": {}
+}`
+	err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
 	if err != nil {
-		t.Fatalf("Failed to create .armrc: %v", err)
+		t.Fatalf("Failed to create .armrc.json: %v", err)
 	}
 
 	// Mock service with outdated ruleset

@@ -11,7 +11,7 @@ cd sandbox
 ./arm install python-rules@main --patterns "rules-new/python.mdc"
 cat arm.lock
 cat arm.json
-cat .armrc
+cat .armrc.json
 tree -a
 ./arm outdated
 tree -a -L 4 ~/.arm/cache

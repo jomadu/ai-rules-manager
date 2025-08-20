@@ -861,9 +861,9 @@ func TestGenerateStubFiles(t *testing.T) {
 		t.Fatalf("Failed to generate local stub files: %v", err)
 	}
 
-	// Check that .armrc was created
-	if _, err := os.Stat(".armrc"); os.IsNotExist(err) {
-		t.Error("Expected .armrc stub file to be created")
+	// Check that .armrc.json was created
+	if _, err := os.Stat(".armrc.json"); os.IsNotExist(err) {
+		t.Error("Expected .armrc.json stub file to be created")
 	}
 
 	// Check that arm.json was created
@@ -871,20 +871,20 @@ func TestGenerateStubFiles(t *testing.T) {
 		t.Error("Expected arm.json stub file to be created")
 	}
 
-	// Verify .armrc content
-	armrcContent, err := os.ReadFile(".armrc")
+	// Verify .armrc.json content
+	armrcContent, err := os.ReadFile(".armrc.json")
 	if err != nil {
-		t.Fatalf("Failed to read .armrc: %v", err)
+		t.Fatalf("Failed to read .armrc.json: %v", err)
 	}
 	armrcStr := string(armrcContent)
-	if !strings.Contains(armrcStr, "[registries]") {
-		t.Error("Expected .armrc to contain [registries] section")
+	if !strings.Contains(armrcStr, `"registries"`) {
+		t.Error("Expected .armrc.json to contain registries section")
 	}
-	if !strings.Contains(armrcStr, "type = git") {
-		t.Error("Expected .armrc to contain git type example")
+	if !strings.Contains(armrcStr, `"type": "git"`) {
+		t.Error("Expected .armrc.json to contain git type example")
 	}
 	if !strings.Contains(armrcStr, "$GITHUB_TOKEN") {
-		t.Error("Expected .armrc to contain environment variable example")
+		t.Error("Expected .armrc.json to contain environment variable example")
 	}
 
 	// Verify arm.json content
@@ -899,7 +899,7 @@ func TestGenerateStubFiles(t *testing.T) {
 	if !strings.Contains(jsonStr, `"arm": "^`) {
 		t.Error("Expected arm.json to contain ARM version with ^ prefix")
 	}
-	// Channels are now in .armrc, not arm.json
+	// Channels are now in .armrc.json, not arm.json
 	if !strings.Contains(jsonStr, `"rulesets"`) {
 		t.Error("Expected arm.json to contain rulesets section")
 	}
@@ -910,9 +910,9 @@ func TestGenerateStubFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to run GenerateStubFiles again: %v", err)
 	}
-	newContent, _ := os.ReadFile(".armrc")
+	newContent, _ := os.ReadFile(".armrc.json")
 	if string(newContent) != originalContent {
-		t.Error("Expected existing .armrc file to not be overwritten")
+		t.Error("Expected existing .armrc.json file to not be overwritten")
 	}
 }
 
@@ -935,10 +935,10 @@ func TestGenerateGlobalStubFiles(t *testing.T) {
 		t.Error("Expected .arm directory to be created")
 	}
 
-	// Check that global .armrc was created
-	globalARMRC := filepath.Join(armDir, ".armrc")
+	// Check that global .armrc.json was created
+	globalARMRC := filepath.Join(armDir, ".armrc.json")
 	if _, err := os.Stat(globalARMRC); os.IsNotExist(err) {
-		t.Error("Expected global .armrc stub file to be created")
+		t.Error("Expected global .armrc.json stub file to be created")
 	}
 
 	// Check that global arm.json was created
@@ -948,13 +948,13 @@ func TestGenerateGlobalStubFiles(t *testing.T) {
 	}
 }
 
-func TestGenerateARMRCStub(t *testing.T) {
+func TestGenerateARMRCJSONStub(t *testing.T) {
 	tmpDir := t.TempDir()
-	stubPath := filepath.Join(tmpDir, "test.armrc")
+	stubPath := filepath.Join(tmpDir, "test.armrc.json")
 
-	err := generateARMRCStub(stubPath)
+	err := generateARMRCJSONStub(stubPath)
 	if err != nil {
-		t.Fatalf("Failed to generate .armrc stub: %v", err)
+		t.Fatalf("Failed to generate .armrc.json stub: %v", err)
 	}
 
 	// Check file permissions
@@ -966,33 +966,30 @@ func TestGenerateARMRCStub(t *testing.T) {
 		t.Errorf("Expected file permissions 0o600, got %o", info.Mode().Perm())
 	}
 
-	// Check content structure
+	// Check that it's valid JSON
 	content, err := os.ReadFile(stubPath)
 	if err != nil {
 		t.Fatalf("Failed to read stub file: %v", err)
 	}
 
+	var armrcConfig ARMRCConfig
+	if err := json.Unmarshal(content, &armrcConfig); err != nil {
+		t.Errorf("Generated JSON is not valid: %v", err)
+	}
+
+	// Check required sections
+	if armrcConfig.Registries == nil {
+		t.Error("Expected registries section to be present")
+	}
+	if armrcConfig.Git == nil {
+		t.Error("Expected git section to be present")
+	}
+	if armrcConfig.Network == nil {
+		t.Error("Expected network section to be present")
+	}
+
+	// Check for environment variable examples in JSON string
 	contentStr := string(content)
-	requiredSections := []string{
-		"[registries]",
-		"[registries.my-git-registry]",
-		"[registries.my-s3-registry]",
-		"[registries.my-gitlab-registry]",
-		"[git]",
-		"[https]",
-		"[s3]",
-		"[gitlab]",
-		"[local]",
-		"[network]",
-	}
-
-	for _, section := range requiredSections {
-		if !strings.Contains(contentStr, section) {
-			t.Errorf("Expected stub to contain section %s", section)
-		}
-	}
-
-	// Check for environment variable examples
 	envVarExamples := []string{
 		"$GITHUB_TOKEN",
 		"$GITLAB_TOKEN",

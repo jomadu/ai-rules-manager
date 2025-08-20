@@ -14,7 +14,6 @@ import (
 	"github.com/max-dunn/ai-rules-manager/internal/registry"
 	"github.com/max-dunn/ai-rules-manager/internal/update"
 	"github.com/spf13/cobra"
-	"gopkg.in/ini.v1"
 )
 
 // VersionInfo contains build version information
@@ -381,15 +380,12 @@ func handleConfigSet(key, value string, global bool) error {
 	}
 
 	path := getConfigPath(".armrc", global)
-	cfg, err := loadOrCreateINI(path)
+	cfg, err := loadOrCreateARMRCJSON(path)
 	if err != nil {
 		return err
 	}
 
-	section := cfg.Section(parts[0])
-	section.Key(parts[1]).SetValue(value)
-
-	return cfg.SaveTo(path)
+	return setJSONConfigValue(cfg, path, parts[0], parts[1], value)
 }
 
 func handleConfigGet(key string, _ bool) error {
@@ -469,45 +465,24 @@ func handleAddRegistry(name, url, registryType string, global bool, options map[
 		url = resolvedPath
 	}
 
-	// Add to registries section
 	path := getConfigPath(".armrc", global)
-	cfg, err := loadOrCreateINI(path)
+	cfg, err := loadOrCreateARMRCJSON(path)
 	if err != nil {
 		return err
 	}
 
-	cfg.Section("registries").Key(name).SetValue(url)
-
-	// Add registry config section
-	sectionName := fmt.Sprintf("registries.%s", name)
-	section := cfg.Section(sectionName)
-	section.Key("type").SetValue(registryType)
-
-	// Add optional parameters
-	for key, value := range options {
-		if value != "" {
-			section.Key(key).SetValue(value)
-		}
-	}
-
-	return cfg.SaveTo(path)
+	return addRegistryToJSON(cfg, path, name, url, registryType, options)
 }
 
 func handleRemoveRegistry(name string, global bool) error {
 	path := getConfigPath(".armrc", global)
-	cfg, err := loadOrCreateINI(path)
+	cfg, err := loadOrCreateARMRCJSON(path)
 	if err != nil {
 		return err
 	}
 
-	// Remove from registries section
-	cfg.Section("registries").DeleteKey(name)
-
-	// Remove registry config section
-	sectionName := fmt.Sprintf("registries.%s", name)
-	cfg.DeleteSection(sectionName)
-
-	return cfg.SaveTo(path)
+	delete(cfg.Registries, name)
+	return saveARMRCJSON(path, cfg)
 }
 
 func handleAddChannel(name, directories string, global bool) error {
@@ -516,51 +491,173 @@ func handleAddChannel(name, directories string, global bool) error {
 	}
 
 	path := getConfigPath(".armrc", global)
-	cfg, err := loadOrCreateINI(path)
+	cfg, err := loadOrCreateARMRCJSON(path)
 	if err != nil {
 		return err
 	}
 
-	// Create channel section
-	sectionName := fmt.Sprintf("channels.%s", name)
-	section := cfg.Section(sectionName)
-	section.Key("directories").SetValue(directories)
-
-	return cfg.SaveTo(path)
+	dirList := strings.Split(directories, ",")
+	for i, dir := range dirList {
+		dirList[i] = strings.TrimSpace(dir)
+	}
+	cfg.Channels[name] = config.ChannelConfig{Directories: dirList}
+	return saveARMRCJSON(path, cfg)
 }
 
 func handleRemoveChannel(name string, global bool) error {
 	path := getConfigPath(".armrc", global)
-	cfg, err := loadOrCreateINI(path)
+	cfg, err := loadOrCreateARMRCJSON(path)
 	if err != nil {
 		return err
 	}
 
-	// Remove channel section
-	sectionName := fmt.Sprintf("channels.%s", name)
-	cfg.DeleteSection(sectionName)
-
-	return cfg.SaveTo(path)
+	delete(cfg.Channels, name)
+	return saveARMRCJSON(path, cfg)
 }
 
 // Helper functions
 
 func getConfigPath(filename string, global bool) string {
+	// Convert .armrc to .armrc.json for JSON configuration format
+	if filename == ".armrc" {
+		filename = ".armrc.json"
+	}
 	if global {
 		return filepath.Join(os.Getenv("HOME"), ".arm", filename)
 	}
 	return filename
 }
 
-func loadOrCreateINI(path string) (*ini.File, error) {
+func loadOrCreateARMRCJSON(path string) (*config.ARMRCConfig, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create parent directory if needed
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return nil, err
 		}
-		return ini.Empty(), nil
+		// Create new config
+		return &config.ARMRCConfig{
+			Registries: make(map[string]config.RegistryConfig),
+			Channels:   make(map[string]config.ChannelConfig),
+		}, nil
 	}
-	return ini.Load(path)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var armrcConfig config.ARMRCConfig
+	if err := json.Unmarshal(data, &armrcConfig); err != nil {
+		return nil, err
+	}
+
+	// Initialize maps if nil
+	if armrcConfig.Registries == nil {
+		armrcConfig.Registries = make(map[string]config.RegistryConfig)
+	}
+	if armrcConfig.Channels == nil {
+		armrcConfig.Channels = make(map[string]config.ChannelConfig)
+	}
+
+	return &armrcConfig, nil
+}
+
+func saveARMRCJSON(path string, armrcConfig *config.ARMRCConfig) error {
+	data, err := json.MarshalIndent(armrcConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+func setJSONConfigValue(cfg *config.ARMRCConfig, path, section, key, value string) error {
+	switch section {
+	case "git":
+		if cfg.Git == nil {
+			cfg.Git = &config.TypeConfig{}
+		}
+		switch key {
+		case "concurrency":
+			cfg.Git.Concurrency = value
+		case "rateLimit":
+			cfg.Git.RateLimit = value
+		default:
+			return fmt.Errorf("unknown git config key: %s", key)
+		}
+	case "https":
+		if cfg.HTTPS == nil {
+			cfg.HTTPS = &config.TypeConfig{}
+		}
+		switch key {
+		case "concurrency":
+			cfg.HTTPS.Concurrency = value
+		case "rateLimit":
+			cfg.HTTPS.RateLimit = value
+		default:
+			return fmt.Errorf("unknown https config key: %s", key)
+		}
+	case "s3":
+		if cfg.S3 == nil {
+			cfg.S3 = &config.TypeConfig{}
+		}
+		switch key {
+		case "concurrency":
+			cfg.S3.Concurrency = value
+		case "rateLimit":
+			cfg.S3.RateLimit = value
+		default:
+			return fmt.Errorf("unknown s3 config key: %s", key)
+		}
+	case "network":
+		if cfg.Network == nil {
+			cfg.Network = &config.NetworkConfig{}
+		}
+		switch key {
+		case "timeout":
+			cfg.Network.Timeout = value
+		case "retry.maxAttempts":
+			cfg.Network.RetryMaxAttempts = value
+		case "retry.backoffMultiplier":
+			cfg.Network.RetryBackoffMultiplier = value
+		case "retry.maxBackoff":
+			cfg.Network.RetryMaxBackoff = value
+		default:
+			return fmt.Errorf("unknown network config key: %s", key)
+		}
+	default:
+		return fmt.Errorf("unknown config section: %s", section)
+	}
+	return saveARMRCJSON(path, cfg)
+}
+
+func addRegistryToJSON(cfg *config.ARMRCConfig, path, name, url, registryType string, options map[string]string) error {
+	regConfig := config.RegistryConfig{
+		URL:  url,
+		Type: registryType,
+	}
+
+	// Add optional parameters
+	if authToken := options["authToken"]; authToken != "" {
+		regConfig.AuthToken = authToken
+	}
+	if region := options["region"]; region != "" {
+		regConfig.Region = region
+	}
+	if profile := options["profile"]; profile != "" {
+		regConfig.Profile = profile
+	}
+	if prefix := options["prefix"]; prefix != "" {
+		regConfig.Prefix = prefix
+	}
+	if apiType := options["apiType"]; apiType != "" {
+		regConfig.APIType = apiType
+	}
+	if apiVersion := options["apiVersion"]; apiVersion != "" {
+		regConfig.APIVersion = apiVersion
+	}
+
+	cfg.Registries[name] = regConfig
+	return saveARMRCJSON(path, cfg)
 }
 
 func loadOrCreateJSON(path string) (*config.ARMConfig, error) {
@@ -748,19 +845,19 @@ func parseRulesetSpec(spec string) (registry, name, version string) {
 }
 
 func ensureConfigFiles(global bool) error {
-	// Check if .armrc exists in either location
-	armrcExists := false
+	// Check if .armrc.json exists in either location
+	armrcJSONExists := false
 	if global {
-		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", ".armrc")); err == nil {
-			armrcExists = true
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", ".armrc.json")); err == nil {
+			armrcJSONExists = true
 		}
 	} else {
-		if _, err := os.Stat(".armrc"); err == nil {
-			armrcExists = true
+		if _, err := os.Stat(".armrc.json"); err == nil {
+			armrcJSONExists = true
 		}
 		// Also check global location
-		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", ".armrc")); err == nil {
-			armrcExists = true
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".arm", ".armrc.json")); err == nil {
+			armrcJSONExists = true
 		}
 	}
 
@@ -781,7 +878,7 @@ func ensureConfigFiles(global bool) error {
 	}
 
 	// Generate missing files
-	if !armrcExists || !armJSONExists {
+	if !armrcJSONExists || !armJSONExists {
 		return config.GenerateStubFiles(global)
 	}
 

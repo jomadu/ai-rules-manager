@@ -230,12 +230,12 @@ inspect_config() {
     local context="$1"
     log_info "=== Configuration Inspection: $context ==="
 
-    if [ -f ".armrc" ]; then
-        log_info "ARM registry configuration (.armrc):"
-        cat .armrc
+    if [ -f ".armrc.json" ]; then
+        log_info "ARM registry configuration (.armrc.json):"
+        cat .armrc.json | jq . 2>/dev/null || cat .armrc.json
         echo
     else
-        log_warning "No .armrc configuration found"
+        log_warning "No .armrc.json configuration found"
     fi
 
     if [ -f "arm.json" ]; then
@@ -314,7 +314,7 @@ $ARM_BIN install
 
 # Enable caching for testing
 log_info "Enabling cache for testing"
-echo -e "\n[cache]\npath = .arm/cache\nttl = 1h" >> .armrc
+# Cache configuration is now handled through JSON config during initialization
 
 explore_structure "After ARM initialization"
 inspect_config "After ARM initialization"
