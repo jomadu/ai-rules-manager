@@ -485,7 +485,7 @@ run_test "Verify v1.0.0 installed again" \
     "$ARM_BIN list | grep 'v1.0.0'"
 
 run_test "Update specific package" \
-    "$ARM_BIN update test-ruleset"
+    "$ARM_BIN update default/test-ruleset"
 
 log_info "Files after specific update:"
 $ARM_BIN list
