@@ -62,10 +62,20 @@ install_binary() {
 }
 
 main() {
+    local requested_version="$1"
+
     log_info "Installing ARM (AI Rules Manager)..."
 
     local platform=$(detect_platform)
-    local version=$(get_latest_version)
+    local version
+
+    if [ -n "$requested_version" ]; then
+        version="${requested_version#v}"  # Remove 'v' prefix if present
+        log_info "Installing specific version: v${version}"
+    else
+        version=$(get_latest_version)
+        log_info "Installing latest version: v${version}"
+    fi
 
     install_binary "$platform" "$version"
 
