@@ -800,6 +800,20 @@ func handleInstallRuleset(rulesetSpec string, global, dryRun bool, channels, pat
 		return fmt.Errorf("registry '%s' not found", registry)
 	}
 
+	// Determine default version based on registry type if not specified
+	if version == "" {
+		if regConfig, exists := cfg.RegistryConfigs[registry]; exists {
+			switch regConfig["type"] {
+			case "git", "git-local":
+				version = "main"
+			default:
+				version = "latest"
+			}
+		} else {
+			version = "latest" // fallback for unknown registry types
+		}
+	}
+
 	// Check if it's a Git registry and patterns are required
 	if regConfig, exists := cfg.RegistryConfigs[registry]; exists {
 		if regConfig["type"] == "git" && patterns == "" {
@@ -829,7 +843,8 @@ func parseRulesetSpec(spec string) (registry, name, version string) {
 		spec = parts[0]
 		version = parts[1]
 	} else {
-		version = "latest"
+		// Default version will be determined by registry type
+		version = ""
 	}
 
 	// Handle registry specification (registry/name)
@@ -1752,12 +1767,33 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 	}
 	defer func() { _ = reg.Close() }()
 
+	// Handle version resolution based on registry type
+	var resolvedVersion string
+	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
+		switch regConfig["type"] {
+		case "git", "git-local":
+			// For Git registries, resolve version to commit hash
+			if gitReg, ok := reg.(*registry.GitRegistry); ok {
+				resolvedCommit, err := gitReg.ResolveVersion(context.Background(), version)
+				if err != nil {
+					return fmt.Errorf("failed to resolve git version %s: %w", version, err)
+				}
+				resolvedVersion = resolvedCommit
+			} else {
+				resolvedVersion = version // fallback
+			}
+		default:
+			// For non-Git registries, version is already concrete
+			resolvedVersion = version
+		}
+	} else {
+		resolvedVersion = version // fallback for unknown registry types
+	}
+
 	// For Git registries, use structured download to get both versions
 	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil && regConfig["type"] == "git" {
 		return performGitInstallation(cfg, registryName, rulesetName, version, channels, patterns)
 	}
-
-	// For non-Git registries, use version as-is (they use concrete versions)
 
 	fmt.Printf("⬇ Downloading %s@%s\n", rulesetName, version)
 
@@ -1817,16 +1853,30 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 	// Create installer and install
 	installer := install.New(cfg)
 	req := &install.InstallRequest{
-		Registry:    registryName,
-		Ruleset:     rulesetName,
-		Version:     version,
-		SourceFiles: sourceFiles,
-		Channels:    targetChannels,
+		Registry:        registryName,
+		Ruleset:         rulesetName,
+		Version:         version,
+		ResolvedVersion: resolvedVersion,
+		SourceFiles:     sourceFiles,
+		Channels:        targetChannels,
 	}
 
 	result, err := installer.Install(req)
 	if err != nil {
 		return fmt.Errorf("failed to install: %w", err)
+	}
+
+	// Update manifest with original version constraint
+	var patternList []string
+	if patterns != "" {
+		patternList = strings.Split(patterns, ",")
+		for i, p := range patternList {
+			patternList[i] = strings.TrimSpace(p)
+		}
+	}
+	manifestMgr := config.NewManifestManager(false)
+	if err := manifestMgr.AddRuleset(registryName, rulesetName, version, patternList); err != nil {
+		fmt.Printf("Warning: Failed to update manifest: %v\n", err)
 	}
 
 	fmt.Printf("✓ Installed %s/%s@%s\n", result.Registry, result.Ruleset, result.Version)
