@@ -36,19 +36,6 @@ type Registry interface {
 	Close() error
 }
 
-// Searcher defines the optional search interface for registries
-type Searcher interface {
-	// Search returns rulesets matching the query
-	Search(ctx context.Context, query string) ([]SearchResult, error)
-}
-
-// SearchResult contains minimal search result information
-type SearchResult struct {
-	RulesetName  string `json:"ruleset_name"`
-	RegistryName string `json:"registry_name"`
-	Match        string `json:"match"`
-}
-
 // RulesetInfo contains metadata about a ruleset
 type RulesetInfo struct {
 	Name        string            `json:"name"`

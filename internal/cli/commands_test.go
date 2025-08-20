@@ -356,63 +356,6 @@ func TestHandleInstallRuleset(t *testing.T) {
 	}
 }
 
-func TestHandleSearch(t *testing.T) {
-	// Create temp directory
-	tempDir, err := os.MkdirTemp("", "search-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
-
-	// Change to temp directory
-	originalWd, _ := os.Getwd()
-	defer func() { _ = os.Chdir(originalWd) }()
-	_ = os.Chdir(tempDir)
-
-	// Create basic configuration
-	armrcContent := `{
-  "registries": {
-    "default": {
-      "url": "https://github.com/user/repo",
-      "type": "git"
-    },
-    "my-git": {
-      "url": "https://github.com/other/repo",
-      "type": "git"
-    }
-  },
-  "channels": {}
-}`
-	err = os.WriteFile(".armrc.json", []byte(armrcContent), 0o600)
-	if err != nil {
-		t.Fatalf("Failed to create .armrc.json: %v", err)
-	}
-
-	armJSONContent := `{"engines":{"arm":"^1.0.0"},"channels":{},"rulesets":{}}`
-	err = os.WriteFile("arm.json", []byte(armJSONContent), 0o600)
-	if err != nil {
-		t.Fatalf("Failed to create arm.json: %v", err)
-	}
-
-	// Test search with no registry filter
-	err = handleSearch("python", "", false, 10)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	// Test search with specific registry
-	err = handleSearch("python", "default", false, 10)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	// Test search with glob pattern
-	err = handleSearch("python", "my-*", false, 10)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-}
-
 func TestHandleInfo(t *testing.T) {
 	// Create temp directory
 	tempDir, err := os.MkdirTemp("", "info-test")
@@ -519,47 +462,6 @@ func TestHandleList(t *testing.T) {
 	err = handleList(false, false, true, "cursor")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
-	}
-}
-
-func TestGetTargetRegistries(t *testing.T) {
-	allRegistries := map[string]string{
-		"default":   "https://github.com/user/repo",
-		"my-git":    "https://github.com/other/repo",
-		"my-s3":     "my-bucket",
-		"test-repo": "https://test.com/repo",
-	}
-
-	tests := []struct {
-		filter   string
-		expected []string
-	}{
-		{"", []string{"default", "my-git", "my-s3", "test-repo"}},
-		{"default", []string{"default"}},
-		{"default,my-git", []string{"default", "my-git"}},
-		{"my-*", []string{"my-git", "my-s3"}},
-		{"*-repo", []string{"test-repo"}},
-		{"nonexistent", []string{}},
-	}
-
-	for _, test := range tests {
-		result := getTargetRegistries(allRegistries, test.filter)
-		if len(result) != len(test.expected) {
-			t.Errorf("getTargetRegistries(%s) returned %d items, expected %d", test.filter, len(result), len(test.expected))
-			continue
-		}
-
-		// Convert to map for easier comparison
-		resultMap := make(map[string]bool)
-		for _, r := range result {
-			resultMap[r] = true
-		}
-
-		for _, expected := range test.expected {
-			if !resultMap[expected] {
-				t.Errorf("getTargetRegistries(%s) missing expected result: %s", test.filter, expected)
-			}
-		}
 	}
 }
 

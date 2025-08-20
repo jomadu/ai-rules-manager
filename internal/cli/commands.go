@@ -48,7 +48,6 @@ different AI tools like Cursor and Amazon Q Developer.`,
 	rootCmd.AddCommand(newConfigCommand(cfg))
 	rootCmd.AddCommand(newInstallCommand(cfg))
 	rootCmd.AddCommand(newUninstallCommand(cfg))
-	rootCmd.AddCommand(newSearchCommand(cfg))
 	rootCmd.AddCommand(newInfoCommand(cfg))
 	rootCmd.AddCommand(newOutdatedCommand(cfg))
 	rootCmd.AddCommand(newUpdateCommand(cfg))
@@ -217,26 +216,6 @@ func newUninstallCommand(_ *config.Config) *cobra.Command {
 	}
 
 	cmd.Flags().String("channels", "", "Remove from specific channels only (comma-separated)")
-
-	return cmd
-}
-
-// newSearchCommand creates the search command
-func newSearchCommand(_ *config.Config) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "search <query>",
-		Short: "Search for rulesets",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			registries, _ := cmd.Flags().GetString("registries")
-			jsonOutput, _ := cmd.Flags().GetBool("json")
-			limit, _ := cmd.Flags().GetInt("limit")
-			return handleSearch(args[0], registries, jsonOutput, limit)
-		},
-	}
-
-	cmd.Flags().String("registries", "", "Search specific registries (comma-separated or glob patterns)")
-	cmd.Flags().Int("limit", 50, "Limit number of results")
 
 	return cmd
 }
@@ -817,65 +796,6 @@ func ensureConfigFiles(global bool) error {
 
 // Search, info, and list command handlers
 
-func handleSearch(query, registries string, jsonOutput bool, limit int) error {
-	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	// Check if we have registries configured
-	if len(cfg.Registries) == 0 {
-		return fmt.Errorf("no registries configured. Add a registry with 'arm config add registry'")
-	}
-
-	// Determine which registries to search
-	targetRegistries := getTargetRegistries(cfg.Registries, registries)
-	if len(targetRegistries) == 0 {
-		return fmt.Errorf("no matching registries found")
-	}
-
-	// Perform search across registries
-	allResults, searchErrors := performSearch(cfg, targetRegistries, query, limit)
-
-	// Handle JSON output
-	if jsonOutput {
-		data, _ := json.MarshalIndent(map[string]interface{}{
-			"query":      query,
-			"registries": targetRegistries,
-			"limit":      limit,
-			"results":    allResults,
-			"errors":     searchErrors,
-		}, "", "  ")
-		fmt.Println(string(data))
-		return nil
-	}
-
-	// Display search results in table format
-	fmt.Printf("Searching for '%s' in registries: %s\n", query, strings.Join(targetRegistries, ", "))
-	fmt.Printf("Limit: %d results\n\n", limit)
-
-	if len(allResults) == 0 {
-		fmt.Println("No results found")
-	} else {
-		fmt.Printf("%-20s %-30s %s\n", "REGISTRY", "RULESET", "MATCH")
-		fmt.Printf("%-20s %-30s %s\n", "--------", "-------", "-----")
-		for _, result := range allResults {
-			fmt.Printf("%-20s %-30s %s\n", result.RegistryName, result.RulesetName, result.Match)
-		}
-	}
-
-	// Show warnings for failed registries
-	if len(searchErrors) > 0 {
-		fmt.Printf("\nWarnings:\n")
-		for registry, errMsg := range searchErrors {
-			fmt.Printf("  %s: %s\n", registry, errMsg)
-		}
-	}
-
-	return nil
-}
-
 func handleInfo(rulesetSpec string, jsonOutput, versions bool) error {
 	// Parse ruleset specification
 	registry, name, version := parseRulesetSpec(rulesetSpec)
@@ -976,90 +896,6 @@ func handleList(global, local, jsonOutput bool, channels string) error {
 	fmt.Println("\nActual installation status: (not yet implemented)")
 
 	return nil
-}
-
-// performSearch executes search across multiple registries
-func performSearch(cfg *config.Config, targetRegistries []string, query string, limit int) (results []registry.SearchResult, errors map[string]string) {
-	var allResults []registry.SearchResult
-	searchErrors := make(map[string]string)
-
-	for _, registryName := range targetRegistries {
-		// Create registry instance
-		registryConfig := &registry.RegistryConfig{
-			Name: registryName,
-			Type: cfg.RegistryConfigs[registryName]["type"],
-			URL:  cfg.Registries[registryName],
-		}
-
-		// Create registry instance
-		reg, err := registry.CreateRegistry(registryConfig)
-		if err != nil {
-			searchErrors[registryName] = fmt.Sprintf("failed to create registry: %v", err)
-			continue
-		}
-
-		// Check if registry supports search
-		searcher, ok := reg.(registry.Searcher)
-		if !ok {
-			searchErrors[registryName] = "search not supported for this registry type"
-			_ = reg.Close()
-			continue
-		}
-
-		// Perform search
-		results, err := searcher.Search(context.Background(), query)
-		if err != nil {
-			searchErrors[registryName] = fmt.Sprintf("search failed: %v", err)
-		} else {
-			allResults = append(allResults, results...)
-		}
-
-		_ = reg.Close()
-	}
-
-	// Apply limit
-	if len(allResults) > limit {
-		allResults = allResults[:limit]
-	}
-
-	return allResults, searchErrors
-}
-
-func getTargetRegistries(allRegistries map[string]string, filter string) []string {
-	if filter == "" {
-		// Return all registry names
-		var names []string
-		for name := range allRegistries {
-			names = append(names, name)
-		}
-		return names
-	}
-
-	// Parse comma-separated list
-	filters := strings.Split(filter, ",")
-	var result []string
-
-	for _, f := range filters {
-		f = strings.TrimSpace(f)
-		if f == "" {
-			continue
-		}
-
-		// Check for exact match first
-		if _, exists := allRegistries[f]; exists {
-			result = append(result, f)
-			continue
-		}
-
-		// Check for glob pattern match
-		for name := range allRegistries {
-			if matched, _ := filepath.Match(f, name); matched {
-				result = append(result, name)
-			}
-		}
-	}
-
-	return result
 }
 
 // Update, outdated, and uninstall command handlers

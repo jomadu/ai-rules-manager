@@ -96,11 +96,6 @@ func (g *GitRegistry) GetType() string {
 	return "git"
 }
 
-// Search implements the Searcher interface (not supported for git registries)
-func (g *GitRegistry) Search(ctx context.Context, query string) ([]SearchResult, error) {
-	return nil, fmt.Errorf("search not supported for git registries")
-}
-
 // Close cleans up any resources
 func (g *GitRegistry) Close() error {
 	return nil
