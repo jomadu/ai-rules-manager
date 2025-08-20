@@ -21,7 +21,7 @@ FAILED_TESTS=0
 FAILED_TEST_NAMES=()
 
 # Test groups
-ALL_GROUPS=("registry" "channel" "version" "pattern" "channel-specific" "update" "uninstall" "cache" "cache-structure" "config" "search" "error" "workflow")
+ALL_GROUPS=("registry" "channel" "version" "pattern" "channel-specific" "update" "uninstall" "cache" "cache-structure" "config" "error" "workflow")
 SELECTED_GROUPS=()
 
 # Parse command line arguments
@@ -39,7 +39,7 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  $0                    # Run all tests"
-    echo "  $0 search             # Run only search tests"
+    echo "  $0 config             # Run only config tests"
     echo "  $0 registry channel   # Run registry and channel tests"
 }
 
@@ -589,28 +589,7 @@ if should_run_group "config"; then
         "$ARM_BIN config remove channel cursor"
 fi
 
-# Test 10: Search Capability
-if should_run_group "search"; then
-    log_info "=== Testing Search Capability ==="
 
-    run_test "Search for test-ruleset" \
-        "$ARM_BIN search test-ruleset"
-
-    log_info "Search results for test-ruleset:"
-    $ARM_BIN search test-ruleset
-
-    run_test "Verify search handles git registries gracefully" \
-        "$ARM_BIN search test-ruleset | grep -q 'No results found'"
-
-    run_test "Search with pattern" \
-        "$ARM_BIN search ghost"
-
-    log_info "Search results for ghost:"
-    $ARM_BIN search ghost
-
-    run_test "Verify search handles patterns gracefully" \
-        "$ARM_BIN search ghost | grep -q 'No results found'"
-fi
 
 # Test 12: Error Handling
 if should_run_group "error"; then
