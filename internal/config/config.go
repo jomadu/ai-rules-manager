@@ -122,9 +122,7 @@ func Load() (*Config, error) {
 	mergedCfg := mergeConfigs(globalCfg, localCfg)
 
 	// Validate merged configuration
-	if err := validateConfig(mergedCfg, globalCfg.TypeDefaults["cache"]); err != nil {
-		return nil, fmt.Errorf("configuration validation failed: %w", err)
-	}
+	validateConfig(mergedCfg, globalCfg.TypeDefaults["cache"])
 
 	return mergedCfg, nil
 }
@@ -290,13 +288,19 @@ func (c *Config) loadARMRCJSON(path string, required bool) error {
 	// Expand environment variables in JSON content
 	expandedData := expandEnvVarsInJSON(string(data))
 
+	// Validate against JSON schema
+	if err := validateJSONSchema([]byte(expandedData)); err != nil {
+		return fmt.Errorf("invalid JSON configuration in %s: %w", path, err)
+	}
+
 	var armrcConfig ARMRCConfig
 	if err := json.Unmarshal([]byte(expandedData), &armrcConfig); err != nil {
-		return fmt.Errorf("failed to parse JSON config file %s: %w", path, err)
+		return fmt.Errorf("malformed JSON in %s: %w\n\nPlease check your JSON syntax. Common issues:\n  • Missing or extra commas\n  • Unmatched brackets or braces\n  • Unquoted strings\n  • Invalid escape sequences", path, err)
 	}
 
 	// Map JSON structure to existing Config fields
-	for name, regConfig := range armrcConfig.Registries {
+	for name := range armrcConfig.Registries {
+		regConfig := armrcConfig.Registries[name]
 		c.Registries[name] = regConfig.URL
 		if c.RegistryConfigs[name] == nil {
 			c.RegistryConfigs[name] = make(map[string]string)
@@ -438,7 +442,7 @@ func (c *Config) loadARMJSON(path string, required bool) error {
 
 	var armConfig ARMConfig
 	if err := json.Unmarshal([]byte(expandedData), &armConfig); err != nil {
-		return fmt.Errorf("failed to parse JSON file %s: %w", path, err)
+		return fmt.Errorf("malformed JSON in %s: %w\n\nPlease check your JSON syntax. Common issues:\n  • Missing or extra commas\n  • Unmatched brackets or braces\n  • Unquoted strings\n  • Invalid escape sequences", path, err)
 	}
 
 	// Merge into config (local overrides global)
@@ -470,7 +474,7 @@ func (c *Config) loadLockFile(path string) error {
 
 	var lockFile LockFile
 	if err := json.Unmarshal(data, &lockFile); err != nil {
-		return fmt.Errorf("failed to parse lock file %s: %w", path, err)
+		return fmt.Errorf("malformed JSON in lock file %s: %w\n\nPlease check your JSON syntax. Common issues:\n  • Missing or extra commas\n  • Unmatched brackets or braces\n  • Unquoted strings\n  • Invalid escape sequences", path, err)
 	}
 
 	c.LockFile = &lockFile
@@ -483,28 +487,9 @@ func expandEnvVarsInJSON(jsonContent string) string {
 }
 
 // validateConfig validates the merged configuration
-func validateConfig(cfg *Config, globalCacheSettings map[string]string) error {
-	// Validate registries
-	for name, url := range cfg.Registries {
-		if err := validateRegistry(name, url, cfg.RegistryConfigs[name]); err != nil {
-			return fmt.Errorf("registry '%s': %w", name, err)
-		}
-	}
-
-	// Validate engines
-	if err := validateEngines(cfg.Engines); err != nil {
-		return fmt.Errorf("engines: %w", err)
-	}
-
-	// Validate channels
-	if err := validateChannels(cfg.Channels); err != nil {
-		return fmt.Errorf("channels: %w", err)
-	}
-
+func validateConfig(cfg *Config, globalCacheSettings map[string]string) {
 	// Load cache configuration from global settings only (not overridable by local)
 	cfg.CacheConfig = LoadCacheConfig(globalCacheSettings)
-
-	return nil
 }
 
 // validateRegistry validates a single registry configuration

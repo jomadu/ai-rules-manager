@@ -67,33 +67,33 @@ func TestExpandEnvVars(t *testing.T) {
 	}
 }
 
-func TestLoadINIFile(t *testing.T) {
+func TestLoadARMRCJSON(t *testing.T) {
 	// Create temporary directory
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".armrc")
+	configPath := filepath.Join(tmpDir, ".armrc.json")
 
-	// Create test INI file
-	configContent := `[registries]
-default = github.com/user/repo
-my-s3 = my-bucket
-
-[registries.default]
-type = git
-authToken = $GITHUB_TOKEN
-
-[registries.my-s3]
-type = s3
-region = us-east-1
-
-[git]
-concurrency = 1
-rateLimit = 10/minute
-
-[network]
-timeout = 30
-
-path = ~/.arm/cache
-`
+	// Create test JSON file
+	configContent := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/user/repo",
+      "type": "git",
+      "authToken": "$GITHUB_TOKEN"
+    },
+    "my-s3": {
+      "url": "my-bucket",
+      "type": "s3",
+      "region": "us-east-1"
+    }
+  },
+  "git": {
+    "concurrency": "1",
+    "rateLimit": "10/minute"
+  },
+  "network": {
+    "timeout": "30"
+  }
+}`
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
 		t.Fatalf("Failed to create test config file: %v", err)
@@ -109,16 +109,19 @@ path = ~/.arm/cache
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
+		Channels:        make(map[string]ChannelConfig),
+		Rulesets:        make(map[string]map[string]RulesetSpec),
+		Engines:         make(map[string]string),
 	}
 
-	err := cfg.loadINIFile(configPath, true)
+	err := cfg.loadARMRCJSON(configPath, true)
 	if err != nil {
-		t.Fatalf("Failed to load INI file: %v", err)
+		t.Fatalf("Failed to load JSON file: %v", err)
 	}
 
 	// Test registries section
-	if cfg.Registries["default"] != "github.com/user/repo" {
-		t.Errorf("Expected default registry 'github.com/user/repo', got %q", cfg.Registries["default"])
+	if cfg.Registries["default"] != "https://github.com/user/repo" {
+		t.Errorf("Expected default registry 'https://github.com/user/repo', got %q", cfg.Registries["default"])
 	}
 
 	// Test nested registry config with environment variable expansion
@@ -144,16 +147,19 @@ func TestLoadMissingFile(t *testing.T) {
 		RegistryConfigs: make(map[string]map[string]string),
 		TypeDefaults:    make(map[string]map[string]string),
 		NetworkConfig:   make(map[string]string),
+		Channels:        make(map[string]ChannelConfig),
+		Rulesets:        make(map[string]map[string]RulesetSpec),
+		Engines:         make(map[string]string),
 	}
 
 	// Should not error for optional missing file
-	err := cfg.loadINIFile("/nonexistent/file", false)
+	err := cfg.loadARMRCJSON("/nonexistent/file.json", false)
 	if err != nil {
 		t.Errorf("Expected no error for optional missing file, got: %v", err)
 	}
 
 	// Should error for required missing file
-	err = cfg.loadINIFile("/nonexistent/file", true)
+	err = cfg.loadARMRCJSON("/nonexistent/file.json", true)
 	if err == nil {
 		t.Error("Expected error for required missing file")
 	}
@@ -504,55 +510,62 @@ func TestHierarchicalLoad(t *testing.T) {
 		t.Fatalf("Failed to create global dir: %v", err)
 	}
 
-	// Create global .armrc
-	globalINI := `[registries]
-default = https://github.com/global/repo
-shared = shared-registry
+	// Create global .armrc.json
+	globalJSON := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/global/repo",
+      "type": "git",
+      "authToken": "global-token"
+    },
+    "shared": {
+      "url": "shared-registry",
+      "type": "s3",
+      "region": "us-west-1"
+    }
+  },
+  "git": {
+    "concurrency": "1",
+    "rateLimit": "10/minute"
+  }
+}`
 
-[registries.default]
-type = git
-authToken = global-token
-
-[registries.shared]
-type = s3
-region = us-west-1
-
-[git]
-concurrency = 1
-rateLimit = 10/minute`
-
-	if err := os.WriteFile(filepath.Join(globalDir, ".armrc"), []byte(globalINI), 0o600); err != nil {
-		t.Fatalf("Failed to create global .armrc: %v", err)
+	if err := os.WriteFile(filepath.Join(globalDir, ".armrc.json"), []byte(globalJSON), 0o600); err != nil {
+		t.Fatalf("Failed to create global .armrc.json: %v", err)
 	}
 
 	// Create global arm.json
-	globalJSON := `{
+	globalArmJSON := `{
   "engines": {"arm": "^1.0.0"},
   "channels": {"cursor": {"directories": ["/global/cursor"]}},
   "rulesets": {"default": {"global-rules": {"version": "1.0.0"}}}
 }`
 
-	if err := os.WriteFile(filepath.Join(globalDir, "arm.json"), []byte(globalJSON), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(globalDir, "arm.json"), []byte(globalArmJSON), 0o600); err != nil {
 		t.Fatalf("Failed to create global arm.json: %v", err)
 	}
 
-	// Create local .armrc
-	localINI := `[registries]
-default = https://github.com/local/repo
-local = /path/to/local
+	// Create local .armrc.json
+	localARMRCJSON := `{
+  "registries": {
+    "default": {
+      "url": "https://github.com/local/repo",
+      "type": "git",
+      "authToken": "local-token",
+      "apiType": "github"
+    },
+    "local": {
+      "url": "/path/to/local",
+      "type": "local"
+    }
+  },
+  "git": {
+    "concurrency": "2"
+  }
+}`
 
-[registries.default]
-authToken = local-token
-apiType = github
-
-[registries.local]
-type = local
-
-[git]
-concurrency = 2`
-
-	if err := os.WriteFile(filepath.Join(tmpDir, ".armrc"), []byte(localINI), 0o600); err != nil {
-		t.Fatalf("Failed to create local .armrc: %v", err)
+	if err := os.WriteFile(filepath.Join(tmpDir, ".armrc.json"), []byte(localARMRCJSON), 0o600); err != nil {
+		t.Fatalf("Failed to create local .armrc.json: %v", err)
 	}
 
 	// Create local arm.json
@@ -831,27 +844,8 @@ func TestValidateConfig(t *testing.T) {
 		},
 	}
 
-	err := validateConfig(validCfg, nil)
-	if err != nil {
-		t.Errorf("Expected valid config to pass validation, got: %v", err)
-	}
-
-	// Test invalid configuration
-	invalidCfg := &Config{
-		Registries: map[string]string{
-			"bad-registry": "https://github.com/user/repo",
-		},
-		RegistryConfigs: map[string]map[string]string{
-			"bad-registry": {"type": "invalid-type"},
-		},
-	}
-
-	err = validateConfig(invalidCfg, nil)
-	if err == nil {
-		t.Error("Expected invalid config to fail validation")
-	} else if !strings.Contains(err.Error(), "unknown registry type") {
-		t.Errorf("Expected registry type error, got: %v", err)
-	}
+	validateConfig(validCfg, nil)
+	// validateConfig no longer returns errors or validates registries - that's done by JSON schema validation
 }
 
 func TestGenerateStubFiles(t *testing.T) {

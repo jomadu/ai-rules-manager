@@ -1,0 +1,236 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/max-dunn/ai-rules-manager/config/armrc.schema.json",
+  "title": "ARM Configuration Schema",
+  "description": "JSON schema for ARM .armrc.json configuration files",
+  "type": "object",
+  "properties": {
+    "registries": {
+      "type": "object",
+      "description": "Registry configurations",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Registry URL or path"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["git", "git-local", "https", "s3", "gitlab", "local"],
+              "description": "Registry type"
+            },
+            "region": {
+              "type": "string",
+              "description": "AWS region (required for S3 registries)"
+            },
+            "authToken": {
+              "type": "string",
+              "description": "Authentication token"
+            },
+            "apiType": {
+              "type": "string",
+              "description": "API type (e.g., github, gitlab)"
+            },
+            "apiVersion": {
+              "type": "string",
+              "description": "API version"
+            },
+            "profile": {
+              "type": "string",
+              "description": "AWS profile (for S3 registries)"
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Path prefix within registry"
+            }
+          },
+          "required": ["url", "type"],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": { "type": { "const": "s3" } }
+              },
+              "then": {
+                "required": ["region"]
+              }
+            },
+            {
+              "if": {
+                "properties": { "type": { "enum": ["git", "https", "gitlab"] } }
+              },
+              "then": {
+                "properties": {
+                  "url": {
+                    "pattern": "^https://"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "channels": {
+      "type": "object",
+      "description": "Channel configurations for rule installation",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "properties": {
+            "directories": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1,
+              "description": "List of directories where rules will be installed"
+            }
+          },
+          "required": ["directories"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cache": {
+      "type": "object",
+      "description": "Cache configuration (global only)",
+      "properties": {
+        "maxSize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum cache size in bytes"
+        },
+        "ttl": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Time-to-live for cache entries in nanoseconds"
+        },
+        "cleanupInterval": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cleanup interval in nanoseconds"
+        }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "description": "Network configuration",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Network timeout in seconds"
+        },
+        "retry.maxAttempts": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Maximum retry attempts"
+        },
+        "retry.backoffMultiplier": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?$",
+          "description": "Retry backoff multiplier"
+        },
+        "retry.maxBackoff": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Maximum retry backoff in seconds"
+        }
+      },
+      "additionalProperties": false
+    },
+    "git": {
+      "type": "object",
+      "description": "Git registry type defaults",
+      "properties": {
+        "concurrency": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Concurrency limit for Git operations"
+        },
+        "rateLimit": {
+          "type": "string",
+          "pattern": "^\\d+/(second|minute|hour)$",
+          "description": "Rate limit for Git operations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "https": {
+      "type": "object",
+      "description": "HTTPS registry type defaults",
+      "properties": {
+        "concurrency": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Concurrency limit for HTTPS operations"
+        },
+        "rateLimit": {
+          "type": "string",
+          "pattern": "^\\d+/(second|minute|hour)$",
+          "description": "Rate limit for HTTPS operations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "s3": {
+      "type": "object",
+      "description": "S3 registry type defaults",
+      "properties": {
+        "concurrency": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Concurrency limit for S3 operations"
+        },
+        "rateLimit": {
+          "type": "string",
+          "pattern": "^\\d+/(second|minute|hour)$",
+          "description": "Rate limit for S3 operations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gitlab": {
+      "type": "object",
+      "description": "GitLab registry type defaults",
+      "properties": {
+        "concurrency": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Concurrency limit for GitLab operations"
+        },
+        "rateLimit": {
+          "type": "string",
+          "pattern": "^\\d+/(second|minute|hour)$",
+          "description": "Rate limit for GitLab operations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "local": {
+      "type": "object",
+      "description": "Local registry type defaults",
+      "properties": {
+        "concurrency": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "Concurrency limit for local operations"
+        },
+        "rateLimit": {
+          "type": "string",
+          "pattern": "^\\d+/(second|minute|hour)$",
+          "description": "Rate limit for local operations"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -36,11 +36,11 @@
   - [x] 1.5 Refactor mergeConfigs to work with JSON-only configuration data
   - [x] 1.6 Update validateConfig to validate JSON configuration structure
 - [ ] 2.0 Implement JSON Schema Validation
-  - [ ] 2.1 Define JSON schema for ARM configuration with all current INI sections
-  - [ ] 2.2 Implement schema validation function with descriptive error messages
-  - [ ] 2.3 Add validation for registry URLs, types, and channel directories per schema
-  - [ ] 2.4 Integrate schema validation into configuration loading process
-  - [ ] 2.5 Add malformed JSON error handling with helpful messages
+  - [x] 2.1 Define JSON schema for ARM configuration with all current INI sections
+  - [x] 2.2 Implement schema validation function with descriptive error messages
+  - [x] 2.3 Add validation for registry URLs, types, and channel directories per schema
+  - [x] 2.4 Integrate schema validation into configuration loading process
+  - [x] 2.5 Add malformed JSON error handling with helpful messages
 - [ ] 3.0 Update CLI Configuration Commands for JSON Format
   - [ ] 3.1 Update getConfigPath to return .armrc.json instead of .armrc
   - [ ] 3.2 Replace loadOrCreateINI with loadOrCreateJSON for all config commands
