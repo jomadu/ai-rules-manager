@@ -23,18 +23,18 @@ type GitRegistry struct {
 }
 
 // NewGitRegistry creates a new Git registry instance
-func NewGitRegistry(config *RegistryConfig, auth *AuthConfig) (*GitRegistry, error) {
-	return NewGitRegistryWithCache(config, auth, nil)
+func NewGitRegistry(config *RegistryConfig) (*GitRegistry, error) {
+	return NewGitRegistryWithCache(config, nil)
 }
 
 // NewGitRegistryWithCache creates a new Git registry instance with cache manager
-func NewGitRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheManager cache.GitRegistryCacheManager) (*GitRegistry, error) {
-	base, err := NewBaseGitRegistry(config, auth)
+func NewGitRegistryWithCache(config *RegistryConfig, cacheManager cache.GitRegistryCacheManager) (*GitRegistry, error) {
+	base, err := NewBaseGitRegistry(config)
 	if err != nil {
 		return nil, err
 	}
 
-	operations := NewRemoteGitOperations(config, auth)
+	operations := NewRemoteGitOperations(config)
 
 	return &GitRegistry{
 		BaseGitRegistry: base,
@@ -45,17 +45,11 @@ func NewGitRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheMana
 
 // GetRulesets returns available rulesets matching the given patterns
 func (g *GitRegistry) GetRulesets(ctx context.Context, patterns []string) ([]RulesetInfo, error) {
-	if g.GetAuth().APIType == "github" {
-		return g.getRulesetsAPI(ctx, patterns)
-	}
 	return g.getRulesetsClone(ctx, patterns)
 }
 
 // GetRuleset returns detailed information about a specific ruleset
 func (g *GitRegistry) GetRuleset(ctx context.Context, name, version string) (*RulesetInfo, error) {
-	if g.GetAuth().APIType == "github" {
-		return g.getRulesetAPI(ctx, name, version)
-	}
 	return g.getRulesetClone(ctx, name, version)
 }
 
@@ -112,15 +106,6 @@ func (g *GitRegistry) Close() error {
 	return nil
 }
 
-// getRulesetsAPI gets rulesets using GitHub API
-func (g *GitRegistry) getRulesetsAPI(ctx context.Context, patterns []string) ([]RulesetInfo, error) {
-	files, err := g.operations.GetFiles(ctx, "latest", patterns)
-	if err != nil {
-		return nil, err
-	}
-	return g.ConvertFilesToRulesets(files, "git"), nil
-}
-
 // getRulesetsClone gets rulesets using git clone
 func (g *GitRegistry) getRulesetsClone(ctx context.Context, patterns []string) ([]RulesetInfo, error) {
 	files, err := g.operations.GetFiles(ctx, "latest", patterns)
@@ -128,15 +113,6 @@ func (g *GitRegistry) getRulesetsClone(ctx context.Context, patterns []string) (
 		return nil, err
 	}
 	return g.ConvertFilesToRulesets(files, "git"), nil
-}
-
-// getRulesetAPI gets a specific ruleset using GitHub API
-func (g *GitRegistry) getRulesetAPI(ctx context.Context, name, version string) (*RulesetInfo, error) {
-	rulesets, err := g.getRulesetsAPI(ctx, []string{name + "*"})
-	if err != nil {
-		return nil, err
-	}
-	return g.FindRulesetByName(rulesets, name, version)
 }
 
 // getRulesetClone gets a specific ruleset using git clone

@@ -12,11 +12,7 @@ func TestNewGitRegistry(t *testing.T) {
 		URL:     "https://github.com/user/repo",
 		Timeout: 30 * time.Second,
 	}
-	auth := &AuthConfig{
-		Token: "test-token",
-	}
-
-	registry, err := NewGitRegistry(config, auth)
+	registry, err := NewGitRegistry(config)
 	if err != nil {
 		t.Fatalf("Failed to create Git registry: %v", err)
 	}
@@ -35,9 +31,7 @@ func TestNewGitRegistryInvalidConfig(t *testing.T) {
 		Type: "git",
 		// Missing URL
 	}
-	auth := &AuthConfig{}
-
-	_, err := NewGitRegistry(config, auth)
+	_, err := NewGitRegistry(config)
 	if err == nil {
 		t.Error("Expected error for invalid config")
 	}
@@ -70,9 +64,7 @@ func TestGitRegistryClose(t *testing.T) {
 		Type: "git",
 		URL:  "https://github.com/owner/repo",
 	}
-	auth := &AuthConfig{}
-
-	registry, err := NewGitRegistry(config, auth)
+	registry, err := NewGitRegistry(config)
 	if err != nil {
 		t.Fatalf("Failed to create Git registry: %v", err)
 	}

@@ -77,8 +77,7 @@ func TestLoadARMRCJSON(t *testing.T) {
   "registries": {
     "default": {
       "url": "https://github.com/user/repo",
-      "type": "git",
-      "authToken": "$GITHUB_TOKEN"
+      "type": "git"
     },
     "my-s3": {
       "url": "my-bucket",
@@ -122,11 +121,6 @@ func TestLoadARMRCJSON(t *testing.T) {
 	// Test registries section
 	if cfg.Registries["default"] != "https://github.com/user/repo" {
 		t.Errorf("Expected default registry 'https://github.com/user/repo', got %q", cfg.Registries["default"])
-	}
-
-	// Test nested registry config with environment variable expansion
-	if cfg.RegistryConfigs["default"]["authToken"] != "test-token" {
-		t.Errorf("Expected authToken 'test-token', got %q", cfg.RegistryConfigs["default"]["authToken"])
 	}
 
 	// Test type defaults
@@ -344,8 +338,7 @@ func TestMergeConfigs(t *testing.T) {
 		},
 		RegistryConfigs: map[string]map[string]string{
 			"default": {
-				"type":      "git",
-				"authToken": "global-token",
+				"type": "git",
 			},
 			"shared": {
 				"type":        "s3",
@@ -386,10 +379,7 @@ func TestMergeConfigs(t *testing.T) {
 			"local":   "local-registry",        // New key
 		},
 		RegistryConfigs: map[string]map[string]string{
-			"default": {
-				"authToken": "local-token", // Override global
-				"apiType":   "github",      // New key
-			},
+			"default": {},
 			"local": {
 				"type": "local", // New registry config
 			},
@@ -445,12 +435,7 @@ func TestMergeConfigs(t *testing.T) {
 	if merged.RegistryConfigs["default"]["type"] != "git" {
 		t.Errorf("Expected global type to be preserved, got %q", merged.RegistryConfigs["default"]["type"])
 	}
-	if merged.RegistryConfigs["default"]["authToken"] != "local-token" {
-		t.Errorf("Expected local override for authToken, got %q", merged.RegistryConfigs["default"]["authToken"])
-	}
-	if merged.RegistryConfigs["default"]["apiType"] != "github" {
-		t.Errorf("Expected local apiType to be added, got %q", merged.RegistryConfigs["default"]["apiType"])
-	}
+
 	if merged.RegistryConfigs["shared"]["concurrency"] != "5" {
 		t.Errorf("Expected global shared config to be preserved, got %q", merged.RegistryConfigs["shared"]["concurrency"])
 	}
@@ -515,8 +500,7 @@ func TestHierarchicalLoad(t *testing.T) {
   "registries": {
     "default": {
       "url": "https://github.com/global/repo",
-      "type": "git",
-      "authToken": "global-token"
+      "type": "git"
     },
     "shared": {
       "url": "shared-registry",
@@ -550,9 +534,7 @@ func TestHierarchicalLoad(t *testing.T) {
   "registries": {
     "default": {
       "url": "https://github.com/local/repo",
-      "type": "git",
-      "authToken": "local-token",
-      "apiType": "github"
+      "type": "git"
     },
     "local": {
       "url": "/path/to/local",
@@ -605,9 +587,7 @@ func TestHierarchicalLoad(t *testing.T) {
 	if cfg.RegistryConfigs["default"]["type"] != "git" {
 		t.Errorf("Expected global type preserved, got %q", cfg.RegistryConfigs["default"]["type"])
 	}
-	if cfg.RegistryConfigs["default"]["authToken"] != "local-token" {
-		t.Errorf("Expected local authToken override, got %q", cfg.RegistryConfigs["default"]["authToken"])
-	}
+
 	if cfg.TypeDefaults["git"]["concurrency"] != "2" {
 		t.Errorf("Expected local git concurrency override, got %q", cfg.TypeDefaults["git"]["concurrency"])
 	}
@@ -870,9 +850,6 @@ func TestGenerateStubFiles(t *testing.T) {
 	if !strings.Contains(armrcStr, `"type": "git"`) {
 		t.Error("Expected .armrc.json to contain git type example")
 	}
-	if !strings.Contains(armrcStr, "$GITHUB_TOKEN") {
-		t.Error("Expected .armrc.json to contain environment variable example")
-	}
 
 	// Verify arm.json content
 	jsonContent, err := os.ReadFile("arm.json")
@@ -975,11 +952,6 @@ func TestGenerateARMRCJSONStub(t *testing.T) {
 		t.Error("Expected network section to be present")
 	}
 
-	// Check for environment variable examples in JSON string
-	contentStr := string(content)
-	if !strings.Contains(contentStr, "$GITHUB_TOKEN") {
-		t.Error("Expected stub to contain environment variable example $GITHUB_TOKEN")
-	}
 }
 
 func TestGenerateARMJSONStub(t *testing.T) {

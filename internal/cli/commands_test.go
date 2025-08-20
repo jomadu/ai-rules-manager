@@ -60,10 +60,7 @@ func TestHandleAddRegistry(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Test adding a Git registry
-	err = handleAddRegistry("my-git", "https://github.com/user/repo", "git", false, map[string]string{
-		"authToken": "test-token",
-		"apiType":   "github",
-	})
+	err = handleAddRegistry("my-git", "https://github.com/user/repo", "git", false, nil)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -79,8 +76,6 @@ func TestHandleAddRegistry(t *testing.T) {
 		`"my-git"`,
 		`"url": "https://github.com/user/repo"`,
 		`"type": "git"`,
-		`"authToken": "test-token"`,
-		`"apiType": "github"`,
 	}
 
 	for _, expected := range expectedContent {
@@ -202,8 +197,7 @@ func TestGetConfigValue(t *testing.T) {
 		},
 		RegistryConfigs: map[string]map[string]string{
 			"default": {
-				"type":      "git",
-				"authToken": "test-token",
+				"type": "git",
 			},
 		},
 		TypeDefaults: map[string]map[string]string{
@@ -223,7 +217,7 @@ func TestGetConfigValue(t *testing.T) {
 	}{
 		{"registries.default", "https://github.com/user/repo"},
 		{"registries.default.type", "git"},
-		{"registries.default.authToken", "test-token"},
+
 		{"git.concurrency", "1"},
 		{"git.rateLimit", "10/minute"},
 		{"network.timeout", "30"},

@@ -25,18 +25,7 @@
               "type": "string",
               "description": "AWS region (required for S3 registries)"
             },
-            "authToken": {
-              "type": "string",
-              "description": "Authentication token"
-            },
-            "apiType": {
-              "type": "string",
-              "description": "API type (e.g., github, gitlab)"
-            },
-            "apiVersion": {
-              "type": "string",
-              "description": "API version"
-            },
+
             "profile": {
               "type": "string",
               "description": "AWS profile (for S3 registries)"

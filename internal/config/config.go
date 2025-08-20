@@ -57,14 +57,11 @@ type ARMRCConfig struct {
 
 // RegistryConfig represents a registry configuration
 type RegistryConfig struct {
-	URL        string `json:"url"`
-	Type       string `json:"type"`
-	Region     string `json:"region,omitempty"`
-	AuthToken  string `json:"authToken,omitempty"`
-	APIType    string `json:"apiType,omitempty"`
-	APIVersion string `json:"apiVersion,omitempty"`
-	Profile    string `json:"profile,omitempty"`
-	Prefix     string `json:"prefix,omitempty"`
+	URL     string `json:"url"`
+	Type    string `json:"type"`
+	Region  string `json:"region,omitempty"`
+	Profile string `json:"profile,omitempty"`
+	Prefix  string `json:"prefix,omitempty"`
 }
 
 // NetworkConfig represents network configuration
@@ -305,15 +302,7 @@ func (c *Config) loadARMRCJSON(path string, required bool) error {
 		if regConfig.Region != "" {
 			c.RegistryConfigs[name]["region"] = regConfig.Region
 		}
-		if regConfig.AuthToken != "" {
-			c.RegistryConfigs[name]["authToken"] = regConfig.AuthToken
-		}
-		if regConfig.APIType != "" {
-			c.RegistryConfigs[name]["apiType"] = regConfig.APIType
-		}
-		if regConfig.APIVersion != "" {
-			c.RegistryConfigs[name]["apiVersion"] = regConfig.APIVersion
-		}
+
 		if regConfig.Profile != "" {
 			c.RegistryConfigs[name]["profile"] = regConfig.Profile
 		}
@@ -549,8 +538,7 @@ func generateARMRCJSONStub(path string) error {
   "registries": {
     "default": {
       "url": "https://github.com/user/repo",
-      "type": "git",
-      "authToken": "$GITHUB_TOKEN"
+      "type": "git"
     }
   },
   "channels": {

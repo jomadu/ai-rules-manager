@@ -2,32 +2,26 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // RemoteGitOperations implements GitOperations for remote Git repositories
 type RemoteGitOperations struct {
 	config *RegistryConfig
-	auth   *AuthConfig
 	client *http.Client
 }
 
 // NewRemoteGitOperations creates a new remote Git operations instance
-func NewRemoteGitOperations(config *RegistryConfig, auth *AuthConfig) *RemoteGitOperations {
+func NewRemoteGitOperations(config *RegistryConfig) *RemoteGitOperations {
 	return &RemoteGitOperations{
 		config: config,
-		auth:   auth,
 		client: &http.Client{Timeout: config.Timeout},
 	}
 }
@@ -35,9 +29,6 @@ func NewRemoteGitOperations(config *RegistryConfig, auth *AuthConfig) *RemoteGit
 // ResolveVersion resolves a version spec to a concrete commit hash
 func (r *RemoteGitOperations) ResolveVersion(ctx context.Context, constraint string) (string, error) {
 	if constraint == "latest" {
-		if r.auth.APIType == "github" {
-			return r.resolveLatestAPI(ctx)
-		}
 		return r.resolveLatestClone(ctx)
 	}
 
@@ -53,286 +44,21 @@ func (r *RemoteGitOperations) ResolveVersion(ctx context.Context, constraint str
 
 	// Check if it looks like a version number - for git registries, resolve to commit hash
 	if IsVersionNumber(constraint) {
-		if r.auth.APIType == "github" {
-			return r.resolveTagToCommitAPI(ctx, constraint)
-		}
 		return r.resolveTagToCommitClone(ctx, constraint)
 	}
 
 	// Assume it's a branch name and resolve to commit hash
-	if r.auth.APIType == "github" {
-		return r.resolveBranchAPI(ctx, constraint)
-	}
 	return r.resolveBranchClone(ctx, constraint)
 }
 
 // ListVersions returns available versions for the repository
 func (r *RemoteGitOperations) ListVersions(ctx context.Context) ([]string, error) {
-	if r.auth.APIType == "github" {
-		return r.getVersionsAPI(ctx)
-	}
 	return r.getVersionsClone(ctx)
 }
 
 // GetFiles retrieves files matching patterns for a specific version
 func (r *RemoteGitOperations) GetFiles(ctx context.Context, version string, patterns []string) (map[string][]byte, error) {
-	if r.auth.APIType == "github" {
-		return r.getFilesAPI(ctx, version, patterns)
-	}
 	return r.getFilesClone(ctx, version, patterns)
-}
-
-// API-based implementations
-
-func (r *RemoteGitOperations) resolveLatestAPI(ctx context.Context) (string, error) {
-	// For "latest", resolve to HEAD of default branch, not latest tag
-	return r.resolveDefaultBranchAPI(ctx)
-}
-
-func (r *RemoteGitOperations) resolveBranchAPI(ctx context.Context, branch string) (string, error) {
-	owner, repo, err := r.parseGitHubURL()
-	if err != nil {
-		return "", &GitError{Operation: "resolve_branch", Repo: r.config.URL, Version: branch, Cause: err}
-	}
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/branches/%s", owner, repo, branch)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_branch", Repo: r.config.URL, Version: branch, Cause: err}
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.auth.Token)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_branch", Repo: r.config.URL, Version: branch, Cause: err}
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", &GitError{Operation: "resolve_branch", Repo: r.config.URL, Version: branch,
-			Cause: fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)}
-	}
-
-	var branchInfo struct {
-		Commit struct {
-			SHA string `json:"sha"`
-		} `json:"commit"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&branchInfo); err != nil {
-		return "", &GitError{Operation: "resolve_branch", Repo: r.config.URL, Version: branch, Cause: err}
-	}
-
-	return branchInfo.Commit.SHA, nil
-}
-
-func (r *RemoteGitOperations) resolveTagToCommitAPI(ctx context.Context, tag string) (string, error) {
-	owner, repo, err := r.parseGitHubURL()
-	if err != nil {
-		return "", &GitError{Operation: "resolve_tag", Repo: r.config.URL, Version: tag, Cause: err}
-	}
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_tag", Repo: r.config.URL, Version: tag, Cause: err}
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.auth.Token)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_tag", Repo: r.config.URL, Version: tag, Cause: err}
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", &GitError{Operation: "resolve_tag", Repo: r.config.URL, Version: tag,
-			Cause: fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)}
-	}
-
-	var tagInfo struct {
-		Object struct {
-			SHA  string `json:"sha"`
-			Type string `json:"type"`
-		} `json:"object"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tagInfo); err != nil {
-		return "", &GitError{Operation: "resolve_tag", Repo: r.config.URL, Version: tag, Cause: err}
-	}
-
-	// If the tag points to a commit directly, return the SHA
-	if tagInfo.Object.Type == "commit" {
-		return tagInfo.Object.SHA, nil
-	}
-
-	// If the tag points to a tag object (annotated tag), we need to resolve it further
-	if tagInfo.Object.Type == "tag" {
-		return r.resolveAnnotatedTagAPI(ctx, tagInfo.Object.SHA)
-	}
-
-	return "", &GitError{Operation: "resolve_tag", Repo: r.config.URL, Version: tag,
-		Cause: fmt.Errorf("unexpected tag object type: %s", tagInfo.Object.Type)}
-}
-
-func (r *RemoteGitOperations) resolveAnnotatedTagAPI(ctx context.Context, tagSHA string) (string, error) {
-	owner, repo, err := r.parseGitHubURL()
-	if err != nil {
-		return "", &GitError{Operation: "resolve_annotated_tag", Repo: r.config.URL, Cause: err}
-	}
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/tags/%s", owner, repo, tagSHA)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_annotated_tag", Repo: r.config.URL, Cause: err}
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.auth.Token)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_annotated_tag", Repo: r.config.URL, Cause: err}
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", &GitError{Operation: "resolve_annotated_tag", Repo: r.config.URL,
-			Cause: fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)}
-	}
-
-	var annotatedTag struct {
-		Object struct {
-			SHA string `json:"sha"`
-		} `json:"object"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&annotatedTag); err != nil {
-		return "", &GitError{Operation: "resolve_annotated_tag", Repo: r.config.URL, Cause: err}
-	}
-
-	return annotatedTag.Object.SHA, nil
-}
-
-func (r *RemoteGitOperations) resolveDefaultBranchAPI(ctx context.Context) (string, error) {
-	owner, repo, err := r.parseGitHubURL()
-	if err != nil {
-		return "", &GitError{Operation: "resolve_default_branch", Repo: r.config.URL, Cause: err}
-	}
-
-	// Get repository info to find default branch
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_default_branch", Repo: r.config.URL, Cause: err}
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.auth.Token)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return "", &GitError{Operation: "resolve_default_branch", Repo: r.config.URL, Cause: err}
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", &GitError{Operation: "resolve_default_branch", Repo: r.config.URL,
-			Cause: fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)}
-	}
-
-	var repoInfo struct {
-		DefaultBranch string `json:"default_branch"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&repoInfo); err != nil {
-		return "", &GitError{Operation: "resolve_default_branch", Repo: r.config.URL, Cause: err}
-	}
-
-	// Now get the commit hash for the default branch
-	return r.resolveBranchAPI(ctx, repoInfo.DefaultBranch)
-}
-
-func (r *RemoteGitOperations) getVersionsAPI(ctx context.Context) ([]string, error) {
-	owner, repo, err := r.parseGitHubURL()
-	if err != nil {
-		return nil, &GitError{Operation: "list_versions", Repo: r.config.URL, Cause: err}
-	}
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", owner, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return nil, &GitError{Operation: "list_versions", Repo: r.config.URL, Cause: err}
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "token "+r.auth.Token)
-	}
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, &GitError{Operation: "list_versions", Repo: r.config.URL, Cause: err}
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, &GitError{Operation: "list_versions", Repo: r.config.URL,
-			Cause: fmt.Errorf("GitHub API error: %s", resp.Status)}
-	}
-
-	var tags []struct {
-		Name string `json:"name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
-		return nil, &GitError{Operation: "list_versions", Repo: r.config.URL, Cause: err}
-	}
-
-	versions := []string{"latest"}
-	for _, tag := range tags {
-		versions = append(versions, tag.Name)
-	}
-
-	return versions, nil
-}
-
-func (r *RemoteGitOperations) getFilesAPI(ctx context.Context, version string, patterns []string) (map[string][]byte, error) {
-	owner, repo, err := r.parseGitHubURL()
-	if err != nil {
-		return nil, &GitError{Operation: "get_files", Repo: r.config.URL, Version: version, Cause: err}
-	}
-
-	// Get file tree
-	fileTree, err := r.getFileTreeAPI(ctx, owner, repo)
-	if err != nil {
-		return nil, &GitError{Operation: "get_files", Repo: r.config.URL, Version: version, Cause: err}
-	}
-
-	// Apply patterns
-	matchingFiles := r.applyPatternsToFileTree(fileTree, patterns)
-	if len(matchingFiles) == 0 {
-		return nil, &GitError{Operation: "get_files", Repo: r.config.URL, Version: version,
-			Cause: fmt.Errorf("no files match patterns: %v", patterns)}
-	}
-
-	// Download files
-	files := make(map[string][]byte)
-	for _, filePath := range matchingFiles {
-		content, err := r.downloadFileContentAPI(ctx, owner, repo, filePath)
-		if err != nil {
-			return nil, &GitError{Operation: "get_files", Repo: r.config.URL, Version: version, Cause: err}
-		}
-		files[filePath] = content
-	}
-
-	return files, nil
 }
 
 // Clone-based implementations
@@ -482,15 +208,6 @@ func (r *RemoteGitOperations) getFilesClone(ctx context.Context, version string,
 
 // Helper methods
 
-func (r *RemoteGitOperations) parseGitHubURL() (owner, repo string, err error) {
-	re := regexp.MustCompile(`https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$`)
-	matches := re.FindStringSubmatch(r.config.URL)
-	if len(matches) != 3 {
-		return "", "", fmt.Errorf("invalid GitHub URL format: %s", r.config.URL)
-	}
-	return matches[1], matches[2], nil
-}
-
 func (r *RemoteGitOperations) getCachedRepository(ctx context.Context) (string, error) {
 	// Create temporary directory for repository operations
 	tempDir, err := os.MkdirTemp("", "arm-git-*")
@@ -592,17 +309,8 @@ func (r *RemoteGitOperations) cloneRepository(ctx context.Context, repoDir strin
 		Progress: nil,
 	}
 
-	if r.auth.Token != "" {
-		cloneOptions.Auth = &githttp.BasicAuth{
-			Username: "token",
-			Password: r.auth.Token,
-		}
-	} else if r.auth.Username != "" && r.auth.Password != "" {
-		cloneOptions.Auth = &githttp.BasicAuth{
-			Username: r.auth.Username,
-			Password: r.auth.Password,
-		}
-	}
+	// Git authentication is handled by git itself (SSH keys, credential helpers, etc.)
+	// No explicit authentication configuration needed
 
 	_, err := git.PlainCloneContext(ctx, repoDir, false, cloneOptions)
 	if err != nil {
@@ -718,108 +426,4 @@ func (r *RemoteGitOperations) resolveSemverPattern(ctx context.Context, versionS
 		return "", &GitError{Operation: "resolve_semver", Repo: r.config.URL, Version: versionSpec, Cause: err}
 	}
 	return resolved, nil
-}
-
-func (r *RemoteGitOperations) getFileTreeAPI(ctx context.Context, owner, repo string) ([]string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/trees/HEAD?recursive=1", owner, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.auth.Token)
-	}
-	if r.auth.APIVersion != "" {
-		req.Header.Set("X-GitHub-Api-Version", r.auth.APIVersion)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("GitHub API request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	var treeResp struct {
-		Tree []struct {
-			Path string `json:"path"`
-			Type string `json:"type"`
-		} `json:"tree"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&treeResp); err != nil {
-		return nil, fmt.Errorf("failed to decode GitHub API response: %w", err)
-	}
-
-	var filePaths []string
-	for _, item := range treeResp.Tree {
-		if item.Type == "blob" && ValidatePath(item.Path) {
-			filePaths = append(filePaths, item.Path)
-		}
-	}
-
-	return filePaths, nil
-}
-
-func (r *RemoteGitOperations) applyPatternsToFileTree(filePaths, patterns []string) []string {
-	var matchingFiles []string
-	for _, filePath := range filePaths {
-		if MatchesAnyPattern(filePath, patterns) {
-			matchingFiles = append(matchingFiles, filePath)
-		}
-	}
-	return matchingFiles
-}
-
-func (r *RemoteGitOperations) downloadFileContentAPI(ctx context.Context, owner, repo, filePath string) ([]byte, error) {
-	if !ValidatePath(filePath) {
-		return nil, fmt.Errorf("invalid file path: %s", filePath)
-	}
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, filePath)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	if r.auth.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.auth.Token)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("GitHub API request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API error %d for %s: %s", resp.StatusCode, filePath, resp.Status)
-	}
-
-	var content struct {
-		DownloadURL string `json:"download_url"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&content); err != nil {
-		return nil, fmt.Errorf("failed to decode GitHub API response: %w", err)
-	}
-
-	// Download the file content
-	fileReq, err := http.NewRequestWithContext(ctx, "GET", content.DownloadURL, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create download request: %w", err)
-	}
-
-	fileResp, err := r.client.Do(fileReq)
-	if err != nil {
-		return nil, fmt.Errorf("file download failed: %w", err)
-	}
-	defer func() { _ = fileResp.Body.Close() }()
-
-	return io.ReadAll(fileResp.Body)
 }

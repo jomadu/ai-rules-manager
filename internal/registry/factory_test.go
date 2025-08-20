@@ -16,8 +16,6 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 		URL:  "https://github.com/test/repo",
 	}
 
-	auth := &AuthConfig{}
-
 	tests := []struct {
 		name         string
 		cacheConfig  *config.CacheConfig
@@ -48,7 +46,6 @@ func TestCreateRegistryWithCacheConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			registry, err := CreateRegistryWithCacheConfig(
 				registryConfig,
-				auth,
 				tt.cacheConfig,
 				tt.registryName,
 			)
@@ -84,11 +81,8 @@ func TestCreateRegistryWithCacheConfigInvalidRegistry(t *testing.T) {
 		URL:  "",
 	}
 
-	auth := &AuthConfig{}
-
 	_, err := CreateRegistryWithCacheConfig(
 		registryConfig,
-		auth,
 		cacheConfig,
 		"test-registry",
 	)

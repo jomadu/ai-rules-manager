@@ -12,29 +12,22 @@ import (
 // BaseGitRegistry contains shared logic for all Git registry types
 type BaseGitRegistry struct {
 	config *RegistryConfig
-	auth   *AuthConfig
 }
 
 // NewBaseGitRegistry creates a new base Git registry instance
-func NewBaseGitRegistry(config *RegistryConfig, auth *AuthConfig) (*BaseGitRegistry, error) {
+func NewBaseGitRegistry(config *RegistryConfig) (*BaseGitRegistry, error) {
 	if err := ValidateRegistryConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return &BaseGitRegistry{
 		config: config,
-		auth:   auth,
 	}, nil
 }
 
 // GetConfig returns the registry configuration
 func (b *BaseGitRegistry) GetConfig() *RegistryConfig {
 	return b.config
-}
-
-// GetAuth returns the authentication configuration
-func (b *BaseGitRegistry) GetAuth() *AuthConfig {
-	return b.auth
 }
 
 // GetName returns the registry name

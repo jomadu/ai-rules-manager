@@ -116,21 +116,11 @@ func newConfigCommand(_ *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			global, _ := cmd.Flags().GetBool("global")
 			registryType, _ := cmd.Flags().GetString("type")
-			authToken, _ := cmd.Flags().GetString("authToken")
-			apiType, _ := cmd.Flags().GetString("apiType")
-			apiVersion, _ := cmd.Flags().GetString("apiVersion")
-
-			return handleAddRegistry(args[0], args[1], registryType, global, map[string]string{
-				"authToken":  authToken,
-				"apiType":    apiType,
-				"apiVersion": apiVersion,
-			})
+			return handleAddRegistry(args[0], args[1], registryType, global, nil)
 		},
 	}
 	addRegistryCmd.Flags().String("type", "", "Registry type (git)")
-	addRegistryCmd.Flags().String("authToken", "", "Authentication token")
-	addRegistryCmd.Flags().String("apiType", "", "API type (for Git registries)")
-	addRegistryCmd.Flags().String("apiVersion", "", "API version")
+
 	_ = addRegistryCmd.MarkFlagRequired("type")
 	addCmd.AddCommand(addRegistryCmd)
 
@@ -429,7 +419,7 @@ func handleConfigList(_ bool) error {
 	return nil
 }
 
-func handleAddRegistry(name, url, registryType string, global bool, options map[string]string) error {
+func handleAddRegistry(name, url, registryType string, global bool, _ map[string]string) error {
 	if registryType == "" {
 		return fmt.Errorf("registry type is required")
 	}
@@ -440,7 +430,7 @@ func handleAddRegistry(name, url, registryType string, global bool, options map[
 		return err
 	}
 
-	return addRegistryToJSON(cfg, path, name, url, registryType, options)
+	return addRegistryToJSON(cfg, path, name, url, registryType, nil)
 }
 
 func handleRemoveRegistry(name string, global bool) error {
@@ -575,21 +565,10 @@ func setJSONConfigValue(cfg *config.ARMRCConfig, path, section, key, value strin
 	return saveARMRCJSON(path, cfg)
 }
 
-func addRegistryToJSON(cfg *config.ARMRCConfig, path, name, url, registryType string, options map[string]string) error {
+func addRegistryToJSON(cfg *config.ARMRCConfig, path, name, url, registryType string, _ map[string]string) error {
 	regConfig := config.RegistryConfig{
 		URL:  url,
 		Type: registryType,
-	}
-
-	// Add optional parameters
-	if authToken := options["authToken"]; authToken != "" {
-		regConfig.AuthToken = authToken
-	}
-	if apiType := options["apiType"]; apiType != "" {
-		regConfig.APIType = apiType
-	}
-	if apiVersion := options["apiVersion"]; apiVersion != "" {
-		regConfig.APIVersion = apiVersion
 	}
 
 	cfg.Registries[name] = regConfig
@@ -1012,16 +991,8 @@ func performSearch(cfg *config.Config, targetRegistries []string, query string, 
 			URL:  cfg.Registries[registryName],
 		}
 
-		// Create auth configuration
-		authConfig := &registry.AuthConfig{}
-		if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
-			authConfig.Token = regConfig["authToken"]
-			authConfig.Region = regConfig["region"]
-			authConfig.Profile = regConfig["profile"]
-		}
-
 		// Create registry instance
-		reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cfg.CacheConfig, registryName)
+		reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, cfg.CacheConfig, registryName)
 		if err != nil {
 			searchErrors[registryName] = fmt.Sprintf("failed to create registry: %v", err)
 			continue
@@ -1595,16 +1566,8 @@ func performGitInstallation(cfg *config.Config, registryName, rulesetName, versi
 		URL:  cfg.Registries[registryName],
 	}
 
-	// Create auth configuration
-	authConfig := &registry.AuthConfig{}
-	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
-		authConfig.Token = regConfig["authToken"]
-		authConfig.Region = regConfig["region"]
-		authConfig.Profile = regConfig["profile"]
-	}
-
 	// Create Git registry instance with cache
-	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cfg.CacheConfig, registryName)
+	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, cfg.CacheConfig, registryName)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
@@ -1688,16 +1651,8 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 		URL:  cfg.Registries[registryName],
 	}
 
-	// Create auth configuration
-	authConfig := &registry.AuthConfig{}
-	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
-		authConfig.Token = regConfig["authToken"]
-		authConfig.Region = regConfig["region"]
-		authConfig.Profile = regConfig["profile"]
-	}
-
 	// Create registry instance with cache
-	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, authConfig, cfg.CacheConfig, registryName)
+	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, cfg.CacheConfig, registryName)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}

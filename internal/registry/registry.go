@@ -3,7 +3,6 @@ package registry
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -64,23 +63,12 @@ type RulesetInfo struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
-// AuthConfig contains authentication configuration
-type AuthConfig struct {
-	Token      string `json:"token"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	Profile    string `json:"profile"`     // For AWS profiles
-	Region     string `json:"region"`      // For AWS regions
-	APIType    string `json:"api_type"`    // For API-specific auth
-	APIVersion string `json:"api_version"` // For API versioning
-}
-
 // RegistryConfig contains registry configuration
 type RegistryConfig struct {
-	Name         string                 `json:"name"`
-	Type         string                 `json:"type"`
-	URL          string                 `json:"url"`
-	Auth         *AuthConfig            `json:"auth,omitempty"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+
 	Concurrency  int                    `json:"concurrency"`
 	RateLimit    string                 `json:"rate_limit"`
 	Timeout      time.Duration          `json:"timeout"`
@@ -99,79 +87,6 @@ type RetryConfig struct {
 	BackoffMultiplier float64       `json:"backoff_multiplier"`
 	MaxBackoff        time.Duration `json:"max_backoff"`
 	RetryableErrors   []string      `json:"retryable_errors"`
-}
-
-// AuthProvider handles authentication for registries
-type AuthProvider interface {
-	// GetCredentials returns credentials for the given registry
-	GetCredentials(registryName string) (*AuthConfig, error)
-
-	// RefreshCredentials refreshes expired credentials
-	RefreshCredentials(registryName string) (*AuthConfig, error)
-}
-
-// DefaultAuthProvider implements common authentication patterns
-type DefaultAuthProvider struct {
-	configs map[string]*AuthConfig
-}
-
-// NewDefaultAuthProvider creates a new default auth provider
-func NewDefaultAuthProvider() *DefaultAuthProvider {
-	return &DefaultAuthProvider{
-		configs: make(map[string]*AuthConfig),
-	}
-}
-
-// SetAuth sets authentication configuration for a registry
-func (p *DefaultAuthProvider) SetAuth(registryName string, auth *AuthConfig) {
-	p.configs[registryName] = auth
-}
-
-// GetCredentials returns credentials for the given registry
-func (p *DefaultAuthProvider) GetCredentials(registryName string) (*AuthConfig, error) {
-	auth, exists := p.configs[registryName]
-	if !exists {
-		return &AuthConfig{}, nil // Return empty auth if not configured
-	}
-
-	// Expand environment variables in auth config
-	expandedAuth := &AuthConfig{
-		Token:      expandEnvVars(auth.Token),
-		Username:   expandEnvVars(auth.Username),
-		Password:   expandEnvVars(auth.Password),
-		Profile:    expandEnvVars(auth.Profile),
-		Region:     expandEnvVars(auth.Region),
-		APIType:    expandEnvVars(auth.APIType),
-		APIVersion: expandEnvVars(auth.APIVersion),
-	}
-
-	return expandedAuth, nil
-}
-
-// RefreshCredentials refreshes expired credentials
-func (p *DefaultAuthProvider) RefreshCredentials(registryName string) (*AuthConfig, error) {
-	// For now, just return the current credentials
-	// This can be extended for OAuth flows, AWS credential refresh, etc.
-	return p.GetCredentials(registryName)
-}
-
-// expandEnvVars expands environment variables in strings
-func expandEnvVars(s string) string {
-	if s == "" {
-		return s
-	}
-
-	// Handle $VAR and ${VAR} patterns
-	if strings.HasPrefix(s, "${") && strings.HasSuffix(s, "}") {
-		varName := s[2 : len(s)-1]
-		return os.Getenv(varName)
-	}
-	if strings.HasPrefix(s, "$") {
-		varName := s[1:]
-		return os.Getenv(varName)
-	}
-
-	return s
 }
 
 // ValidateRegistryConfig validates a registry configuration

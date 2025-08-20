@@ -1,130 +1,10 @@
 package registry
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
 )
-
-func TestDefaultAuthProvider(t *testing.T) {
-	provider := NewDefaultAuthProvider()
-
-	// Test empty credentials
-	auth, err := provider.GetCredentials("nonexistent")
-	if err != nil {
-		t.Errorf("Expected no error for nonexistent registry, got: %v", err)
-	}
-	if auth.Token != "" {
-		t.Error("Expected empty token for nonexistent registry")
-	}
-
-	// Set auth config
-	expectedAuth := &AuthConfig{
-		Token:    "test-token",
-		Username: "test-user",
-		Region:   "us-east-1",
-	}
-	provider.SetAuth("test-registry", expectedAuth)
-
-	// Get auth config
-	auth, err = provider.GetCredentials("test-registry")
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
-	if auth.Token != "test-token" {
-		t.Errorf("Expected token 'test-token', got %q", auth.Token)
-	}
-	if auth.Username != "test-user" {
-		t.Errorf("Expected username 'test-user', got %q", auth.Username)
-	}
-	if auth.Region != "us-east-1" {
-		t.Errorf("Expected region 'us-east-1', got %q", auth.Region)
-	}
-}
-
-func TestAuthProviderEnvironmentVariables(t *testing.T) {
-	provider := NewDefaultAuthProvider()
-
-	// Set environment variables
-	_ = os.Setenv("TEST_TOKEN", "env-token")
-	_ = os.Setenv("TEST_REGION", "us-west-2")
-	defer func() { _ = os.Unsetenv("TEST_TOKEN") }()
-	defer func() { _ = os.Unsetenv("TEST_REGION") }()
-
-	// Set auth config with environment variables
-	authConfig := &AuthConfig{
-		Token:  "$TEST_TOKEN",
-		Region: "${TEST_REGION}",
-	}
-	provider.SetAuth("env-registry", authConfig)
-
-	// Get expanded credentials
-	auth, err := provider.GetCredentials("env-registry")
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
-	if auth.Token != "env-token" {
-		t.Errorf("Expected expanded token 'env-token', got %q", auth.Token)
-	}
-	if auth.Region != "us-west-2" {
-		t.Errorf("Expected expanded region 'us-west-2', got %q", auth.Region)
-	}
-}
-
-func TestExpandEnvVars(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		envVar   string
-		envValue string
-		expected string
-	}{
-		{
-			name:     "no env var",
-			input:    "plain-text",
-			expected: "plain-text",
-		},
-		{
-			name:     "$VAR format",
-			input:    "$TEST_VAR",
-			envVar:   "TEST_VAR",
-			envValue: "test-value",
-			expected: "test-value",
-		},
-		{
-			name:     "${VAR} format",
-			input:    "${TEST_VAR}",
-			envVar:   "TEST_VAR",
-			envValue: "test-value",
-			expected: "test-value",
-		},
-		{
-			name:     "missing env var",
-			input:    "$MISSING_VAR",
-			expected: "",
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.envVar != "" {
-				_ = os.Setenv(tt.envVar, tt.envValue)
-				defer func() { _ = os.Unsetenv(tt.envVar) }()
-			}
-
-			result := expandEnvVars(tt.input)
-			if result != tt.expected {
-				t.Errorf("expandEnvVars(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
 
 func TestValidateRegistryConfig(t *testing.T) {
 	tests := []struct {
@@ -236,28 +116,5 @@ func TestRulesetInfo(t *testing.T) {
 	}
 	if ruleset.Metadata["key"] != "value" {
 		t.Errorf("Expected metadata value 'value', got %q", ruleset.Metadata["key"])
-	}
-}
-
-func TestAuthConfigStructure(t *testing.T) {
-	// Test AuthConfig structure
-	auth := &AuthConfig{
-		Token:      "test-token",
-		Username:   "test-user",
-		Password:   "test-pass",
-		Profile:    "test-profile",
-		Region:     "us-east-1",
-		APIType:    "github",
-		APIVersion: "2022-11-28",
-	}
-
-	if auth.Token != "test-token" {
-		t.Errorf("Expected token 'test-token', got %q", auth.Token)
-	}
-	if auth.Region != "us-east-1" {
-		t.Errorf("Expected region 'us-east-1', got %q", auth.Region)
-	}
-	if auth.APIType != "github" {
-		t.Errorf("Expected API type 'github', got %q", auth.APIType)
 	}
 }

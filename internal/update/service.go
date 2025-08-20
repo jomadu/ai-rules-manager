@@ -137,16 +137,8 @@ func (s *Service) resolveLatestVersion(ctx context.Context, registryName, _, cur
 		URL:  s.config.Registries[registryName],
 	}
 
-	// Create auth configuration
-	authConfig := &registry.AuthConfig{}
-	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil {
-		authConfig.Token = regConfig["authToken"]
-		authConfig.Region = regConfig["region"]
-		authConfig.Profile = regConfig["profile"]
-	}
-
 	// Create registry instance
-	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	reg, err := registry.CreateRegistry(registryConfig)
 	if err != nil {
 		return currentVersion, fmt.Errorf("failed to create registry: %w", err)
 	}
@@ -186,16 +178,8 @@ func (s *Service) performUpdate(ctx context.Context, registryName, name, newVers
 		URL:  s.config.Registries[registryName],
 	}
 
-	// Create auth configuration
-	authConfig := &registry.AuthConfig{}
-	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil {
-		authConfig.Token = regConfig["authToken"]
-		authConfig.Region = regConfig["region"]
-		authConfig.Profile = regConfig["profile"]
-	}
-
 	// Create registry instance
-	reg, err := registry.CreateRegistry(registryConfig, authConfig)
+	reg, err := registry.CreateRegistry(registryConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
