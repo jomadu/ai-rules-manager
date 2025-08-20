@@ -261,9 +261,9 @@ func TestParseRulesetSpec(t *testing.T) {
 		expectedName     string
 		expectedVersion  string
 	}{
-		{"my-rules", "", "my-rules", "latest"},
+		{"my-rules", "", "my-rules", ""},
 		{"my-rules@1.0.0", "", "my-rules", "1.0.0"},
-		{"registry/my-rules", "registry", "my-rules", "latest"},
+		{"registry/my-rules", "registry", "my-rules", ""},
 		{"registry/my-rules@1.0.0", "registry", "my-rules", "1.0.0"},
 	}
 
