@@ -45,6 +45,8 @@ cache/
 
 #### Cache Configuration Structure
 
+example:
+
 ```json
 {
   "version": "1.0",
