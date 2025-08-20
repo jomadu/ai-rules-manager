@@ -18,7 +18,7 @@
             },
             "type": {
               "type": "string",
-              "enum": ["git", "git-local", "https", "s3", "gitlab", "local"],
+              "enum": ["git", "https", "s3", "gitlab", "local"],
               "description": "Registry type"
             },
             "region": {

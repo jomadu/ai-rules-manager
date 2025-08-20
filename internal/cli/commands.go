@@ -127,7 +127,7 @@ func newConfigCommand(_ *config.Config) *cobra.Command {
 			})
 		},
 	}
-	addRegistryCmd.Flags().String("type", "", "Registry type (git or git-local)")
+	addRegistryCmd.Flags().String("type", "", "Registry type (git)")
 	addRegistryCmd.Flags().String("authToken", "", "Authentication token")
 	addRegistryCmd.Flags().String("apiType", "", "API type (for Git registries)")
 	addRegistryCmd.Flags().String("apiVersion", "", "API version")
@@ -432,28 +432,6 @@ func handleConfigList(_ bool) error {
 func handleAddRegistry(name, url, registryType string, global bool, options map[string]string) error {
 	if registryType == "" {
 		return fmt.Errorf("registry type is required")
-	}
-
-	// Validate git-local registry path immediately
-	if registryType == "git-local" {
-		if url == "" {
-			return fmt.Errorf("git-local registry requires a local path")
-		}
-
-		// Resolve and validate the path
-		resolvedPath, err := config.ResolvePath(url)
-		if err != nil {
-			return fmt.Errorf("invalid path for git-local registry: %w", err)
-		}
-
-		// Check if it's a Git repository
-		gitDir := filepath.Join(resolvedPath, ".git")
-		if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-			return fmt.Errorf("path is not a Git repository (no .git directory found): %s", resolvedPath)
-		}
-
-		// Use the resolved path for storage
-		url = resolvedPath
 	}
 
 	path := getConfigPath(".armrc", global)
@@ -762,7 +740,7 @@ func handleInstallRuleset(rulesetSpec string, global, dryRun bool, channels, pat
 	if version == "" {
 		if regConfig, exists := cfg.RegistryConfigs[registry]; exists {
 			switch regConfig["type"] {
-			case "git", "git-local":
+			case "git":
 				version = "main"
 			default:
 				version = "latest"
@@ -1729,7 +1707,7 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 	var resolvedVersion string
 	if regConfig := cfg.RegistryConfigs[registryName]; regConfig != nil {
 		switch regConfig["type"] {
-		case "git", "git-local":
+		case "git":
 			// For Git registries, resolve version to commit hash
 			if gitReg, ok := reg.(*registry.GitRegistry); ok {
 				resolvedCommit, err := gitReg.ResolveVersion(context.Background(), version)

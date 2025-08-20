@@ -25,8 +25,6 @@ func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheRoot
 			return NewGitRegistryWithCache(config, auth, cacheManager)
 		}
 		return NewGitRegistry(config, auth)
-	case "git-local":
-		return NewGitLocalRegistry(config, auth)
 	default:
 		return nil, fmt.Errorf("unsupported registry type: %s", config.Type)
 	}

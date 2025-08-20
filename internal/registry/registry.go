@@ -183,14 +183,13 @@ func ValidateRegistryConfig(config *RegistryConfig) error {
 		return fmt.Errorf("registry type cannot be empty")
 	}
 
-	validTypes := []string{"git", "git-local"}
+	validTypes := []string{"git"}
 	if !contains(validTypes, config.Type) {
 		return fmt.Errorf("unsupported registry type: %s", config.Type)
 	}
 
 	// Type-specific validation
-	switch config.Type {
-	case "git":
+	if config.Type == "git" {
 		if config.URL == "" {
 			return fmt.Errorf("%s registry requires URL", config.Type)
 		}
@@ -201,16 +200,6 @@ func ValidateRegistryConfig(config *RegistryConfig) error {
 			!strings.HasPrefix(config.URL, "file://") &&
 			!strings.HasPrefix(config.URL, "/") {
 			return fmt.Errorf("%s registry URL must use HTTPS, SSH, or local path", config.Type)
-		}
-	case "git-local":
-		if config.URL == "" {
-			return fmt.Errorf("git-local registry requires local path in URL field")
-		}
-		// Validate that it's a local path (not a remote URL)
-		if strings.HasPrefix(config.URL, "https://") ||
-			strings.HasPrefix(config.URL, "git@") ||
-			strings.HasPrefix(config.URL, "ssh://") {
-			return fmt.Errorf("git-local registry URL must be a local file path, not a remote URL")
 		}
 	}
 

@@ -153,32 +153,18 @@ func (s *Service) resolveLatestVersion(ctx context.Context, registryName, _, cur
 	defer func() { _ = reg.Close() }()
 
 	// For Git registries, resolve the version spec
-	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil && (regConfig["type"] == "git" || regConfig["type"] == "git-local") {
-		if regConfig["type"] == "git" {
-			gitReg, ok := reg.(*registry.GitRegistry)
-			if !ok {
-				return currentVersion, fmt.Errorf("expected Git registry but got %T", reg)
-			}
-
-			resolvedVersion, err := gitReg.ResolveVersion(ctx, versionSpec)
-			if err != nil {
-				return currentVersion, fmt.Errorf("failed to resolve version: %w", err)
-			}
-
-			return resolvedVersion, nil
-		} else if regConfig["type"] == "git-local" {
-			gitLocalReg, ok := reg.(*registry.GitLocalRegistry)
-			if !ok {
-				return currentVersion, fmt.Errorf("expected GitLocal registry but got %T", reg)
-			}
-
-			resolvedVersion, err := gitLocalReg.ResolveVersion(ctx, versionSpec)
-			if err != nil {
-				return currentVersion, fmt.Errorf("failed to resolve version: %w", err)
-			}
-
-			return resolvedVersion, nil
+	if regConfig := s.config.RegistryConfigs[registryName]; regConfig != nil && regConfig["type"] == "git" {
+		gitReg, ok := reg.(*registry.GitRegistry)
+		if !ok {
+			return currentVersion, fmt.Errorf("expected Git registry but got %T", reg)
 		}
+
+		resolvedVersion, err := gitReg.ResolveVersion(ctx, versionSpec)
+		if err != nil {
+			return currentVersion, fmt.Errorf("failed to resolve version: %w", err)
+		}
+
+		return resolvedVersion, nil
 	}
 
 	// For other registry types, return current version
@@ -244,21 +230,6 @@ func (s *Service) downloadRuleset(ctx context.Context, reg registry.Registry, na
 		}
 
 		result, err := gitReg.DownloadRulesetWithResult(ctx, name, version, tempDir, patterns)
-		if err != nil {
-			return nil, err
-		}
-
-		return result.Files, nil
-	}
-
-	// For Git-local registries, use structured download
-	if gitLocalReg, ok := reg.(*registry.GitLocalRegistry); ok {
-		tempDir, err := createTempDir()
-		if err != nil {
-			return nil, err
-		}
-
-		result, err := gitLocalReg.DownloadRulesetWithResult(ctx, name, version, tempDir, patterns)
 		if err != nil {
 			return nil, err
 		}

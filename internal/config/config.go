@@ -456,23 +456,18 @@ func validateRegistry(name, url string, config map[string]string) error {
 	}
 
 	// Validate registry type
-	validTypes := []string{"git", "git-local"}
+	validTypes := []string{"git"}
 	if !contains(validTypes, registryType) {
 		return fmt.Errorf("unknown registry type '%s'. Supported types: %s", registryType, strings.Join(validTypes, ", "))
 	}
 
 	// Type-specific validation
-	switch registryType {
-	case "git":
+	if registryType == "git" {
 		if url == "" {
 			return fmt.Errorf("missing registry URL for Git registry")
 		}
 		if !strings.HasPrefix(url, "https://") {
 			return fmt.Errorf("Git registry URL must use HTTPS protocol")
-		}
-	case "git-local":
-		if url == "" {
-			return fmt.Errorf("missing registry path for Git-Local registry")
 		}
 	}
 

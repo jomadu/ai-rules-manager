@@ -52,7 +52,7 @@ arm outdated
 | Type | Example | Use Case |
 |------|---------|----------|
 | **Git** | `github.com/user/repo` | Public/private Git repositories |
-| **Git-Local** | `/path/to/local/repo` | Local Git repositories |
+
 
 ## Testing
 
