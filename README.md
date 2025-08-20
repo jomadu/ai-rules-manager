@@ -39,7 +39,7 @@ arm outdated
 
 ## Features
 
-- **Multi-Registry Support** - Git, S3, GitLab, HTTPS, and Local registries
+- **Git Registry Support** - Public/private Git repositories and local Git repositories
 - **Semantic Versioning** - Version constraints with `^`, `~`, `>=` operators
 - **Content-Based Caching** - Intelligent caching with configurable TTL and size limits
 - **Team Synchronization** - Share standardized rules across development teams
@@ -51,11 +51,8 @@ arm outdated
 
 | Type | Example | Use Case |
 |------|---------|----------|
-| **Git** | `github.com/user/repo` | Public/private repositories |
-| **S3** | `my-bucket` | AWS-hosted rulesets |
-| **GitLab** | `gitlab.com/projects/123` | GitLab Package Registry |
-| **HTTPS** | `registry.example.com` | Custom HTTP servers |
-| **Local** | `/path/to/rules` | Development and testing |
+| **Git** | `github.com/user/repo` | Public/private Git repositories |
+| **Git-Local** | `/path/to/local/repo` | Local Git repositories |
 
 ## Testing
 

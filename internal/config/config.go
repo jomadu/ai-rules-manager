@@ -53,10 +53,6 @@ type ARMRCConfig struct {
 	Cache      *CacheConfig              `json:"cache,omitempty"`
 	Network    *NetworkConfig            `json:"network,omitempty"`
 	Git        *TypeConfig               `json:"git,omitempty"`
-	HTTPS      *TypeConfig               `json:"https,omitempty"`
-	S3         *TypeConfig               `json:"s3,omitempty"`
-	Gitlab     *TypeConfig               `json:"gitlab,omitempty"`
-	Local      *TypeConfig               `json:"local,omitempty"`
 }
 
 // RegistryConfig represents a registry configuration
@@ -343,50 +339,6 @@ func (c *Config) loadARMRCJSON(path string, required bool) error {
 			c.TypeDefaults["git"]["rateLimit"] = armrcConfig.Git.RateLimit
 		}
 	}
-	if armrcConfig.HTTPS != nil {
-		if c.TypeDefaults["https"] == nil {
-			c.TypeDefaults["https"] = make(map[string]string)
-		}
-		if armrcConfig.HTTPS.Concurrency != "" {
-			c.TypeDefaults["https"]["concurrency"] = armrcConfig.HTTPS.Concurrency
-		}
-		if armrcConfig.HTTPS.RateLimit != "" {
-			c.TypeDefaults["https"]["rateLimit"] = armrcConfig.HTTPS.RateLimit
-		}
-	}
-	if armrcConfig.S3 != nil {
-		if c.TypeDefaults["s3"] == nil {
-			c.TypeDefaults["s3"] = make(map[string]string)
-		}
-		if armrcConfig.S3.Concurrency != "" {
-			c.TypeDefaults["s3"]["concurrency"] = armrcConfig.S3.Concurrency
-		}
-		if armrcConfig.S3.RateLimit != "" {
-			c.TypeDefaults["s3"]["rateLimit"] = armrcConfig.S3.RateLimit
-		}
-	}
-	if armrcConfig.Gitlab != nil {
-		if c.TypeDefaults["gitlab"] == nil {
-			c.TypeDefaults["gitlab"] = make(map[string]string)
-		}
-		if armrcConfig.Gitlab.Concurrency != "" {
-			c.TypeDefaults["gitlab"]["concurrency"] = armrcConfig.Gitlab.Concurrency
-		}
-		if armrcConfig.Gitlab.RateLimit != "" {
-			c.TypeDefaults["gitlab"]["rateLimit"] = armrcConfig.Gitlab.RateLimit
-		}
-	}
-	if armrcConfig.Local != nil {
-		if c.TypeDefaults["local"] == nil {
-			c.TypeDefaults["local"] = make(map[string]string)
-		}
-		if armrcConfig.Local.Concurrency != "" {
-			c.TypeDefaults["local"]["concurrency"] = armrcConfig.Local.Concurrency
-		}
-		if armrcConfig.Local.RateLimit != "" {
-			c.TypeDefaults["local"]["rateLimit"] = armrcConfig.Local.RateLimit
-		}
-	}
 
 	// Map network config
 	if armrcConfig.Network != nil {
@@ -504,41 +456,19 @@ func validateRegistry(name, url string, config map[string]string) error {
 	}
 
 	// Validate registry type
-	validTypes := []string{"git", "git-local", "https", "s3", "gitlab", "local"}
+	validTypes := []string{"git", "git-local"}
 	if !contains(validTypes, registryType) {
 		return fmt.Errorf("unknown registry type '%s'. Supported types: %s", registryType, strings.Join(validTypes, ", "))
 	}
 
 	// Type-specific validation
 	switch registryType {
-	case "s3":
-		if _, exists := config["region"]; !exists {
-			return fmt.Errorf("missing required field 'region' for S3 registry")
-		}
 	case "git":
 		if url == "" {
 			return fmt.Errorf("missing registry URL for Git registry")
 		}
 		if !strings.HasPrefix(url, "https://") {
 			return fmt.Errorf("Git registry URL must use HTTPS protocol")
-		}
-	case "https":
-		if url == "" {
-			return fmt.Errorf("missing registry URL for HTTPS registry")
-		}
-		if !strings.HasPrefix(url, "https://") {
-			return fmt.Errorf("HTTPS registry URL must use HTTPS protocol")
-		}
-	case "gitlab":
-		if url == "" {
-			return fmt.Errorf("missing registry URL for GitLab registry")
-		}
-		if !strings.HasPrefix(url, "https://") {
-			return fmt.Errorf("GitLab registry URL must use HTTPS protocol")
-		}
-	case "local":
-		if url == "" {
-			return fmt.Errorf("missing registry path for Local registry")
 		}
 	case "git-local":
 		if url == "" {
@@ -622,20 +552,10 @@ func GenerateStubFiles(global bool) error {
 func generateARMRCJSONStub(path string) error {
 	stubContent := `{
   "registries": {
-    "my-git-registry": {
+    "default": {
       "url": "https://github.com/user/repo",
       "type": "git",
       "authToken": "$GITHUB_TOKEN"
-    },
-    "my-s3-registry": {
-      "url": "my-bucket",
-      "type": "s3",
-      "region": "us-east-1"
-    },
-    "my-gitlab-registry": {
-      "url": "https://gitlab.com/user/repo",
-      "type": "gitlab",
-      "authToken": "$GITLAB_TOKEN"
     }
   },
   "channels": {
@@ -649,21 +569,6 @@ func generateARMRCJSONStub(path string) error {
   "git": {
     "concurrency": "1",
     "rateLimit": "10/minute"
-  },
-  "https": {
-    "concurrency": "5",
-    "rateLimit": "50/minute"
-  },
-  "s3": {
-    "concurrency": "10",
-    "rateLimit": "100/minute"
-  },
-  "gitlab": {
-    "concurrency": "2",
-    "rateLimit": "20/minute"
-  },
-  "local": {
-    "concurrency": "1"
   },
   "network": {
     "timeout": "30",

@@ -117,27 +117,18 @@ func newConfigCommand(_ *config.Config) *cobra.Command {
 			global, _ := cmd.Flags().GetBool("global")
 			registryType, _ := cmd.Flags().GetString("type")
 			authToken, _ := cmd.Flags().GetString("authToken")
-			region, _ := cmd.Flags().GetString("region")
-			profile, _ := cmd.Flags().GetString("profile")
-			prefix, _ := cmd.Flags().GetString("prefix")
 			apiType, _ := cmd.Flags().GetString("apiType")
 			apiVersion, _ := cmd.Flags().GetString("apiVersion")
 
 			return handleAddRegistry(args[0], args[1], registryType, global, map[string]string{
 				"authToken":  authToken,
-				"region":     region,
-				"profile":    profile,
-				"prefix":     prefix,
 				"apiType":    apiType,
 				"apiVersion": apiVersion,
 			})
 		},
 	}
-	addRegistryCmd.Flags().String("type", "", "Registry type (required)")
+	addRegistryCmd.Flags().String("type", "", "Registry type (git or git-local)")
 	addRegistryCmd.Flags().String("authToken", "", "Authentication token")
-	addRegistryCmd.Flags().String("region", "", "AWS region (for S3 registries)")
-	addRegistryCmd.Flags().String("profile", "", "AWS profile (for S3 registries)")
-	addRegistryCmd.Flags().String("prefix", "", "Path prefix")
 	addRegistryCmd.Flags().String("apiType", "", "API type (for Git registries)")
 	addRegistryCmd.Flags().String("apiVersion", "", "API version")
 	_ = addRegistryCmd.MarkFlagRequired("type")
@@ -584,30 +575,6 @@ func setJSONConfigValue(cfg *config.ARMRCConfig, path, section, key, value strin
 		default:
 			return fmt.Errorf("unknown git config key: %s", key)
 		}
-	case "https":
-		if cfg.HTTPS == nil {
-			cfg.HTTPS = &config.TypeConfig{}
-		}
-		switch key {
-		case "concurrency":
-			cfg.HTTPS.Concurrency = value
-		case "rateLimit":
-			cfg.HTTPS.RateLimit = value
-		default:
-			return fmt.Errorf("unknown https config key: %s", key)
-		}
-	case "s3":
-		if cfg.S3 == nil {
-			cfg.S3 = &config.TypeConfig{}
-		}
-		switch key {
-		case "concurrency":
-			cfg.S3.Concurrency = value
-		case "rateLimit":
-			cfg.S3.RateLimit = value
-		default:
-			return fmt.Errorf("unknown s3 config key: %s", key)
-		}
 	case "network":
 		if cfg.Network == nil {
 			cfg.Network = &config.NetworkConfig{}
@@ -639,15 +606,6 @@ func addRegistryToJSON(cfg *config.ARMRCConfig, path, name, url, registryType st
 	// Add optional parameters
 	if authToken := options["authToken"]; authToken != "" {
 		regConfig.AuthToken = authToken
-	}
-	if region := options["region"]; region != "" {
-		regConfig.Region = region
-	}
-	if profile := options["profile"]; profile != "" {
-		regConfig.Profile = profile
-	}
-	if prefix := options["prefix"]; prefix != "" {
-		regConfig.Prefix = prefix
 	}
 	if apiType := options["apiType"]; apiType != "" {
 		regConfig.APIType = apiType

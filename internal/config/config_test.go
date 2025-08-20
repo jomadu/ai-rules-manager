@@ -635,13 +635,7 @@ func TestValidateRegistry(t *testing.T) {
 			config:       map[string]string{"type": "git"},
 			expectError:  false,
 		},
-		{
-			name:         "valid s3 registry",
-			registryName: "my-s3",
-			url:          "my-bucket",
-			config:       map[string]string{"type": "s3", "region": "us-east-1"},
-			expectError:  false,
-		},
+
 		{
 			name:          "missing config section",
 			registryName:  "missing",
@@ -666,14 +660,7 @@ func TestValidateRegistry(t *testing.T) {
 			expectError:   true,
 			errorContains: "unknown registry type 'ftp'",
 		},
-		{
-			name:          "s3 missing region",
-			registryName:  "s3-no-region",
-			url:           "my-bucket",
-			config:        map[string]string{"type": "s3"},
-			expectError:   true,
-			errorContains: "missing required field 'region'",
-		},
+
 		{
 			name:          "git missing url",
 			registryName:  "git-no-url",
@@ -990,15 +977,8 @@ func TestGenerateARMRCJSONStub(t *testing.T) {
 
 	// Check for environment variable examples in JSON string
 	contentStr := string(content)
-	envVarExamples := []string{
-		"$GITHUB_TOKEN",
-		"$GITLAB_TOKEN",
-	}
-
-	for _, envVar := range envVarExamples {
-		if !strings.Contains(contentStr, envVar) {
-			t.Errorf("Expected stub to contain environment variable example %s", envVar)
-		}
+	if !strings.Contains(contentStr, "$GITHUB_TOKEN") {
+		t.Error("Expected stub to contain environment variable example $GITHUB_TOKEN")
 	}
 }
 

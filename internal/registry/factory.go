@@ -19,8 +19,6 @@ func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheRoot
 	}
 
 	switch config.Type {
-	case "local":
-		return NewLocalRegistry(config)
 	case "git":
 		if cacheRoot != "" {
 			cacheManager := cache.NewGitRegistryCacheManager(cacheRoot)
@@ -29,12 +27,6 @@ func CreateRegistryWithCache(config *RegistryConfig, auth *AuthConfig, cacheRoot
 		return NewGitRegistry(config, auth)
 	case "git-local":
 		return NewGitLocalRegistry(config, auth)
-	case "https":
-		return NewHTTPSRegistry(config, auth)
-	case "s3":
-		return NewS3Registry(config, auth)
-	case "gitlab":
-		return NewGitLabRegistry(config, auth)
 	default:
 		return nil, fmt.Errorf("unsupported registry type: %s", config.Type)
 	}

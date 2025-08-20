@@ -142,25 +142,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 			},
 			expectError: false,
 		},
-		{
-			name: "valid s3 registry",
-			config: &RegistryConfig{
-				Name: "my-s3",
-				Type: "s3",
-				URL:  "my-bucket",
-				Auth: &AuthConfig{Region: "us-east-1"},
-			},
-			expectError: false,
-		},
-		{
-			name: "valid local registry",
-			config: &RegistryConfig{
-				Name: "my-local",
-				Type: "local",
-				URL:  "/path/to/registry",
-			},
-			expectError: false,
-		},
+
 		{
 			name: "empty name",
 			config: &RegistryConfig{
@@ -208,25 +190,7 @@ func TestValidateRegistryConfig(t *testing.T) {
 			expectError:   true,
 			errorContains: "must use HTTPS",
 		},
-		{
-			name: "s3 without region",
-			config: &RegistryConfig{
-				Name: "test",
-				Type: "s3",
-				URL:  "my-bucket",
-			},
-			expectError:   true,
-			errorContains: "requires region",
-		},
-		{
-			name: "local without path",
-			config: &RegistryConfig{
-				Name: "test",
-				Type: "local",
-			},
-			expectError:   true,
-			errorContains: "requires path",
-		},
+
 		{
 			name: "valid git-local registry",
 			config: &RegistryConfig{
