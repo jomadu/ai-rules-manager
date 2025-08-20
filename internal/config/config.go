@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/max-dunn/ai-rules-manager/internal/version"
-	"gopkg.in/ini.v1"
 )
 
 // Config represents the ARM configuration
@@ -46,6 +46,45 @@ type ARMConfig struct {
 	Rulesets map[string]map[string]RulesetSpec `json:"rulesets"`
 }
 
+// ARMRCConfig represents the .armrc.json file structure
+type ARMRCConfig struct {
+	Registries map[string]RegistryConfig `json:"registries"`
+	Channels   map[string]ChannelConfig  `json:"channels"`
+	Cache      *CacheConfig              `json:"cache,omitempty"`
+	Network    *NetworkConfig            `json:"network,omitempty"`
+	Git        *TypeConfig               `json:"git,omitempty"`
+	HTTPS      *TypeConfig               `json:"https,omitempty"`
+	S3         *TypeConfig               `json:"s3,omitempty"`
+	Gitlab     *TypeConfig               `json:"gitlab,omitempty"`
+	Local      *TypeConfig               `json:"local,omitempty"`
+}
+
+// RegistryConfig represents a registry configuration
+type RegistryConfig struct {
+	URL        string `json:"url"`
+	Type       string `json:"type"`
+	Region     string `json:"region,omitempty"`
+	AuthToken  string `json:"authToken,omitempty"`
+	APIType    string `json:"apiType,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
+	Profile    string `json:"profile,omitempty"`
+	Prefix     string `json:"prefix,omitempty"`
+}
+
+// NetworkConfig represents network configuration
+type NetworkConfig struct {
+	Timeout                string `json:"timeout,omitempty"`
+	RetryMaxAttempts       string `json:"retry.maxAttempts,omitempty"`
+	RetryBackoffMultiplier string `json:"retry.backoffMultiplier,omitempty"`
+	RetryMaxBackoff        string `json:"retry.maxBackoff,omitempty"`
+}
+
+// TypeConfig represents registry type defaults
+type TypeConfig struct {
+	Concurrency string `json:"concurrency,omitempty"`
+	RateLimit   string `json:"rateLimit,omitempty"`
+}
+
 // LockFile represents the arm.lock file structure
 type LockFile struct {
 	Rulesets map[string]map[string]LockedRuleset `json:"rulesets"`
@@ -65,7 +104,7 @@ type LockedRuleset struct {
 func Load() (*Config, error) {
 	// Load global configuration first
 	globalCfg, err := loadConfigFromPaths(
-		filepath.Join(os.Getenv("HOME"), ".arm", ".armrc"),
+		filepath.Join(os.Getenv("HOME"), ".arm", ".armrc.json"),
 		filepath.Join(os.Getenv("HOME"), ".arm", "arm.json"),
 		"arm.lock", // Lock file is always local
 	)
@@ -74,7 +113,7 @@ func Load() (*Config, error) {
 	}
 
 	// Load local configuration
-	localCfg, err := loadConfigFromPaths(".armrc", "arm.json", "arm.lock")
+	localCfg, err := loadConfigFromPaths(".armrc.json", "arm.json", "arm.lock")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load local config: %w", err)
 	}
@@ -91,7 +130,7 @@ func Load() (*Config, error) {
 }
 
 // loadConfigFromPaths loads configuration from specified file paths
-func loadConfigFromPaths(iniPath, jsonPath, lockPath string) (*Config, error) {
+func loadConfigFromPaths(armrcJSONPath, jsonPath, lockPath string) (*Config, error) {
 	cfg := &Config{
 		Registries:      make(map[string]string),
 		RegistryConfigs: make(map[string]map[string]string),
@@ -102,12 +141,12 @@ func loadConfigFromPaths(iniPath, jsonPath, lockPath string) (*Config, error) {
 		Engines:         make(map[string]string),
 	}
 
-	// Load INI file
-	if err := cfg.loadINIFile(iniPath, false); err != nil {
-		return nil, fmt.Errorf("failed to load INI file %s: %w", iniPath, err)
+	// Load .armrc.json file
+	if err := cfg.loadARMRCJSON(armrcJSONPath, false); err != nil {
+		return nil, fmt.Errorf("failed to load JSON config file %s: %w", armrcJSONPath, err)
 	}
 
-	// Load JSON file
+	// Load arm.json file
 	if err := cfg.loadARMJSON(jsonPath, false); err != nil {
 		return nil, fmt.Errorf("failed to load JSON file %s: %w", jsonPath, err)
 	}
@@ -120,113 +159,6 @@ func loadConfigFromPaths(iniPath, jsonPath, lockPath string) (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// loadINIFile loads and parses an INI file with environment variable expansion
-func (c *Config) loadINIFile(path string, required bool) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if required {
-			return fmt.Errorf("required config file not found: %s", path)
-		}
-		return nil // Optional file doesn't exist
-	}
-
-	cfg, err := ini.Load(path)
-	if err != nil {
-		return fmt.Errorf("failed to parse INI file %s: %w", path, err)
-	}
-
-	// Process sections
-	for _, section := range cfg.Sections() {
-		sectionName := section.Name()
-		if sectionName == "DEFAULT" {
-			continue
-		}
-
-		if err := c.processSection(section); err != nil {
-			return fmt.Errorf("failed to process section [%s]: %w", sectionName, err)
-		}
-	}
-
-	return nil
-}
-
-// processSection processes a single INI section
-func (c *Config) processSection(section *ini.Section) error {
-	sectionName := section.Name()
-
-	// Handle nested sections like [registries.my-registry] and [channels.name]
-	if strings.Contains(sectionName, ".") {
-		parts := strings.SplitN(sectionName, ".", 2)
-		if parts[0] == "registries" {
-			return c.processRegistryConfig(parts[1], section)
-		}
-		if parts[0] == "channels" {
-			return c.processChannelConfig(parts[1], section)
-		}
-
-		return fmt.Errorf("unsupported nested section: %s", sectionName)
-	}
-
-	// Handle top-level sections
-	switch sectionName {
-	case "registries":
-		return c.processRegistries(section)
-	case "git", "https", "s3", "gitlab", "local", "cache":
-		return c.processTypeDefaults(sectionName, section)
-	case "network":
-		return c.processNetworkConfig(section)
-	default:
-		// Handle channels.* sections
-		if strings.HasPrefix(sectionName, "channels.") {
-			return c.processChannelConfig(strings.TrimPrefix(sectionName, "channels."), section)
-		}
-		return fmt.Errorf("unknown section: %s", sectionName)
-	}
-}
-
-// processRegistries processes the [registries] section
-func (c *Config) processRegistries(section *ini.Section) error {
-	for _, key := range section.Keys() {
-		value := expandEnvVars(key.String())
-		c.Registries[key.Name()] = value
-	}
-	return nil
-}
-
-// processRegistryConfig processes [registries.name] sections
-func (c *Config) processRegistryConfig(name string, section *ini.Section) error {
-	if c.RegistryConfigs[name] == nil {
-		c.RegistryConfigs[name] = make(map[string]string)
-	}
-
-	for _, key := range section.Keys() {
-		value := expandEnvVars(key.String())
-		c.RegistryConfigs[name][key.Name()] = value
-	}
-	return nil
-}
-
-// processTypeDefaults processes registry type default sections
-func (c *Config) processTypeDefaults(typeName string, section *ini.Section) error {
-	if c.TypeDefaults[typeName] == nil {
-		c.TypeDefaults[typeName] = make(map[string]string)
-	}
-
-	for _, key := range section.Keys() {
-		value := expandEnvVars(key.String())
-		c.TypeDefaults[typeName][key.Name()] = value
-	}
-	return nil
-}
-
-// processNetworkConfig processes the [network] section
-func (c *Config) processNetworkConfig(section *ini.Section) error {
-	for _, key := range section.Keys() {
-		value := expandEnvVars(key.String())
-		c.NetworkConfig[key.Name()] = value
-	}
-	return nil
 }
 
 // mergeConfigs merges two configurations with local taking precedence at key level
@@ -256,7 +188,7 @@ func mergeConfigs(global, local *Config) *Config {
 	// Merge engines (key-level merge)
 	mergeStringMaps(merged.Engines, global.Engines, local.Engines)
 
-	// Merge channels (key-level merge) - from INI only
+	// Merge channels (key-level merge)
 	mergeChannelMaps(merged.Channels, global.Channels, local.Channels)
 
 	// Merge rulesets (nested map merge)
@@ -339,6 +271,152 @@ func mergeRulesetMaps(dest, global, local map[string]map[string]RulesetSpec) {
 			dest[k][kk] = vv
 		}
 	}
+}
+
+// loadARMRCJSON loads and parses an .armrc.json file
+func (c *Config) loadARMRCJSON(path string, required bool) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if required {
+			return fmt.Errorf("required JSON config file not found: %s", path)
+		}
+		return nil // Optional file doesn't exist
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read JSON config file %s: %w", path, err)
+	}
+
+	// Expand environment variables in JSON content
+	expandedData := expandEnvVarsInJSON(string(data))
+
+	var armrcConfig ARMRCConfig
+	if err := json.Unmarshal([]byte(expandedData), &armrcConfig); err != nil {
+		return fmt.Errorf("failed to parse JSON config file %s: %w", path, err)
+	}
+
+	// Map JSON structure to existing Config fields
+	for name, regConfig := range armrcConfig.Registries {
+		c.Registries[name] = regConfig.URL
+		if c.RegistryConfigs[name] == nil {
+			c.RegistryConfigs[name] = make(map[string]string)
+		}
+		c.RegistryConfigs[name]["type"] = regConfig.Type
+		if regConfig.Region != "" {
+			c.RegistryConfigs[name]["region"] = regConfig.Region
+		}
+		if regConfig.AuthToken != "" {
+			c.RegistryConfigs[name]["authToken"] = regConfig.AuthToken
+		}
+		if regConfig.APIType != "" {
+			c.RegistryConfigs[name]["apiType"] = regConfig.APIType
+		}
+		if regConfig.APIVersion != "" {
+			c.RegistryConfigs[name]["apiVersion"] = regConfig.APIVersion
+		}
+		if regConfig.Profile != "" {
+			c.RegistryConfigs[name]["profile"] = regConfig.Profile
+		}
+		if regConfig.Prefix != "" {
+			c.RegistryConfigs[name]["prefix"] = regConfig.Prefix
+		}
+	}
+
+	// Map channels
+	for name, channelConfig := range armrcConfig.Channels {
+		c.Channels[name] = channelConfig
+	}
+
+	// Map type defaults
+	if armrcConfig.Git != nil {
+		if c.TypeDefaults["git"] == nil {
+			c.TypeDefaults["git"] = make(map[string]string)
+		}
+		if armrcConfig.Git.Concurrency != "" {
+			c.TypeDefaults["git"]["concurrency"] = armrcConfig.Git.Concurrency
+		}
+		if armrcConfig.Git.RateLimit != "" {
+			c.TypeDefaults["git"]["rateLimit"] = armrcConfig.Git.RateLimit
+		}
+	}
+	if armrcConfig.HTTPS != nil {
+		if c.TypeDefaults["https"] == nil {
+			c.TypeDefaults["https"] = make(map[string]string)
+		}
+		if armrcConfig.HTTPS.Concurrency != "" {
+			c.TypeDefaults["https"]["concurrency"] = armrcConfig.HTTPS.Concurrency
+		}
+		if armrcConfig.HTTPS.RateLimit != "" {
+			c.TypeDefaults["https"]["rateLimit"] = armrcConfig.HTTPS.RateLimit
+		}
+	}
+	if armrcConfig.S3 != nil {
+		if c.TypeDefaults["s3"] == nil {
+			c.TypeDefaults["s3"] = make(map[string]string)
+		}
+		if armrcConfig.S3.Concurrency != "" {
+			c.TypeDefaults["s3"]["concurrency"] = armrcConfig.S3.Concurrency
+		}
+		if armrcConfig.S3.RateLimit != "" {
+			c.TypeDefaults["s3"]["rateLimit"] = armrcConfig.S3.RateLimit
+		}
+	}
+	if armrcConfig.Gitlab != nil {
+		if c.TypeDefaults["gitlab"] == nil {
+			c.TypeDefaults["gitlab"] = make(map[string]string)
+		}
+		if armrcConfig.Gitlab.Concurrency != "" {
+			c.TypeDefaults["gitlab"]["concurrency"] = armrcConfig.Gitlab.Concurrency
+		}
+		if armrcConfig.Gitlab.RateLimit != "" {
+			c.TypeDefaults["gitlab"]["rateLimit"] = armrcConfig.Gitlab.RateLimit
+		}
+	}
+	if armrcConfig.Local != nil {
+		if c.TypeDefaults["local"] == nil {
+			c.TypeDefaults["local"] = make(map[string]string)
+		}
+		if armrcConfig.Local.Concurrency != "" {
+			c.TypeDefaults["local"]["concurrency"] = armrcConfig.Local.Concurrency
+		}
+		if armrcConfig.Local.RateLimit != "" {
+			c.TypeDefaults["local"]["rateLimit"] = armrcConfig.Local.RateLimit
+		}
+	}
+
+	// Map network config
+	if armrcConfig.Network != nil {
+		if armrcConfig.Network.Timeout != "" {
+			c.NetworkConfig["timeout"] = armrcConfig.Network.Timeout
+		}
+		if armrcConfig.Network.RetryMaxAttempts != "" {
+			c.NetworkConfig["retry.maxAttempts"] = armrcConfig.Network.RetryMaxAttempts
+		}
+		if armrcConfig.Network.RetryBackoffMultiplier != "" {
+			c.NetworkConfig["retry.backoffMultiplier"] = armrcConfig.Network.RetryBackoffMultiplier
+		}
+		if armrcConfig.Network.RetryMaxBackoff != "" {
+			c.NetworkConfig["retry.maxBackoff"] = armrcConfig.Network.RetryMaxBackoff
+		}
+	}
+
+	// Map cache config - store as strings for compatibility with existing LoadCacheConfig
+	if armrcConfig.Cache != nil {
+		if c.TypeDefaults["cache"] == nil {
+			c.TypeDefaults["cache"] = make(map[string]string)
+		}
+		if armrcConfig.Cache.MaxSize != 0 {
+			c.TypeDefaults["cache"]["maxSize"] = fmt.Sprintf("%d", armrcConfig.Cache.MaxSize)
+		}
+		if armrcConfig.Cache.TTL != 0 {
+			c.TypeDefaults["cache"]["ttl"] = time.Duration(armrcConfig.Cache.TTL).String()
+		}
+		if armrcConfig.Cache.CleanupInterval != 0 {
+			c.TypeDefaults["cache"]["cleanupInterval"] = time.Duration(armrcConfig.Cache.CleanupInterval).String()
+		}
+	}
+
+	return nil
 }
 
 // loadARMJSON loads and parses an arm.json file
@@ -707,36 +785,4 @@ func expandEnvVars(s string) string {
 		// Return environment variable value or empty string if not found
 		return os.Getenv(varName)
 	})
-}
-
-// processChannelConfig processes [channels.name] sections
-func (c *Config) processChannelConfig(name string, section *ini.Section) error {
-	directoriesKey := section.Key("directories")
-	if directoriesKey == nil {
-		return fmt.Errorf("channel '%s' missing required 'directories' field", name)
-	}
-
-	directoriesStr := expandEnvVars(directoriesKey.String())
-	if directoriesStr == "" {
-		return fmt.Errorf("channel '%s' directories cannot be empty", name)
-	}
-
-	// Parse comma-separated directories
-	var directories []string
-	for _, dir := range strings.Split(directoriesStr, ",") {
-		dir = strings.TrimSpace(dir)
-		if dir != "" {
-			directories = append(directories, dir)
-		}
-	}
-
-	if len(directories) == 0 {
-		return fmt.Errorf("channel '%s' must have at least one directory", name)
-	}
-
-	c.Channels[name] = ChannelConfig{
-		Directories: directories,
-	}
-
-	return nil
 }

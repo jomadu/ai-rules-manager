@@ -4,24 +4,24 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
 ## Task Implementation
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y"
+- **PRD Validation:** Before marking any sub-task as complete, validate that the implementation meets the requirements from the originating PRD. If requirements are not met, iterate until they are satisfied.
 - **Completion protocol:**
-  1. When you finish a **task**, follow this sequence:
-    - **First**: Mark it as completed by changing `[ ]` to `[x]`
-    - **Run tests**: Run relevant tests for the subtask (`pytest path/to/test`, `npm test -- path/to/test`, etc.)
-    - **Only if tests pass**: Stage changes (`git add .`)
+  1. When you finish a **sub‑task**, validate it against the PRD requirements and iterate if needed, then mark it as completed by changing `[ ]` to `[x]`.
+  2. If **all** subtasks underneath a parent task are now `[x]`, follow this sequence:
+    - **First**: Run the full test suite (`pytest`, `npm test`, `bin/rails test`, etc.)
+    - **Only if all tests pass**: Stage changes (`git add .`)
     - **Clean up**: Remove any temporary files and temporary code before committing
-    - **Document**: Update any relevant development (`/docs/development`), technical (`/docs/technical`), or user (`/docs/user`) documentation.
     - **Commit**: Use a descriptive commit message that:
       - Uses conventional commit format (`feat:`, `fix:`, `refactor:`, etc.)
-      - Summarizes what was accomplished in the subtask
+      - Summarizes what was accomplished in the parent task
       - Lists key changes and additions
-      - References the subtask number and PRD context
+      - References the task number and PRD context
       - **Formats the message as a single-line command using `-m` flags**, e.g.:
 
         ```
-        git commit -m "feat: implement user validation" -m "- Add email format validation" -m "- Include unit tests" -m "Subtask 1.2 from PRD"
+        git commit -m "feat: add payment validation logic" -m "- Validates card type and expiry" -m "- Adds unit tests for edge cases" -m "Related to T123 in PRD"
         ```
-  2. Once all the subtasks are marked completed, mark the **parent task** as completed.
+  3. Once all the subtasks are marked completed and changes have been committed, mark the **parent task** as completed.
 - Stop after each sub‑task and wait for the user's go‑ahead.
 
 ## Task List Maintenance
@@ -38,12 +38,12 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
 When working with task lists, the AI must:
 
-1. **Consider additional context**: Before starting any sub-task, review all files and subdirectories in the same directory as the PRD (e.g., technical specifications, example workflows, design documents) to ensure implementation aligns with all available context.
+1. **Validate against PRD:** Before marking any sub-task complete, verify the implementation satisfies the originating PRD requirements. Iterate until requirements are met.
 2. Regularly update the task list file after finishing any significant work.
 3. Follow the completion protocol:
-   - Mark each finished **sub‑task** `[x]`.
+   - Mark each finished **sub‑task** `[x]` only after PRD validation.
    - Mark the **parent task** `[x]` once **all** its subtasks are `[x]`.
 4. Add newly discovered tasks.
 5. Keep "Relevant Files" accurate and up to date.
 6. Before starting work, check which sub‑task is next.
-7. After implementing a sub‑task, update the file and then pause for user approval.
+7. After implementing a sub‑task, validate against PRD, update the file and then pause for user approval.

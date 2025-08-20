@@ -7,26 +7,37 @@ To guide an AI assistant in creating a detailed, step-by-step task list in Markd
 ## Output
 
 - **Format:** Markdown (`.md`)
-- **Location:** `/tasks/[feature-name]/`
-- **Filename:** `tasks-[feature-name].md` (e.g., `tasks-user-profile-editing.md`)
+- **Location:** `/tasks/[feature-name]`
+- **Filename:** `tasks-[prd-file-name].md` (e.g., `tasks-prd-user-profile-editing.md`)
 
 ## Process
 
-1.  **Receive PRD Reference:** The user points the AI to a specific PRD file.
-2.  **Analyze PRD and Additional Context:** The AI reads and analyzes the functional requirements, user stories, and other sections of the specified PRD. Additionally, check the same directory for any supplementary files (e.g., technical specifications, design documents, API schemas) that provide additional context for the feature implementation.
+1.  **Receive PRD Reference:** The user points the AI to a specific PRD file
+2.  **Analyze PRD:** The AI reads and analyzes the functional requirements, user stories, and other sections of the specified PRD.
 3.  **Assess Current State:** Review the existing codebase to understand existing infrastructre, architectural patterns and conventions. Also, identify any existing components or features that already exist and could be relevant to the PRD requirements. Then, identify existing related files, components, and utilities that can be leveraged or need modification.
-4.  **Phase 1: Generate Parent Tasks:** Based on the PRD analysis, additional context files, and current state assessment, create the file and generate the main, high-level tasks required to implement the feature. Use your judgement on how many high-level tasks to use. It's likely to be about 5. Present these tasks to the user in the specified format (without sub-tasks yet). Inform the user: "I have generated the high-level tasks based on the PRD. Ready to generate the sub-tasks? Respond with 'Go' to proceed."
-5.  **Wait for Confirmation:** Pause and wait for the user to respond with "Go".
-6.  **Phase 2: Generate Sub-Tasks:** Once the user confirms, break down each parent task into smaller, actionable sub-tasks necessary to complete the parent task. Ensure sub-tasks logically follow from the parent task, cover the implementation details implied by the PRD and any additional context files, and consider existing codebase patterns where relevant without being constrained by them.
-7.  **Identify Relevant Files:** Based on the tasks and PRD, identify potential files that will need to be created or modified. List these under the `Relevant Files` section, including corresponding test files if applicable.
-8.  **Generate Final Output:** Combine the parent tasks, sub-tasks, relevant files, and notes into the final Markdown structure.
-9.  **Save Task List:** Save the generated document in the `/tasks/[feature-name]/` directory with the filename `tasks-[feature-name].md`.
+4.  **Phase 1: Generate Parent Tasks:** Based on the PRD analysis and current state assessment, create the file and generate the main, high-level tasks required to implement the feature. Use your judgement on how many high-level tasks to use. It's likely to be about
+5. **Inform the user:** Present these tasks to the user in the specified format (without sub-tasks yet) For example, say "I have generated the high-level tasks based on the PRD. Ready to generate the sub-tasks? Respond with 'Go' to proceed." .
+6.  **Wait for Confirmation:** Pause and wait for the user to respond with "Go".
+7.  **Phase 2: Generate Sub-Tasks:** Once the user confirms, break down each parent task into smaller, actionable sub-tasks necessary to complete the parent task. Ensure sub-tasks logically follow from the parent task, cover the implementation details implied by the PRD, and consider existing codebase patterns where relevant without being constrained by them.
+8.  **Identify Relevant Files:** Based on the tasks and PRD, identify potential files that will need to be created or modified. List these under the `Relevant Files` section, including corresponding test files if applicable.
+9.  **Generate Final Output:** Combine the parent tasks, sub-tasks, relevant files, and notes into the final Markdown structure.
+10.  **Save Task List:** Save the generated document in the `/tasks/[feature-name]` directory with the filename `tasks-[prd-file-name].md`, where `[prd-file-name]` matches the base name of the input PRD file (e.g., if the input was `prd-user-profile-editing.md`, the output is `tasks-prd-user-profile-editing.md`).
+11.  **Include PRD Reference:** Add the PRD Reference section at the top of the task list with the source PRD path and a summary of key requirements that AI assistants should validate against during implementation.
 
 ## Output Format
 
 The generated task list _must_ follow this structure:
 
 ```markdown
+## PRD Reference
+
+**Source PRD:** `[path/to/prd-file.md]`
+
+**Key Requirements Summary:**
+- Brief bullet point summary of the main functional requirements from the PRD
+- Include user stories or acceptance criteria that are most critical
+- Reference specific PRD sections that tasks should validate against
+
 ## Relevant Files
 
 - `path/to/potential/file1.ts` - Brief description of why this file is relevant (e.g., Contains the main component for this feature).
@@ -58,3 +69,11 @@ The process explicitly requires a pause after generating parent tasks to get use
 ## Target Audience
 
 Assume the primary reader of the task list is a **junior developer** who will implement the feature with awareness of the existing codebase context.
+
+## AI Assistant Instructions
+
+When processing task lists generated from this rule, AI assistants must:
+
+1. **Reference the PRD:** Before implementing any task, review the PRD Reference section to understand the original requirements and validate the implementation approach.
+2. **Validate against requirements:** Ensure each implementation satisfies the functional requirements and user stories outlined in the PRD Reference section.
+3. **Cross-reference during development:** When making implementation decisions, refer back to the source PRD to ensure alignment with the original specifications.
