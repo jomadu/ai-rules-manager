@@ -111,7 +111,7 @@ func (i *Installer) Install(req *InstallRequest) (*InstallResult, error) {
 		Registry:      req.Registry,
 		Ruleset:       req.Ruleset,
 		Version:       req.Version,
-		InstalledPath: fmt.Sprintf("arm/%s/%s/%s", req.Registry, req.Ruleset, req.Version),
+		InstalledPath: fmt.Sprintf("arm/%s/%s/%s", req.Registry, req.Ruleset, resolvedVersion),
 		FilesCount:    totalFiles,
 		Channels:      installedChannels,
 	}, nil
@@ -123,7 +123,12 @@ func (i *Installer) installToChannel(req *InstallRequest, channelDir string) (in
 	armDir := filepath.Join(channelDir, "arm")
 	registryDir := filepath.Join(armDir, req.Registry)
 	rulesetDir := filepath.Join(registryDir, req.Ruleset)
-	versionDir := filepath.Join(rulesetDir, req.Version)
+	// Always use resolved version for directory naming
+	dirVersion := req.ResolvedVersion
+	if dirVersion == "" {
+		dirVersion = req.Version // Fallback for non-Git registries
+	}
+	versionDir := filepath.Join(rulesetDir, dirVersion)
 
 	// Create directories if they don't exist
 	if err := os.MkdirAll(versionDir, 0o755); err != nil {
@@ -131,7 +136,7 @@ func (i *Installer) installToChannel(req *InstallRequest, channelDir string) (in
 	}
 
 	// Remove previous version after successful installation
-	defer i.cleanupPreviousVersion(rulesetDir, req.Version)
+	defer i.cleanupPreviousVersion(rulesetDir, dirVersion)
 
 	// Copy files to version directory
 	filesCount := 0
