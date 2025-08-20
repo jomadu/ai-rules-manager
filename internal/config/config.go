@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/max-dunn/ai-rules-manager/internal/version"
 )
@@ -25,8 +24,6 @@ type Config struct {
 	Engines  map[string]string                 // engines from arm.json
 	LockFile *LockFile                         // arm.lock content
 
-	// Cache configuration (loaded from INI sections)
-	CacheConfig *CacheConfig // cache settings
 }
 
 // ChannelConfig represents a channel configuration
@@ -50,9 +47,9 @@ type ARMConfig struct {
 type ARMRCConfig struct {
 	Registries map[string]RegistryConfig `json:"registries"`
 	Channels   map[string]ChannelConfig  `json:"channels"`
-	Cache      *CacheConfig              `json:"cache,omitempty"`
-	Network    *NetworkConfig            `json:"network,omitempty"`
-	Git        *TypeConfig               `json:"git,omitempty"`
+
+	Network *NetworkConfig `json:"network,omitempty"`
+	Git     *TypeConfig    `json:"git,omitempty"`
 }
 
 // RegistryConfig represents a registry configuration
@@ -170,8 +167,8 @@ func mergeConfigs(global, local *Config) *Config {
 	// Merge registry configs (nested map merge)
 	mergeNestedStringMaps(merged.RegistryConfigs, global.RegistryConfigs, local.RegistryConfigs)
 
-	// Merge type defaults (nested map merge) - exclude cache settings (global only)
-	mergeNestedStringMapsExcluding(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults, []string{"cache"})
+	// Merge type defaults (nested map merge)
+	mergeNestedStringMaps(merged.TypeDefaults, global.TypeDefaults, local.TypeDefaults)
 
 	// Merge network config (key-level merge)
 	mergeStringMaps(merged.NetworkConfig, global.NetworkConfig, local.NetworkConfig)
@@ -345,22 +342,6 @@ func (c *Config) loadARMRCJSON(path string, required bool) error {
 		}
 	}
 
-	// Map cache config - store as strings for compatibility with existing LoadCacheConfig
-	if armrcConfig.Cache != nil {
-		if c.TypeDefaults["cache"] == nil {
-			c.TypeDefaults["cache"] = make(map[string]string)
-		}
-		if armrcConfig.Cache.MaxSize != 0 {
-			c.TypeDefaults["cache"]["maxSize"] = fmt.Sprintf("%d", armrcConfig.Cache.MaxSize)
-		}
-		if armrcConfig.Cache.TTL != 0 {
-			c.TypeDefaults["cache"]["ttl"] = time.Duration(armrcConfig.Cache.TTL).String()
-		}
-		if armrcConfig.Cache.CleanupInterval != 0 {
-			c.TypeDefaults["cache"]["cleanupInterval"] = time.Duration(armrcConfig.Cache.CleanupInterval).String()
-		}
-	}
-
 	return nil
 }
 
@@ -429,8 +410,7 @@ func expandEnvVarsInJSON(jsonContent string) string {
 
 // validateConfig validates the merged configuration
 func validateConfig(cfg *Config, globalCacheSettings map[string]string) {
-	// Load cache configuration from global settings only (not overridable by local)
-	cfg.CacheConfig = LoadCacheConfig(globalCacheSettings)
+	// Cache configuration is now hardcoded - no user configuration needed
 }
 
 // validateRegistry validates a single registry configuration

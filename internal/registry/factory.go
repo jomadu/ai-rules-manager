@@ -2,40 +2,33 @@ package registry
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/max-dunn/ai-rules-manager/internal/cache"
-	"github.com/max-dunn/ai-rules-manager/internal/config"
 )
 
-// CreateRegistry creates a registry instance based on configuration
+// CreateRegistry creates a registry instance with hardcoded cache
 func CreateRegistry(config *RegistryConfig) (Registry, error) {
-	return CreateRegistryWithCache(config, "")
-}
-
-// CreateRegistryWithCache creates a registry instance with cache manager injection
-func CreateRegistryWithCache(config *RegistryConfig, cacheRoot string) (Registry, error) {
 	if err := ValidateRegistryConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
+	cacheRoot := GetCachePath()
 	switch config.Type {
 	case "git":
-		if cacheRoot != "" {
-			cacheManager := cache.NewGitRegistryCacheManager(cacheRoot)
-			return NewGitRegistryWithCache(config, cacheManager)
-		}
-		return NewGitRegistry(config)
+		cacheManager := cache.NewGitRegistryCacheManager(cacheRoot)
+		return NewGitRegistryWithCache(config, cacheManager)
 	default:
 		return nil, fmt.Errorf("unsupported registry type: %s", config.Type)
 	}
 }
 
-// CreateRegistryWithCacheConfig creates a registry instance with cache configuration
-func CreateRegistryWithCacheConfig(registryConfig *RegistryConfig, cacheConfig *config.CacheConfig, registryName string) (Registry, error) {
-	cacheRoot := ""
-	if cacheConfig != nil {
-		cacheRoot = config.GetCachePath()
+// GetCachePath returns the hardcoded cache directory path
+func GetCachePath() string {
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		homeDir = "."
 	}
-
-	return CreateRegistryWithCache(registryConfig, cacheRoot)
+	return filepath.Join(homeDir, ".arm", "cache")
 }

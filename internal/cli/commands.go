@@ -992,7 +992,7 @@ func performSearch(cfg *config.Config, targetRegistries []string, query string, 
 		}
 
 		// Create registry instance
-		reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, cfg.CacheConfig, registryName)
+		reg, err := registry.CreateRegistry(registryConfig)
 		if err != nil {
 			searchErrors[registryName] = fmt.Sprintf("failed to create registry: %v", err)
 			continue
@@ -1566,8 +1566,8 @@ func performGitInstallation(cfg *config.Config, registryName, rulesetName, versi
 		URL:  cfg.Registries[registryName],
 	}
 
-	// Create Git registry instance with cache
-	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, cfg.CacheConfig, registryName)
+	// Create Git registry instance
+	reg, err := registry.CreateRegistry(registryConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
@@ -1651,8 +1651,8 @@ func performInstallation(cfg *config.Config, registryName, rulesetName, version,
 		URL:  cfg.Registries[registryName],
 	}
 
-	// Create registry instance with cache
-	reg, err := registry.CreateRegistryWithCacheConfig(registryConfig, cfg.CacheConfig, registryName)
+	// Create registry instance
+	reg, err := registry.CreateRegistry(registryConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
