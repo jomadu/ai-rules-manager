@@ -11,8 +11,11 @@ Stop manually copying `.cursorrules` and `.amazonq/rules` files between projects
 ## Quick Start
 
 ```bash
-# Install ARM
+# Install latest version
 curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash
+
+# Install specific version
+curl -sSL https://raw.githubusercontent.com/jomadu/ai-rules-manager/main/scripts/install.sh | bash -s v1.2.3
 
 # Initialize configuration
 arm install
@@ -54,13 +57,6 @@ arm outdated
 | **HTTPS** | `registry.example.com` | Custom HTTP servers |
 | **Local** | `/path/to/rules` | Development and testing |
 
-## Documentation
-
-- [User Guide](docs/user/README.md) - Complete usage documentation
-- [Quick Start](docs/user/quick-start.md) - Get started in 5 minutes
-- [Team Setup](docs/user/team-setup.md) - Deploy ARM across your team
-- [Configuration](docs/user/configuration.md) - Advanced configuration options
-
 ## Testing
 
 ARM includes automated testing scripts for comprehensive workflow validation:
@@ -78,8 +74,6 @@ The testing suite validates:
 - **Pattern Matching** - File patterns, exclusions, and complex combinations
 - **Registry Integration** - Git-based repository workflows
 - **Content Verification** - Ensures correct files are installed with proper content
-
-See [Testing Documentation](tests/integration/git/README.md) for detailed usage.
 
 ## Contributing
 
