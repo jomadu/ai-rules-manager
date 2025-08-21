@@ -1,5 +1,3 @@
-## Commands
-
 ## Scenario: Git Registry `https://github.com/my-user/ai-rules`
 
 This scenario demonstrates a typical development lifecycle for a ruleset repository, showing how ARM handles different types of version changes and branch workflows.
@@ -130,7 +128,7 @@ arm config add sink cursor --directories .cursor/rules --rulesets ai-rules/curso
             "type": "git"
         }
     },
-    "channels": {
+    "sinks": {
         "q": {
             "directories": [
                 ".amazonq/rules"
@@ -311,6 +309,138 @@ arm install ai-rules/amazonq-rules@1.0.0 --patterns rules/amazonq/*.md
 arm install ai-rules/cursor-rules@1.0.0 --patterns rules/cursor/*.mdc
 ```
 
+`arm.json`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "=1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "version": "=1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`arm.lock`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "=1.0.0",
+                "resolved": "1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "=1.0.0",
+                "resolved": "1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`./`
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        arm/
+            ai-rules/
+                cursor-rules/
+                    1.0.0/
+                        rules/
+                            cursor/
+                                grug-brained-dev.mdc
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    1.0.0/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+```
+
+`~/.arm/cache`
+
+```
+registries/
+    sha256("https://github.com/my-user/ai-rules" + "git")/
+        index.json
+        repository/
+            ai-rules/
+                .git/
+                ...
+        rulesets/
+            sha256("rules/amazonq/*.md")
+                1111111/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+            sha256("rules/cursor/*.mdc")
+                1111111/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+```
+
+`~/.arm/cache/registries/sha256("https://github.com/my-user/ai-rules" + "git")/index.json`
+
+```json
+{
+  "created_on": "2024-01-15T10:30:00Z",
+  "last_updated_on": "2024-01-15T10:30:00Z",
+  "last_accessed_on": "2024-01-15T10:30:00Z",
+  "normalized_registry_url": "https://github.com/user/repo",
+  "normalized_registry_type": "git",
+  "rulesets": {
+    "xyz789abc123...": {
+      "normalized_ruleset_patterns": ["rules/cursor/*.mdc"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "1111111": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    },
+    "aadbbf3222b3...": {
+      "normalized_ruleset_patterns": ["rules/amazonq/*.md"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "1111111": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    }
+  }
+}
+```
+
 ### Specifying Major and Minor Version
 
 specifying the major and minor will pin within minor (e.g., `~1.0.0`)
@@ -318,6 +448,138 @@ specifying the major and minor will pin within minor (e.g., `~1.0.0`)
 ```sh
 arm install ai-rules/amazonq-rules@1.0 --patterns rules/amazonq/*.md
 arm install ai-rules/cursor-rules@1.0 --patterns rules/cursor/*.mdc
+```
+
+`arm.json`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "~1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "version": "~1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`arm.lock`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "~1.0.0",
+                "resolved": "1.0.1",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "~1.0.0",
+                "resolved": "1.0.1",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`./`
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        arm/
+            ai-rules/
+                cursor-rules/
+                    1.0.1/
+                        rules/
+                            cursor/
+                                grug-brained-dev.mdc
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    1.0.1/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+```
+
+`~/.arm/cache`
+
+```
+registries/
+    sha256("https://github.com/my-user/ai-rules" + "git")/
+        index.json
+        repository/
+            ai-rules/
+                .git/
+                ...
+        rulesets/
+            sha256("rules/amazonq/*.md")
+                2222222/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+            sha256("rules/cursor/*.mdc")
+                2222222/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+```
+
+`~/.arm/cache/registries/sha256("https://github.com/my-user/ai-rules" + "git")/index.json`
+
+```json
+{
+  "created_on": "2024-01-15T10:30:00Z",
+  "last_updated_on": "2024-01-15T10:30:00Z",
+  "last_accessed_on": "2024-01-15T10:30:00Z",
+  "normalized_registry_url": "https://github.com/user/repo",
+  "normalized_registry_type": "git",
+  "rulesets": {
+    "xyz789abc123...": {
+      "normalized_ruleset_patterns": ["rules/cursor/*.mdc"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "2222222": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    },
+    "aadbbf3222b3...": {
+      "normalized_ruleset_patterns": ["rules/amazonq/*.md"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "2222222": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    }
+  }
+}
 ```
 
 ### Specifying Major
@@ -329,6 +591,146 @@ arm install ai-rules/amazonq-rules@1 --patterns rules/amazonq/*.md
 arm install ai-rules/cursor-rules@1 --patterns rules/cursor/*.mdc
 ```
 
+`arm.json`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "^1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "version": "^1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`arm.lock`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^1.0.0",
+                "resolved": "1.1.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^1.0.0",
+                "resolved": "1.1.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`./`
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        arm/
+            ai-rules/
+                cursor-rules/
+                    1.1.0/
+                        rules/
+                            cursor/
+                                grug-brained-dev.mdc
+                                generate-tasks.mdc
+                                process-tasks.mdc
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    1.1.0/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+                                generate-tasks.md
+                                process-tasks.md
+```
+
+`~/.arm/cache`
+
+```
+registries/
+    sha256("https://github.com/my-user/ai-rules" + "git")/
+        index.json
+        repository/
+            ai-rules/
+                .git/
+                ...
+        rulesets/
+            sha256("rules/amazonq/*.md")
+                3333333/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+                            generate-tasks.md
+                            process-tasks.md
+            sha256("rules/cursor/*.mdc")
+                3333333/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+                            generate-tasks.mdc
+                            process-tasks.mdc
+```
+
+`~/.arm/cache/registries/sha256("https://github.com/my-user/ai-rules" + "git")/index.json`
+
+```json
+{
+  "created_on": "2024-01-15T10:30:00Z",
+  "last_updated_on": "2024-01-15T10:30:00Z",
+  "last_accessed_on": "2024-01-15T10:30:00Z",
+  "normalized_registry_url": "https://github.com/user/repo",
+  "normalized_registry_type": "git",
+  "rulesets": {
+    "xyz789abc123...": {
+      "normalized_ruleset_patterns": ["rules/cursor/*.mdc"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "3333333": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    },
+    "aadbbf3222b3...": {
+      "normalized_ruleset_patterns": ["rules/amazonq/*.md"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "3333333": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    }
+  }
+}
+```
+
 ### Specifying Branch
 
 specifying a branch name will track the head of the branch
@@ -336,4 +738,148 @@ specifying a branch name will track the head of the branch
 ```sh
 arm install ai-rules/amazonq-rules@main --patterns rules/amazonq/*.md
 arm install ai-rules/cursor-rules@main --patterns rules/cursor/*.mdc
+```
+
+`arm.json`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "main",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "version": "main",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`arm.lock`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "main",
+                "resolved": "6666666",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "main",
+                "resolved": "6666666",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`./`
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        arm/
+            ai-rules/
+                cursor-rules/
+                    6666666/
+                        rules/
+                            cursor/
+                                grug-brained-dev.mdc
+                                generate-tasks.mdc
+                                process-tasks.mdc
+                                clean-code.mdc
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    6666666/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+                                generate-tasks.md
+                                process-tasks.md
+                                clean-code.md
+```
+
+`~/.arm/cache`
+
+```
+registries/
+    sha256("https://github.com/my-user/ai-rules" + "git")/
+        index.json
+        repository/
+            ai-rules/
+                .git/
+                ...
+        rulesets/
+            sha256("rules/amazonq/*.md")
+                6666666/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+                            generate-tasks.md
+                            process-tasks.md
+                            clean-code.md
+            sha256("rules/cursor/*.mdc")
+                6666666/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+                            generate-tasks.mdc
+                            process-tasks.mdc
+                            clean-code.mdc
+```
+
+`~/.arm/cache/registries/sha256("https://github.com/my-user/ai-rules" + "git")/index.json`
+
+```json
+{
+  "created_on": "2024-01-15T10:30:00Z",
+  "last_updated_on": "2024-01-15T10:30:00Z",
+  "last_accessed_on": "2024-01-15T10:30:00Z",
+  "normalized_registry_url": "https://github.com/user/repo",
+  "normalized_registry_type": "git",
+  "rulesets": {
+    "xyz789abc123...": {
+      "normalized_ruleset_patterns": ["rules/cursor/*.mdc"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "6666666": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    },
+    "aadbbf3222b3...": {
+      "normalized_ruleset_patterns": ["rules/amazonq/*.md"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "6666666": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    }
+  }
+}
 ```
