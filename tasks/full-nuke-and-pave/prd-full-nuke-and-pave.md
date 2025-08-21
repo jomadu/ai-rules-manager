@@ -883,3 +883,350 @@ registries/
   }
 }
 ```
+
+## Uninstall
+
+```sh
+arm install ai-rules/amazonq-rules --patterns rules/amazonq/*.md
+arm install ai-rules/cursor-rules --patterns rules/cursor/*.mdc
+arm uninstall ai-rules/cursor-rules
+```
+
+`arm.json`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "^2.1.0",
+                "patterns": ["rules/amazonq/*.md"]
+            }
+        }
+    }
+}
+```
+
+`arm.lock`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^2.1.0",
+                "resolved": "2.1.0",
+                "patterns": ["rules/amazonq/*.md"]
+            }
+        }
+    }
+}
+```
+
+`./`
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        (arm directory removed - no rulesets installed)
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    2.1.0/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+                                generate-tasks.md
+                                process-tasks.md
+                                clean-code.md
+```
+
+`~/.arm/cache`
+
+```
+registries/
+    sha256("https://github.com/my-user/ai-rules" + "git")/
+        index.json
+        repository/
+            ai-rules/
+                .git/
+                ...
+        rulesets/
+            sha256("rules/amazonq/*.md")
+                6666666/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+                            generate-tasks.md
+                            process-tasks.md
+                            clean-code.md
+            sha256("rules/cursor/*.mdc") <- cache maintained
+                6666666/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+                            generate-tasks.mdc
+                            process-tasks.mdc
+                            clean-code.mdc
+```
+
+`~/.arm/cache/registries/sha256("https://github.com/my-user/ai-rules" + "git")/index.json`
+
+```json
+{
+  "created_on": "2024-01-15T10:30:00Z",
+  "last_updated_on": "2024-01-15T10:30:00Z",
+  "last_accessed_on": "2024-01-15T10:30:00Z",
+  "normalized_registry_url": "https://github.com/user/repo",
+  "normalized_registry_type": "git",
+  "rulesets": {
+    "xyz789abc123...": {
+      "normalized_ruleset_patterns": ["rules/cursor/*.mdc"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "6666666": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    },
+    "aadbbf3222b3...": {
+      "normalized_ruleset_patterns": ["rules/amazonq/*.md"],
+      "created_on": "2024-01-15T10:30:00Z",
+      "last_updated_on": "2024-01-15T10:30:00Z",
+      "last_accessed_on": "2024-01-15T10:30:00Z",
+      "versions": {
+        "6666666": {
+          "created_on": "2024-01-15T10:30:00Z",
+          "last_updated_on": "2024-01-15T10:30:00Z",
+          "last_accessed_on": "2024-01-15T10:30:00Z"
+        }
+      }
+    }
+  }
+}
+```
+
+## Outdated
+
+```sh
+arm install ai-rules/amazonq-rules@1 --patterns rules/amazonq/*.md
+arm install ai-rules/cursor-rules@1 --patterns rules/cursor/*.mdc
+arm outdated
+
+| Registry | Ruleset       | Current | Wanted | Latest  |
+|----------|---------------|---------|--------|---------|
+| ai-rules | amazonq-rules | 1.1.0   | 1.1.0  | 2.1.0   |
+| ai-rules | cursor-rules  | 1.1.0   | 1.1.0  | 2.1.0   |
+```
+
+## Update
+
+### 1. After Release of 1.0.0, Prior to Release of 1.1.0
+
+```sh
+arm install ai-rules/amazonq-rules@1 --patterns rules/amazonq/*.md
+arm install ai-rules/cursor-rules@1 --patterns rules/cursor/*.mdc
+arm outdated
+
+All rulesets are up to date!
+```
+
+`arm.json`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "^1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "version": "^1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`arm.lock`
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^1.0.0",
+                "resolved": "1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^1.0.0",
+                "resolved": "1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`./`
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        arm/
+            ai-rules/
+                cursor-rules/
+                    1.0.0/
+                        rules/
+                            cursor/
+                                grug-brained-dev.mdc
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    1.0.0/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+```
+
+### 2. After Release of 1.1.0
+
+```sh
+arm outdated
+
+| Registry | Ruleset       | Current | Wanted | Latest  |
+|----------|---------------|---------|--------|---------|
+| ai-rules | amazonq-rules | 1.0.0   | 1.1.0  | 1.1.0   |
+| ai-rules | cursor-rules  | 1.0.0   | 1.1.0  | 1.1.0   |
+
+arm update
+```
+
+`arm.json` (unchanged)
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "version": "^1.0.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "version": "^1.0.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`arm.lock` (updated resolved versions)
+
+```json
+{
+    "rulesets": {
+        "ai-rules": {
+            "amazonq-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^1.0.0",
+                "resolved": "1.1.0",
+                "patterns": ["rules/amazonq/*.md"]
+            },
+            "cursor-rules": {
+                "url": "https://github.com/my-user/ai-rules",
+                "type": "git",
+                "constraint": "^1.0.0",
+                "resolved": "1.1.0",
+                "patterns": ["rules/cursor/*.mdc"]
+            },
+        }
+    }
+}
+```
+
+`./` (updated with new version directories)
+```
+.armrc.json
+arm.json
+arm.lock
+.cursor/
+    rules/
+        arm/
+            ai-rules/
+                cursor-rules/
+                    1.1.0/
+                        rules/
+                            cursor/
+                                grug-brained-dev.mdc
+                                generate-tasks.mdc
+                                process-tasks.mdc
+.amazonq/
+    rules/
+        arm/
+            ai-rules/
+                amazonq-rules/
+                    1.1.0/
+                        rules/
+                            amazonq/
+                                grug-brained-dev.md
+                                generate-tasks.md
+                                process-tasks.md
+```
+
+`~/.arm/cache` (new version cached)
+
+```
+registries/
+    sha256("https://github.com/my-user/ai-rules" + "git")/
+        index.json
+        repository/
+            ai-rules/
+                .git/
+                ...
+        rulesets/
+            sha256("rules/amazonq/*.md")
+                1111111/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+                3333333/
+                    rules/
+                        amazonq/
+                            grug-brained-dev.md
+                            generate-tasks.md
+                            process-tasks.md
+            sha256("rules/cursor/*.mdc")
+                1111111/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+                3333333/
+                    rules/
+                        cursor/
+                            grug-brained-dev.mdc
+                            generate-tasks.mdc
+                            process-tasks.mdc
+```
