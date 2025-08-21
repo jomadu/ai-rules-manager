@@ -1230,3 +1230,52 @@ registries/
                             generate-tasks.mdc
                             process-tasks.mdc
 ```
+
+## Info
+
+```sh
+arm install ai-rules/amazonq-rules@1 --patterns rules/amazonq/*.md
+arm install ai-rules/cursor-rules@1 --patterns rules/cursor/*.mdc
+arm info ai-rules/amazonq-rules
+```
+
+```
+Ruleset: ai-rules/amazonq-rules
+Registry: https://github.com/my-user/ai-rules (git)
+Patterns:
+  - rules/amazonq/*.md
+Installed:
+  - .amazonq/rules/arm/ai-rules/amazonq-rules/1.1.0/
+Sinks:
+  - q
+Constraint: ^1.0.0
+Resolved: 1.1.0
+Wanted: 1.1.0
+Latest: 2.1.0
+```
+
+```sh
+arm info
+```
+
+```
+ai-rules/amazonq-rules
+  Registry: https://github.com/my-user/ai-rules (git)
+  Patterns:
+    - rules/amazonq/*.md
+  Installed:
+    - .amazonq/rules/arm/ai-rules/amazonq-rules/1.1.0/
+  Sinks:
+    - q
+  Constraint: ^1.0.0 | Resolved: 1.1.0 | Wanted: 1.1.0 | Latest: 2.1.0
+
+ai-rules/cursor-rules
+  Registry: https://github.com/my-user/ai-rules (git)
+  Patterns:
+    - rules/cursor/*.mdc
+  Installed:
+    - .cursor/rules/arm/ai-rules/cursor-rules/1.1.0/
+  Sinks:
+    - cursor
+  Constraint: ^1.0.0 | Resolved: 1.1.0 | Wanted: 1.1.0 | Latest: 2.1.0
+```
