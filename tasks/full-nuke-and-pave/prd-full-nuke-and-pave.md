@@ -1279,3 +1279,52 @@ ai-rules/cursor-rules
     - cursor
   Constraint: ^1.0.0 | Resolved: 1.1.0 | Wanted: 1.1.0 | Latest: 2.1.0
 ```
+
+## Version
+
+```sh
+arm version
+```
+
+```
+arm 1.2.3
+commit: a1b2c3d4
+arch: darwin/arm64
+```
+
+## Help
+
+```sh
+arm help
+```
+
+```
+Usage: arm <command> [options]
+
+Commands:
+  install <ruleset>     Install a ruleset
+  uninstall <ruleset>   Uninstall a ruleset
+  update [ruleset]      Update rulesets
+  outdated              Show outdated rulesets
+  list                  List installed rulesets
+  info [ruleset]        Show ruleset information
+  config                Manage configuration
+  version               Show version
+  help                  Show help
+
+Options:
+  --help               Show command help
+```
+
+## List
+
+```sh
+arm install ai-rules/amazonq-rules@1 --patterns rules/amazonq/*.md
+arm install ai-rules/cursor-rules@1 --patterns rules/cursor/*.mdc
+arm list
+```
+
+```
+ai-rules/amazonq-rules@1.1.0
+ai-rules/cursor-rules@1.1.0
+```
